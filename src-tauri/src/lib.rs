@@ -289,27 +289,14 @@ fn unpack_sidecar_7z(archive_path: &Path, target_dir: &Path) -> Result<(), Box<d
     Ok(())
 }
 
-fn resolve_node_paths(resource_dir: Option<&Path>, exe_dir: Option<&Path>) -> Option<(PathBuf, Vec<String>, PathBuf)> {
-    // 1. Check resource_dir: node/node.exe and backend/server.js
-    if let Some(res_dir) = resource_dir {
-        let bundled_node = res_dir.join("node").join("node.exe");
-        let bundled_server = res_dir.join("backend").join("server.js");
-        if bundled_node.exists() && bundled_server.exists() {
-            let working_dir = res_dir.join("backend");
-            return Some((bundled_node, vec![bundled_server.to_string_lossy().to_string()], working_dir));
-        }
+#[allow(dead_code)]
+fn resolve_node_paths(resource_dir: &Path) -> Option<(PathBuf, Vec<String>, PathBuf)> {
+    let bundled_node = resource_dir.join("node").join("node.exe");
+    let bundled_server = resource_dir.join("backend").join("server.js");
+    if bundled_node.exists() && bundled_server.exists() {
+        let working_dir = resource_dir.join("backend");
+        return Some((bundled_node, vec![bundled_server.to_string_lossy().to_string()], working_dir));
     }
-
-    // 2. Check exe_dir/resources: resources/node/node.exe and resources/backend/server.js
-    if let Some(e_dir) = exe_dir {
-        let alongside_node = e_dir.join("resources").join("node").join("node.exe");
-        let alongside_server = e_dir.join("resources").join("backend").join("server.js");
-        if alongside_node.exists() && alongside_server.exists() {
-            let working_dir = e_dir.join("resources").join("backend");
-            return Some((alongside_node, vec![alongside_server.to_string_lossy().to_string()], working_dir));
-        }
-    }
-
     None
 }
 
@@ -344,7 +331,7 @@ fn get_candidate_sidecar_archives(resource_dir: Option<&Path>, exe_dir: Option<&
     candidate_archives
 }
 
-fn find_sidecar_executable(app: &tauri::App, _project_root: &Path) -> Result<(PathBuf, Vec<String>, PathBuf), Box<dyn std::error::Error>> {
+fn find_sidecar_executable(app: &tauri::AppHandle, _project_root: &Path) -> Result<(PathBuf, Vec<String>, PathBuf), Box<dyn std::error::Error>> {
     // 1. In dev mode (debug_assertions), prefer venv python main.py or local frozen sidecar
     #[cfg(debug_assertions)]
     {
@@ -414,7 +401,7 @@ fn find_sidecar_executable(app: &tauri::App, _project_root: &Path) -> Result<(Pa
     ).into())
 }
 
-fn find_node_executable(app: &tauri::App, _project_root: &Path) -> Result<(PathBuf, Vec<String>, PathBuf), Box<dyn std::error::Error>> {
+fn find_node_executable(app: &tauri::AppHandle, _project_root: &Path) -> Result<(PathBuf, Vec<String>, PathBuf), Box<dyn std::error::Error>> {
     // 1. In dev mode (debug_assertions), prefer project backend and local/nvm node
     #[cfg(debug_assertions)]
     {
@@ -428,12 +415,12 @@ fn find_node_executable(app: &tauri::App, _project_root: &Path) -> Result<(PathB
         }
     }
 
-    // 2. In release/packaged mode: ONLY check resource_dir and exe_dir/resources
-    let resource_dir = app.path().resource_dir().ok();
-    let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf()));
-
-    if let Some(paths) = resolve_node_paths(resource_dir.as_deref(), exe_dir.as_deref()) {
-        return Ok(paths);
+    let resource_dir = app.path().resource_dir()?;
+    let bundled_node = resource_dir.join("node").join("node.exe");
+    let bundled_server = resource_dir.join("backend").join("server.js");
+    if bundled_node.exists() && bundled_server.exists() {
+        let working_dir = resource_dir.join("backend");
+        return Ok((bundled_node, vec![bundled_server.to_string_lossy().to_string()], working_dir));
     }
 
     Err("Could not find bundled Node.js or backend/server.js".into())
@@ -494,7 +481,7 @@ fn stream_output(
     });
 }
 
-fn setup_supervisor(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+fn setup_supervisor(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let app_dir = get_app_data_dir();
     let logs_dir = app_dir.join("logs");
     let models_dir = app_dir.join("models");
@@ -703,33 +690,29 @@ pub fn run() {
             }
         })
         .setup(|app| {
-            match setup_supervisor(app) {
-                Ok(()) => {
-                    if let Some(splash) = app.get_webview_window("splashscreen") {
-                        let _ = splash.close();
+            let app_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                match setup_supervisor(&app_handle) {
+                    Ok(()) => {
+                        if let Some(splash) = app_handle.get_webview_window("splashscreen") {
+                            let _ = splash.close();
+                        }
+                        if let Some(main) = app_handle.get_webview_window("main") {
+                            let _ = main.show();
+                            let _ = main.set_focus();
+                        }
                     }
-                    if let Some(main) = app.get_webview_window("main") {
-                        let _ = main.show();
-                        let _ = main.set_focus();
+                    Err(e) => {
+                        if let Some(splash) = app_handle.get_webview_window("splashscreen") {
+                            let _ = splash.close();
+                        }
+                        let err_str = e.to_string();
+                        log_crash(&err_str);
+                        show_error_dialog("Omnitome Startup Error", &err_str);
                     }
-                    Ok(())
                 }
-                Err(e) => {
-                    if let Some(splash) = app.get_webview_window("splashscreen") {
-                        let _ = splash.close();
-                    }
-                    let err_str = e.to_string();
-                    log_crash(&err_str);
-                    let crash_log_path = get_app_data_dir().join("logs").join("crash.log");
-                    let dialog_msg = format!(
-                        "Omnitome encountered a fatal error during startup:\n\n{}\n\nA detailed crash log was written to:\n{}",
-                        err_str,
-                        crash_log_path.to_string_lossy()
-                    );
-                    show_error_dialog("Omnitome Startup Error", &dialog_msg);
-                    Err(e)
-                }
-            }
+            });
+            Ok(())
         });
 
     let app = match builder.build(tauri::generate_context!()) {
@@ -950,29 +933,7 @@ mod tests {
         fs::write(node_dir.join("node.exe"), b"mock node").unwrap();
         fs::write(backend_dir.join("server.js"), b"mock server").unwrap();
 
-        let resolved = resolve_node_paths(Some(&temp_dir), None);
-        assert!(resolved.is_some());
-        let (bin, args, cwd) = resolved.unwrap();
-        assert_eq!(bin, node_dir.join("node.exe"));
-        assert_eq!(args, vec![backend_dir.join("server.js").to_string_lossy().to_string()]);
-        assert_eq!(cwd, backend_dir);
-
-        let _ = wipe_dir(&temp_dir);
-    }
-
-    #[test]
-    fn test_resolve_node_paths_exe_resources_valid() {
-        let temp_dir = std::env::temp_dir().join("omnitome_test_node_exe_resources");
-        let _ = wipe_dir(&temp_dir);
-        let res_dir = temp_dir.join("resources");
-        let node_dir = res_dir.join("node");
-        let backend_dir = res_dir.join("backend");
-        fs::create_dir_all(&node_dir).unwrap();
-        fs::create_dir_all(&backend_dir).unwrap();
-        fs::write(node_dir.join("node.exe"), b"mock node").unwrap();
-        fs::write(backend_dir.join("server.js"), b"mock server").unwrap();
-
-        let resolved = resolve_node_paths(None, Some(&temp_dir));
+        let resolved = resolve_node_paths(&temp_dir);
         assert!(resolved.is_some());
         let (bin, args, cwd) = resolved.unwrap();
         assert_eq!(bin, node_dir.join("node.exe"));
@@ -991,9 +952,20 @@ mod tests {
         fs::write(node_dir.join("node.exe"), b"mock node").unwrap();
 
         // Node exists but server.js is missing
-        assert!(resolve_node_paths(Some(&temp_dir), None).is_none());
-        assert!(resolve_node_paths(None, Some(&temp_dir)).is_none());
-        assert!(resolve_node_paths(None, None).is_none());
+        assert!(resolve_node_paths(&temp_dir).is_none());
+
+        // server.js exists but node.exe is missing
+        let temp_dir2 = std::env::temp_dir().join("omnitome_test_node_missing_exe");
+        let _ = wipe_dir(&temp_dir2);
+        let backend_dir2 = temp_dir2.join("backend");
+        fs::create_dir_all(&backend_dir2).unwrap();
+        fs::write(backend_dir2.join("server.js"), b"mock server").unwrap();
+        assert!(resolve_node_paths(&temp_dir2).is_none());
+        let _ = wipe_dir(&temp_dir2);
+
+        // Entire directory does not exist
+        let non_existent = temp_dir.join("does_not_exist");
+        assert!(resolve_node_paths(&non_existent).is_none());
 
         let _ = wipe_dir(&temp_dir);
     }
