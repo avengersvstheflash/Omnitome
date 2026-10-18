@@ -83,3 +83,9 @@ src-tauri/target/
 # PyInstaller sidecar build artifacts
 dist-sidecar/
 build-sidecar/
+
+# Production installer staging & resources
+resources/node/
+resources/backend-runtime/
+resources/models/
+resources/sidecar.zip

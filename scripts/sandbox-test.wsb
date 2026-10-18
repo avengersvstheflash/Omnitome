@@ -1,0 +1,15 @@
+<Configuration>
+  <VGpu>Enable</VGpu>
+  <Networking>Default</Networking>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>C:\My Personal Folders\Projects to work on\Antigravity Projects\Smart-Reader\src-tauri\target\release\bundle\nsis</HostFolder>
+      <SandboxFolder>C:\OmnitomeInstaller</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>explorer.exe C:\OmnitomeInstaller</Command>
+  </LogonCommand>
+</Configuration>
+

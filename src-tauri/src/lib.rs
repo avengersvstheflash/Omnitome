@@ -147,51 +147,140 @@ fn find_project_root() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
-fn find_sidecar_executable(root: &Path) -> (PathBuf, Vec<String>) {
-    // 1. In development mode (debug_assertions), prefer venv python main.py so code changes are live
-    #[cfg(debug_assertions)]
-    {
-        let venv_python = root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe");
-        let script = root.join("sidecars").join("python").join("main.py");
-        if venv_python.exists() && script.exists() {
-            return (venv_python, vec![script.to_string_lossy().to_string()]);
-        }
+fn unpack_sidecar_zip(zip_path: &Path, target_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    eprintln!("[Supervisor] Unpacking sidecar engine from {:?} to {:?}", zip_path, target_dir);
+    let file = fs::File::open(zip_path)?;
+    let mut archive = zip::ZipArchive::new(file)?;
+
+    let staging_dir = target_dir.with_extension("staging");
+    if staging_dir.exists() {
+        let _ = fs::remove_dir_all(&staging_dir);
+    }
+    fs::create_dir_all(&staging_dir)?;
+
+    archive.extract(&staging_dir)?;
+
+    if target_dir.exists() {
+        let _ = fs::remove_dir_all(target_dir);
+    }
+    fs::rename(&staging_dir, target_dir)?;
+
+    // Delete sidecar.zip to reclaim 1.3 GB of disk space
+    if let Err(e) = fs::remove_file(zip_path) {
+        eprintln!("[Supervisor] Notice: Could not remove archive {:?}: {}", zip_path, e);
+    } else {
+        eprintln!("[Supervisor] Removed sidecar archive {:?} to reclaim disk space", zip_path);
     }
 
-    // 2. In release/packaged mode, prefer frozen executable
-    let frozen_exe = root.join("dist-sidecar").join("omnitome-sidecar").join("omnitome-sidecar.exe");
-    if frozen_exe.exists() {
-        return (frozen_exe, vec![]);
-    }
-    // Alongside current exe
-    if let Ok(exe_dir) = std::env::current_exe() {
-        if let Some(parent) = exe_dir.parent() {
-            let alongside = parent.join("omnitome-sidecar").join("omnitome-sidecar.exe");
-            if alongside.exists() {
-                return (alongside, vec![]);
-            }
-            let direct = parent.join("omnitome-sidecar.exe");
-            if direct.exists() {
-                return (direct, vec![]);
-            }
-        }
-    }
-    // Fallback to venv python main.py
-    let venv_python = root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe");
-    let script = root.join("sidecars").join("python").join("main.py");
-    if venv_python.exists() && script.exists() {
-        return (venv_python, vec![script.to_string_lossy().to_string()]);
-    }
-    ("python".into(), vec![root.join("sidecars").join("python").join("main.py").to_string_lossy().to_string()])
+    Ok(())
 }
 
-fn find_node_executable(root: &Path) -> (PathBuf, Vec<String>) {
-    let server_js = root.join("backend").join("server.js");
+fn find_sidecar_executable(app: &tauri::App, project_root: &Path) -> (PathBuf, Vec<String>, PathBuf) {
+    // 1. In dev mode (debug_assertions), prefer venv python main.py
+    #[cfg(debug_assertions)]
+    {
+        let venv_python = project_root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe");
+        let script = project_root.join("sidecars").join("python").join("main.py");
+        if venv_python.exists() && script.exists() {
+            return (venv_python, vec![script.to_string_lossy().to_string()], project_root.to_path_buf());
+        }
+    }
+
+    // 2. In release/packaged mode:
+    // First, check if extracted sidecar already exists in %LOCALAPPDATA%\Omnitome\sidecar\
+    let app_data = get_app_data_dir();
+    let local_sidecar_dir = app_data.join("sidecar");
+    let local_sidecar_exe = local_sidecar_dir.join("omnitome-sidecar.exe");
+
+    if local_sidecar_exe.exists() {
+        return (local_sidecar_exe, vec![], local_sidecar_dir);
+    }
+
+    // If missing, check if sidecar.zip is available in Tauri's resource_dir
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let sidecar_zip = resource_dir.join("sidecar.zip");
+        if sidecar_zip.exists() {
+            if let Err(e) = unpack_sidecar_zip(&sidecar_zip, &local_sidecar_dir) {
+                eprintln!("[Supervisor] Error unpacking sidecar archive: {}", e);
+            } else if local_sidecar_exe.exists() {
+                return (local_sidecar_exe, vec![], local_sidecar_dir);
+            }
+        }
+
+        // Also check if already extracted directly in resource_dir/sidecar/
+        let bundled_exe = resource_dir.join("sidecar").join("omnitome-sidecar.exe");
+        if bundled_exe.exists() {
+            let working_dir = bundled_exe.parent().unwrap_or(&resource_dir).to_path_buf();
+            return (bundled_exe, vec![], working_dir);
+        }
+    }
+
+    // 3. Fallback: check dist-sidecar in project root or adjacent to exe
+    let local_frozen = project_root.join("dist-sidecar").join("omnitome-sidecar").join("omnitome-sidecar.exe");
+    if local_frozen.exists() {
+        let working_dir = local_frozen.parent().unwrap_or(project_root).to_path_buf();
+        return (local_frozen, vec![], working_dir);
+    }
+
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            let alongside = parent.join("resources").join("sidecar").join("omnitome-sidecar.exe");
+            if alongside.exists() {
+                let working_dir = alongside.parent().unwrap_or(parent).to_path_buf();
+                return (alongside, vec![], working_dir);
+            }
+        }
+    }
+
+    // Dev fallback
+    let venv_python = project_root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe");
+    let script = project_root.join("sidecars").join("python").join("main.py");
+    (venv_python, vec![script.to_string_lossy().to_string()], project_root.to_path_buf())
+}
+
+fn find_node_executable(app: &tauri::App, project_root: &Path) -> (PathBuf, Vec<String>, PathBuf) {
+    let server_js = project_root.join("backend").join("server.js");
+
+    // 1. In dev mode (debug_assertions), prefer project backend and local/nvm node
+    #[cfg(debug_assertions)]
+    {
+        let nvm_node = PathBuf::from(r"C:\Users\Godsa\AppData\Local\Author Software\nvm\installs\v22.23.2\node.exe");
+        if nvm_node.exists() && server_js.exists() {
+            return (nvm_node, vec![server_js.to_string_lossy().to_string()], project_root.to_path_buf());
+        }
+        if server_js.exists() {
+            return ("node".into(), vec![server_js.to_string_lossy().to_string()], project_root.to_path_buf());
+        }
+    }
+
+    // 2. In release/packaged mode, check Tauri resource_dir
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let bundled_node = resource_dir.join("node").join("node.exe");
+        let bundled_server = resource_dir.join("backend").join("server.js");
+        if bundled_node.exists() && bundled_server.exists() {
+            let working_dir = resource_dir.join("backend");
+            return (bundled_node, vec![bundled_server.to_string_lossy().to_string()], working_dir);
+        }
+    }
+
+    // 3. Fallback: alongside current executable
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            let alongside_node = parent.join("resources").join("node").join("node.exe");
+            let alongside_server = parent.join("resources").join("backend").join("server.js");
+            if alongside_node.exists() && alongside_server.exists() {
+                let working_dir = parent.join("resources").join("backend");
+                return (alongside_node, vec![alongside_server.to_string_lossy().to_string()], working_dir);
+            }
+        }
+    }
+
+    // 4. Dev mode fallback / unpacked release fallback
     let nvm_node = PathBuf::from(r"C:\Users\Godsa\AppData\Local\Author Software\nvm\installs\v22.23.2\node.exe");
     if nvm_node.exists() {
-        return (nvm_node, vec![server_js.to_string_lossy().to_string()]);
+        return (nvm_node, vec![server_js.to_string_lossy().to_string()], project_root.to_path_buf());
     }
-    ("node".into(), vec![server_js.to_string_lossy().to_string()])
+    ("node".into(), vec![server_js.to_string_lossy().to_string()], project_root.to_path_buf())
 }
 
 fn stream_output(
@@ -266,13 +355,14 @@ fn setup_supervisor(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
     let project_root = find_project_root();
 
     // 3. Spawn Python sidecar
-    let (sidecar_bin, mut sidecar_args) = find_sidecar_executable(&project_root);
+    let (sidecar_bin, mut sidecar_args, sidecar_cwd) = find_sidecar_executable(app, &project_root);
     sidecar_args.extend(["--port".into(), "0".into()]);
 
     let mut sidecar_cmd = Command::new(&sidecar_bin);
     sidecar_cmd.args(&sidecar_args);
-    sidecar_cmd.current_dir(&project_root);
+    sidecar_cmd.current_dir(&sidecar_cwd);
     sidecar_cmd.env("OMNITOME_MODEL_DIR", &models_dir);
+    sidecar_cmd.env("PYTHONUNBUFFERED", "1");
     sidecar_cmd.stdout(Stdio::piped());
     sidecar_cmd.stderr(Stdio::piped());
 
@@ -296,15 +386,23 @@ fn setup_supervisor(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
         .map_err(|_| "Timeout (30s) waiting for Python sidecar boot handshake sentinel".to_string())?;
 
     // 4. Spawn Node backend with OMNITOME_SIDECAR_PORT
-    let (node_bin, mut node_args) = find_node_executable(&project_root);
+    let (node_bin, mut node_args, node_cwd) = find_node_executable(app, &project_root);
     node_args.extend(["--port".into(), "0".into()]);
 
     let mut node_cmd = Command::new(&node_bin);
     node_cmd.args(&node_args);
-    node_cmd.current_dir(&project_root);
+    node_cmd.current_dir(&node_cwd);
     node_cmd.env("OMNITOME_SIDECAR_PORT", sidecar_port.to_string());
     node_cmd.env("PYTHON_SIDECAR_URL", format!("http://127.0.0.1:{}", sidecar_port));
     node_cmd.env("OMNITOME_MODEL_DIR", &models_dir);
+
+    #[cfg(not(debug_assertions))]
+    {
+        node_cmd.env("STORAGE_DIR", &app_dir);
+        node_cmd.env("DB_PATH", app_dir.join("data.db"));
+        node_cmd.env("SETTINGS_FILE_PATH", app_dir.join("settings.json"));
+    }
+
     node_cmd.stdout(Stdio::piped());
     node_cmd.stderr(Stdio::piped());
 

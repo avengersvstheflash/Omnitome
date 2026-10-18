@@ -17,10 +17,27 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
     "icon": [
+      "icons/icon.ico",
       "icons/icon.png"
-    ]
+    ],
+    "resources": {
+      "../resources/sidecar.zip": "sidecar.zip",
+      "../resources/backend-runtime": "backend",
+      "../resources/node": "node"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "compression": "none",
+        "languages": ["English"],
+        "installerIcon": "icons/icon.ico",
+        "displayLanguageSelector": false
+      }
+    }
   }
 }
-

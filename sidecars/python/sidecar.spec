@@ -32,12 +32,47 @@ try:
 except Exception as e:
     print(f"[sidecar.spec] Warning: direct transformers models collection failed: {e}")
 
+# Heavy non-essential CUDA precompiled lookup tables (saves ~588 MB, safe to exclude without breaking PyTorch link dependencies)
+EXCLUDED_DLLS = {
+    'cudnn_engines_precompiled64_9.dll',
+}
+
+def should_exclude_binary_file(src, dst=''):
+    for p in (src, dst):
+        if not p:
+            continue
+        base = os.path.basename(str(p)).lower()
+        if base in EXCLUDED_DLLS:
+            return True
+    return False
+
+# Helper to filter out C/C++ header files and paddle/include (prevents Windows MAX_PATH errors in NSIS)
+def should_exclude_data_file(src, dst=''):
+    if should_exclude_binary_file(src, dst):
+        return True
+    src_clean = str(src).replace('\\', '/').lower()
+    dst_clean = str(dst).replace('\\', '/').lower()
+    if 'paddle/include' in src_clean or 'paddle/include' in dst_clean:
+        return True
+    if src_clean.endswith(('.h', '.hpp', '.cuh', '.c', '.cpp', '.cu')):
+        return True
+    return False
+
 # Collect data files from installed packages
 for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 'sentence_transformers']:
     try:
-        datas += collect_data_files(pkg)
+        pkg_datas = collect_data_files(pkg)
+        for item in pkg_datas:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                if not should_exclude_data_file(item[0], item[1]):
+                    datas.append(item)
+            elif isinstance(item, str):
+                if not should_exclude_data_file(item):
+                    datas.append(item)
     except Exception as e:
         print(f"[sidecar.spec] Warning: collect_data_files failed for {pkg}: {e}")
+
+datas = [d for d in datas if not should_exclude_data_file(d[0], d[1])]
 
 # Collect package dist-info metadata (required for packages using importlib.metadata.version)
 for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers', 'torch', 'paddleocr', 'kokoro', 'misaki', 'tokenizers', 'safetensors', 'filelock', 'numpy', 'scipy', 'pydantic', 'fastapi']:
@@ -53,6 +88,11 @@ for pkg in ['torch', 'paddle']:
         binaries += collect_dynamic_libs(pkg)
     except Exception as e:
         print(f"[sidecar.spec] Warning: collect_dynamic_libs failed for {pkg}: {e}")
+
+binaries = [
+    b for b in binaries
+    if not should_exclude_binary_file(b[0], b[1] if len(b) > 1 else '')
+]
 
 # Explicit hidden imports
 hiddenimports = [
@@ -177,6 +217,19 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+# Post-analysis filter: strip any C++ headers, paddle/include, and excluded CUDA DLLs
+a.datas = [
+    d for d in a.datas
+    if not should_exclude_data_file(d[1], d[0])
+    and not should_exclude_binary_file(d[0], d[1] if len(d) > 1 else '')
+]
+
+# Post-analysis filter: strip heavy unused CUDA DLLs (cufft, cusparse, cudnn_engines_precompiled)
+a.binaries = [
+    b for b in a.binaries
+    if not should_exclude_binary_file(b[0], b[1] if len(b) > 1 else '')
+]
 
 coll = COLLECT(
     exe,
