@@ -60,8 +60,7 @@
         "compression": "none",
         "languages": ["English"],
         "installerIcon": "icons/icon.ico",
-        "displayLanguageSelector": false,
-        "installerHooks": "hooks.nsh"
+        "displayLanguageSelector": false
       }
     }
   }

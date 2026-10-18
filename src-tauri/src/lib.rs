@@ -1063,18 +1063,8 @@ mod tests {
         assert_eq!(splash_win["resizable"], false);
 
         let nsis = &v["bundle"]["windows"]["nsis"];
-        assert_eq!(nsis["installerHooks"], "hooks.nsh", "nsis must configure installerHooks to hooks.nsh");
-    }
-
-    #[test]
-    fn test_hooks_nsh_content() {
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let hooks_path = manifest_dir.join("hooks.nsh");
-        assert!(hooks_path.exists(), "hooks.nsh must exist");
-
-        let content = fs::read_to_string(&hooks_path).expect("failed to read hooks.nsh");
-        assert!(content.contains("NSIS_HOOK_POSTINSTALL"));
-        assert!(content.contains("Omnitome has been installed. Note: The first time you launch the app, it will take 1-2 minutes to unpack the neural engine."));
+        assert_eq!(nsis["installMode"], "currentUser");
+        assert!(nsis.get("installerHooks").is_none(), "installerHooks must not be configured");
     }
 
     #[test]
