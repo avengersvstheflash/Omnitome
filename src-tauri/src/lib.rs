@@ -30,6 +30,12 @@ struct ProcessManager {
     app_dir: PathBuf,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct DynamicPorts {
+    pub node_port: u16,
+    pub sidecar_port: u16,
+}
+
 impl ProcessManager {
     fn shutdown(&self) {
         // Forcefully terminate Python sidecar and all sub-processes (PaddleOCR, Uvicorn, etc.)
@@ -655,19 +661,20 @@ fn setup_supervisor(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
         app_dir,
     });
 
-    // 6. Programmatically build WebviewWindow only AFTER both ports are confirmed live!
+    // 6. Set dynamic ports on pre-configured main window
+    app.manage(DynamicPorts {
+        node_port,
+        sidecar_port,
+    });
+
     let init_script = format!(
-        "window.__OMNITOME__ = Object.freeze({{ nodePort: {}, sidecarPort: {} }});",
-        node_port, sidecar_port
+        "try {{ sessionStorage.setItem('omnitome_ports', JSON.stringify({{ nodePort: {}, sidecarPort: {} }})); }} catch(e) {{}} window.__OMNITOME__ = Object.freeze({{ nodePort: {}, sidecarPort: {} }}); window.dispatchEvent(new CustomEvent('omnitome:ready', {{ detail: window.__OMNITOME__ }}));",
+        node_port, sidecar_port, node_port, sidecar_port
     );
 
-    tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default())
-        .title("Omnitome")
-        .inner_size(1280.0, 800.0)
-        .min_inner_size(900.0, 600.0)
-        .resizable(true)
-        .initialization_script(&init_script)
-        .build()?;
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.eval(&init_script);
+    }
 
     Ok(())
 }
@@ -675,27 +682,54 @@ fn setup_supervisor(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
+        .on_page_load(|webview, payload| {
+            if webview.label() == "main" && payload.event() == tauri::webview::PageLoadEvent::Finished {
+                if let Some(ports) = webview.try_state::<DynamicPorts>() {
+                    let script = format!(
+                        "try {{ sessionStorage.setItem('omnitome_ports', JSON.stringify({{ nodePort: {}, sidecarPort: {} }})); }} catch(e) {{}} window.__OMNITOME__ = Object.freeze({{ nodePort: {}, sidecarPort: {} }}); window.dispatchEvent(new CustomEvent('omnitome:ready', {{ detail: window.__OMNITOME__ }}));",
+                        ports.node_port, ports.sidecar_port, ports.node_port, ports.sidecar_port
+                    );
+                    let _ = webview.eval(&script);
+                }
+            }
+        })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                if let Some(pm) = window.app_handle().try_state::<ProcessManager>() {
-                    pm.shutdown();
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    if let Some(pm) = window.app_handle().try_state::<ProcessManager>() {
+                        pm.shutdown();
+                    }
                 }
             }
         })
         .setup(|app| {
-            if let Err(e) = setup_supervisor(app) {
-                let err_str = e.to_string();
-                log_crash(&err_str);
-                let crash_log_path = get_app_data_dir().join("logs").join("crash.log");
-                let dialog_msg = format!(
-                    "Omnitome encountered a fatal error during startup:\n\n{}\n\nA detailed crash log was written to:\n{}",
-                    err_str,
-                    crash_log_path.to_string_lossy()
-                );
-                show_error_dialog("Omnitome Startup Error", &dialog_msg);
-                return Err(e);
+            match setup_supervisor(app) {
+                Ok(()) => {
+                    if let Some(splash) = app.get_webview_window("splashscreen") {
+                        let _ = splash.close();
+                    }
+                    if let Some(main) = app.get_webview_window("main") {
+                        let _ = main.show();
+                        let _ = main.set_focus();
+                    }
+                    Ok(())
+                }
+                Err(e) => {
+                    if let Some(splash) = app.get_webview_window("splashscreen") {
+                        let _ = splash.close();
+                    }
+                    let err_str = e.to_string();
+                    log_crash(&err_str);
+                    let crash_log_path = get_app_data_dir().join("logs").join("crash.log");
+                    let dialog_msg = format!(
+                        "Omnitome encountered a fatal error during startup:\n\n{}\n\nA detailed crash log was written to:\n{}",
+                        err_str,
+                        crash_log_path.to_string_lossy()
+                    );
+                    show_error_dialog("Omnitome Startup Error", &dialog_msg);
+                    Err(e)
+                }
             }
-            Ok(())
         });
 
     let app = match builder.build(tauri::generate_context!()) {
@@ -715,14 +749,18 @@ pub fn run() {
                     pm.shutdown();
                 }
             }
-            tauri::RunEvent::WindowEvent { event: tauri::WindowEvent::CloseRequested { .. }, .. } => {
-                if let Some(pm) = app_handle.try_state::<ProcessManager>() {
-                    pm.shutdown();
+            tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::CloseRequested { .. }, .. } => {
+                if label == "main" {
+                    if let Some(pm) = app_handle.try_state::<ProcessManager>() {
+                        pm.shutdown();
+                    }
                 }
             }
-            tauri::RunEvent::WindowEvent { event: tauri::WindowEvent::Destroyed, .. } => {
-                if let Some(pm) = app_handle.try_state::<ProcessManager>() {
-                    pm.shutdown();
+            tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::Destroyed, .. } => {
+                if label == "main" {
+                    if let Some(pm) = app_handle.try_state::<ProcessManager>() {
+                        pm.shutdown();
+                    }
                 }
             }
             _ => {}
@@ -996,6 +1034,58 @@ mod tests {
         assert_eq!(archives.len(), 2);
         assert_eq!(archives[0], res_dir.join("sidecar.7z"));
         assert_eq!(archives[1], exe_dir.join("resources").join("sidecar.7z"));
+    }
+
+    #[test]
+    fn test_tauri_conf_windows_and_nsis_configuration() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let conf_path = manifest_dir.join("tauri.conf.json");
+        assert!(conf_path.exists(), "tauri.conf.json must exist");
+
+        let content = fs::read_to_string(&conf_path).expect("failed to read tauri.conf.json");
+        let v: serde_json::Value = serde_json::from_str(&content).expect("invalid json in tauri.conf.json");
+
+        let windows = v["app"]["windows"].as_array().expect("app.windows should be an array");
+        assert_eq!(windows.len(), 2, "must configure exactly 2 windows");
+
+        let main_win = windows.iter().find(|w| w["label"] == "main").expect("main window missing");
+        assert_eq!(main_win["url"], "index.html");
+        assert_eq!(main_win["visible"], false, "main window must start hidden");
+
+        let splash_win = windows.iter().find(|w| w["label"] == "splashscreen").expect("splashscreen window missing");
+        assert_eq!(splash_win["url"], "splashscreen.html");
+        assert_eq!(splash_win["width"], 450);
+        assert_eq!(splash_win["height"], 300);
+        assert_eq!(splash_win["center"], true);
+        assert_eq!(splash_win["decorations"], false);
+        assert_eq!(splash_win["alwaysOnTop"], true);
+        assert_eq!(splash_win["visible"], true);
+        assert_eq!(splash_win["resizable"], false);
+
+        let nsis = &v["bundle"]["windows"]["nsis"];
+        assert_eq!(nsis["installerHooks"], "hooks.nsh", "nsis must configure installerHooks to hooks.nsh");
+    }
+
+    #[test]
+    fn test_hooks_nsh_content() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let hooks_path = manifest_dir.join("hooks.nsh");
+        assert!(hooks_path.exists(), "hooks.nsh must exist");
+
+        let content = fs::read_to_string(&hooks_path).expect("failed to read hooks.nsh");
+        assert!(content.contains("NSIS_HOOK_POSTINSTALL"));
+        assert!(content.contains("Omnitome has been installed. Note: The first time you launch the app, it will take 1-2 minutes to unpack the neural engine."));
+    }
+
+    #[test]
+    fn test_splashscreen_html_content() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let splash_path = manifest_dir.parent().unwrap().join("frontend").join("public").join("splashscreen.html");
+        assert!(splash_path.exists(), "splashscreen.html must exist in frontend/public");
+
+        let content = fs::read_to_string(&splash_path).expect("failed to read splashscreen.html");
+        assert!(content.contains("Unpacking neural engine..."));
+        assert!(content.contains("First launch may take 1-2 minutes."));
     }
 }
 

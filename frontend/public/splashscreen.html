@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omnitome</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      background-color: #0a0c14;
+      color: #f5f7fb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 20px 20px;
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      -webkit-app-region: drag;
+      box-shadow: inset 0 0 40px rgba(168, 85, 247, 0.08);
+      position: relative;
+    }
+
+    /* Ambient background glow */
+    .glow-bg {
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 260px;
+      height: 120px;
+      background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.18) 0%, rgba(10, 12, 20, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header / Logo */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1;
+    }
+
+    .header-logo {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+    }
+
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      background: linear-gradient(135deg, #ffffff 30%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+    }
+
+    /* Library & Flying Books Animation Stage */
+    .stage {
+      position: relative;
+      width: 280px;
+      height: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      z-index: 1;
+    }
+
+    /* Glowing Bookshelf */
+    .shelf {
+      position: absolute;
+      bottom: 12px;
+      width: 220px;
+      height: 4px;
+      background: linear-gradient(90deg, transparent 0%, #7c3aed 20%, #c084fc 50%, #7c3aed 80%, transparent 100%);
+      border-radius: 2px;
+      box-shadow: 0 0 12px rgba(192, 132, 252, 0.6);
+    }
+
+    /* Central Magic Book (flipping pages) */
+    .magic-book {
+      position: relative;
+      width: 64px;
+      height: 44px;
+      margin-bottom: 24px;
+      perspective: 300px;
+      transform-style: preserve-3d;
+    }
+
+    .cover-left, .cover-right {
+      position: absolute;
+      top: 0;
+      width: 32px;
+      height: 44px;
+      border-radius: 3px 0 0 3px;
+      background: linear-gradient(135deg, #581c87, #3b0764);
+      border: 1px solid rgba(192, 132, 252, 0.4);
+    }
+
+    .cover-left {
+      left: 0;
+      transform-origin: right center;
+      box-shadow: -2px 4px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .cover-right {
+      right: 0;
+      border-radius: 0 3px 3px 0;
+      transform-origin: left center;
+      box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .page {
+      position: absolute;
+      top: 2px;
+      right: 0;
+      width: 30px;
+      height: 40px;
+      background: linear-gradient(to right, #ede9fe, #f5f3ff);
+      border-radius: 0 2px 2px 0;
+      transform-origin: left center;
+      animation: flip-page 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .page-1 { animation-delay: 0s; }
+    .page-2 { animation-delay: 0.8s; }
+    .page-3 { animation-delay: 1.6s; }
+
+    @keyframes flip-page {
+      0% {
+        transform: rotateY(0deg);
+        background: #f5f3ff;
+      }
+      40% {
+        background: #ddd6fe;
+      }
+      80%, 100% {
+        transform: rotateY(-180deg);
+        background: #ede9fe;
+      }
+    }
+
+    /* Arranging Books on the shelf */
+    .shelf-books {
+      position: absolute;
+      bottom: 16px;
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .shelf-book {
+      width: 10px;
+      border-radius: 2px 2px 0 0;
+      transform-origin: bottom center;
+      animation: book-bob 2s ease-in-out infinite;
+    }
+
+    .b1 { height: 32px; background: #6366f1; animation-delay: 0.1s; }
+    .b2 { height: 26px; background: #8b5cf6; animation-delay: 0.3s; }
+    .b3 { height: 36px; background: #a855f7; animation-delay: 0.5s; }
+    .b4 { height: 28px; background: #ec4899; animation-delay: 0.2s; }
+    .b5 { height: 34px; background: #3b82f6; animation-delay: 0.4s; }
+
+    @keyframes book-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    /* Flying books sorting into the library */
+    .flying-book {
+      position: absolute;
+      width: 16px;
+      height: 12px;
+      border-radius: 2px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      animation: fly-and-settle 3.6s ease-in-out infinite;
+    }
+
+    .fb-1 {
+      background: #a855f7;
+      box-shadow: 0 0 8px #a855f7;
+      animation-delay: 0s;
+    }
+
+    .fb-2 {
+      background: #06b6d4;
+      box-shadow: 0 0 8px #06b6d4;
+      animation-delay: 1.8s;
+    }
+
+    @keyframes fly-and-settle {
+      0% {
+        opacity: 0;
+        transform: translate(-90px, -50px) rotate(-35deg) scale(0.6);
+      }
+      20% {
+        opacity: 1;
+        transform: translate(-40px, -30px) rotate(-15deg) scale(0.85);
+      }
+      50% {
+        transform: translate(30px, -45px) rotate(20deg) scale(1);
+      }
+      80% {
+        opacity: 1;
+        transform: translate(65px, -15px) rotate(5deg) scale(0.9);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(80px, 0px) rotate(0deg) scale(0.7);
+      }
+    }
+
+    /* Magical Floating Sparks */
+    .spark {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: #fdf4ff;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #c084fc, 0 0 10px #a855f7;
+      animation: float-spark 2.2s ease-in infinite;
+    }
+
+    .sp-1 { left: 45%; bottom: 25px; animation-delay: 0.2s; }
+    .sp-2 { left: 52%; bottom: 30px; animation-delay: 0.9s; }
+    .sp-3 { left: 38%; bottom: 20px; animation-delay: 1.5s; }
+    .sp-4 { left: 58%; bottom: 22px; animation-delay: 0.6s; }
+
+    @keyframes float-spark {
+      0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.5);
+      }
+      50% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-55px) scale(1.4);
+      }
+    }
+
+    /* Status Text */
+    .status-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      text-align: center;
+      z-index: 1;
+    }
+
+    .primary-msg {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #f1f5f9;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot-loader {
+      display: inline-flex;
+      gap: 3px;
+    }
+
+    .dot-loader span {
+      width: 4px;
+      height: 4px;
+      background: #a855f7;
+      border-radius: 50%;
+      animation: pulse-dot 1.4s ease-in-out infinite;
+    }
+
+    .dot-loader span:nth-child(2) { animation-delay: 0.2s; }
+    .dot-loader span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse-dot {
+      0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1.2); }
+    }
+
+    .secondary-msg {
+      font-size: 11.5px;
+      color: #94a3b8;
+      letter-spacing: 0.2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <!-- Header -->
+  <div class="header">
+    <img src="favicon-32.png" alt="Logo" class="header-logo" onerror="this.style.display='none'" />
+    <span class="header-title">Omnitome</span>
+  </div>
+
+  <!-- Library & Books Animation -->
+  <div class="stage">
+    <div class="flying-book fb-1"></div>
+    <div class="flying-book fb-2"></div>
+
+    <div class="spark sp-1"></div>
+    <div class="spark sp-2"></div>
+    <div class="spark sp-3"></div>
+    <div class="spark sp-4"></div>
+
+    <!-- Flipping open magic grimoire -->
+    <div class="magic-book">
+      <div class="cover-left"></div>
+      <div class="page page-1"></div>
+      <div class="page page-2"></div>
+      <div class="page page-3"></div>
+      <div class="cover-right"></div>
+    </div>
+
+    <!-- Arranged books and glowing shelf -->
+    <div class="shelf-books">
+      <div class="shelf-book b1"></div>
+      <div class="shelf-book b2"></div>
+      <div class="shelf-book b3"></div>
+      <div class="shelf-book b4"></div>
+      <div class="shelf-book b5"></div>
+    </div>
+    <div class="shelf"></div>
+  </div>
+
+  <!-- Status Info -->
+  <div class="status-container">
+    <div class="primary-msg">
+      Unpacking neural engine...
+      <div class="dot-loader">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+    <div class="secondary-msg">First launch may take 1-2 minutes.</div>
+  </div>
+</body>
+</html>
+

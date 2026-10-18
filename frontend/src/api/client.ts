@@ -11,7 +11,19 @@ export class ApiError extends Error {
 }
 
 export function getApiBaseUrl(): string {
-  const omnitome = (window as unknown as { __OMNITOME__?: { nodePort?: number; sidecarPort?: number } }).__OMNITOME__;
+  let omnitome = (window as unknown as { __OMNITOME__?: { nodePort?: number; sidecarPort?: number } }).__OMNITOME__;
+  if (!omnitome?.nodePort) {
+    try {
+      const cached = sessionStorage.getItem('omnitome_ports');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.nodePort) {
+          (window as unknown as { __OMNITOME__?: unknown }).__OMNITOME__ = parsed;
+          omnitome = parsed;
+        }
+      }
+    } catch {}
+  }
   if (omnitome?.nodePort) {
     return `http://127.0.0.1:${omnitome.nodePort}`;
   }

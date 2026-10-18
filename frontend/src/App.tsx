@@ -11,7 +11,7 @@ import { ResearchRoute } from './routes/ResearchRoute';
 import ResearchViewerRoute from './routes/ResearchViewerRoute';
 import { SettingsRoute } from './routes/SettingsRoute';
 import { HelpRoute } from './routes/HelpRoute';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ThemeDecor } from './components/decor/ThemeDecor';
 import { useResourceStore } from './store/useResourceStore';
 import { FirstRunScreen } from './components/resources/FirstRunScreen';
@@ -27,27 +27,83 @@ const queryClient = new QueryClient({
 
 export default function App() {
   const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
-  const nodePort = (window as unknown as { __OMNITOME__?: { nodePort?: number } }).__OMNITOME__?.nodePort;
+  const [nodePort, setNodePort] = useState<number | undefined>(() => {
+    const direct = (window as unknown as { __OMNITOME__?: { nodePort?: number } }).__OMNITOME__?.nodePort;
+    if (direct) return direct;
+    try {
+      const cached = sessionStorage.getItem('omnitome_ports');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.nodePort) {
+          (window as unknown as { __OMNITOME__?: unknown }).__OMNITOME__ = parsed;
+          return parsed.nodePort;
+        }
+      }
+    } catch {}
+    return undefined;
+  });
+  const [hasTimeout, setHasTimeout] = useState(false);
 
   const { status, isLoading, error, fetchStatus } = useResourceStore();
 
   useEffect(() => {
+    if (!isTauri || nodePort) return;
+    const timer = setTimeout(() => {
+      setHasTimeout(true);
+    }, 20000);
+    return () => clearTimeout(timer);
+  }, [isTauri, nodePort]);
+
+  useEffect(() => {
+    if (nodePort) return;
+    const checkPort = () => {
+      let port = (window as unknown as { __OMNITOME__?: { nodePort?: number } }).__OMNITOME__?.nodePort;
+      if (!port) {
+        try {
+          const cached = sessionStorage.getItem('omnitome_ports');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed?.nodePort) {
+              (window as unknown as { __OMNITOME__?: unknown }).__OMNITOME__ = parsed;
+              port = parsed.nodePort;
+            }
+          }
+        } catch {}
+      }
+      if (port) {
+        setNodePort(port);
+      }
+    };
+    checkPort();
+    window.addEventListener('omnitome:ready', checkPort);
+    const interval = setInterval(checkPort, 50);
+    return () => {
+      window.removeEventListener('omnitome:ready', checkPort);
+      clearInterval(interval);
+    };
+  }, [nodePort]);
+
+  useEffect(() => {
+    if (isTauri && !nodePort) return;
     console.log('[App] Calling fetchStatus()...');
     fetchStatus();
-  }, [fetchStatus]);
+  }, [fetchStatus, isTauri, nodePort]);
 
   if (isTauri && !nodePort) {
-    return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-paper bg-surface p-8 text-ink">
-        <h1 className="text-xl font-bold text-red-600">Omnitome Boot Error</h1>
-        <p className="mt-2 text-sm text-ink-muted">
-          Backend service port handshake failed during application launch.
-        </p>
-        <p className="mt-4 text-xs font-mono bg-subtle p-3 rounded">
-          Check logs at: %LOCALAPPDATA%\Omnitome\logs\node.log
-        </p>
-      </div>
-    );
+    if (hasTimeout) {
+      return (
+        <div className="flex h-screen w-screen flex-col items-center justify-center bg-paper bg-surface p-8 text-ink">
+          <h1 className="text-xl font-bold text-red-600">Omnitome Boot Error</h1>
+          <p className="mt-2 text-sm text-ink-muted">
+            Backend service port handshake timed out during application launch.
+          </p>
+          <p className="mt-4 text-xs font-mono bg-subtle p-3 rounded">
+            Check logs at: %LOCALAPPDATA%\Omnitome\logs\node.log
+          </p>
+        </div>
+      );
+    }
+    return null;
   }
 
   if (error && !status) {

@@ -10,7 +10,31 @@
     "frontendDist": "../frontend/dist"
   },
   "app": {
-    "windows": [],
+    "windows": [
+      {
+        "label": "main",
+        "title": "Omnitome",
+        "url": "index.html",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "visible": false
+      },
+      {
+        "label": "splashscreen",
+        "title": "Omnitome",
+        "url": "splashscreen.html",
+        "width": 450,
+        "height": 300,
+        "center": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "visible": true
+      }
+    ],
     "security": {
       "csp": null
     }
@@ -36,7 +60,8 @@
         "compression": "none",
         "languages": ["English"],
         "installerIcon": "icons/icon.ico",
-        "displayLanguageSelector": false
+        "displayLanguageSelector": false,
+        "installerHooks": "hooks.nsh"
       }
     }
   }
