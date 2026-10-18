@@ -8,13 +8,15 @@
 
 ## 1. Current State
 
-- **HEAD:** `058da19` (`fix(supervisor): strictly validate node paths and add spawn logging`)
+- **HEAD:** `d833192` (`fix(supervisor): strip windows verbatim path prefix for node v22 compatibility`)
 - **Tree:** clean
 - **Origin:** synced with `main`
-- **Tests:** 14 Rust unit tests / 59 Node test suites
+- **Tests:** 17 Rust unit tests / 59 Node test suites
 - **License:** AGPL-3.0-only (Public) / MIT (Private V2)
 
 ### Recent Commit Trail
+- `d833192` — Strip Windows verbatim path prefix for Node v22 compatibility
+- `ed586fc` — S14 in progress status and session handoff
 - `058da19` — Strict Node path validation + spawn logging
 - `80286b5` — Move supervisor to background thread
 - `340fec3` — Remove incompatible NSIS hooks
@@ -22,20 +24,20 @@
 
 ---
 
-## 2. S14 Status: Blocked by Node Path Bug
+## 2. S14 Status: Verbatim Path Bug Fixed & Ready for Rebuild
 
-The NSIS installer pipeline is fully functional. We have a 1.66 GB installer that successfully:
+The NSIS installer pipeline is fully functional. We have a 1.66 GB installer architecture that successfully:
 1. Installs `node.exe`, the production backend, and `sidecar.7z`.
 2. Shows the animated Splash Screen on first launch.
 3. Unpacks the 1.36 GB sidecar to `%LOCALAPPDATA%\Omnitome\sidecar\`.
 4. Boots the Python sidecar flawlessly.
 
-**The Blocker:** 
-Node.js crashes instantly with `EISDIR: lstat 'C:'`. 
-The Rust supervisor is passing `C:` to Node as the script argument instead of the full path to `server.js`.
+**The Bug & Fix:** 
+Node.js previously crashed with `EISDIR: lstat 'C:'` due to an upstream Node v22 regression where verbatim paths (`\\?\C:\...`) cause `realpathSync` to truncate the path to `'C:'`.
+In `src-tauri/src/lib.rs`, `strip_windows_verbatim` was added to strip verbatim prefixes, dynamic installation path resolution via `current_exe()` parent directory was implemented, and root/empty path guards were added. 17/17 Rust unit tests pass.
 
 **Next Session Action:**
-Run the installed `omnitome.exe` from a **Windows PowerShell terminal** (not via the Start Menu, so we can see `eprintln!` output). Look for `[Supervisor] About to spawn Node: ...`. Use that output to fix the path resolution in `find_node_executable`.
+Run `.\scripts\build-installers.ps1 -Type Lightweight` to generate the updated installer and verify the first-launch extraction, splash screen animation, and backend initialization end-to-end.
 
 ---
 

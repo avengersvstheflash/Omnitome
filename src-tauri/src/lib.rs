@@ -65,13 +65,36 @@ impl Drop for ProcessManager {
     }
 }
 
+fn strip_windows_verbatim(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    if let Some(stripped) = s.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{}", stripped))
+    } else if let Some(stripped) = s.strip_prefix(r"\\?\unc\") {
+        PathBuf::from(format!(r"\\{}", stripped))
+    } else if let Some(stripped) = s.strip_prefix(r"//?/UNC/") {
+        PathBuf::from(format!(r"//{}", stripped))
+    } else if let Some(stripped) = s.strip_prefix(r"//?/unc/") {
+        PathBuf::from(format!(r"//{}", stripped))
+    } else if let Some(stripped) = s.strip_prefix(r"\\?\") {
+        PathBuf::from(stripped)
+    } else if let Some(stripped) = s.strip_prefix(r"\\?/") {
+        PathBuf::from(stripped)
+    } else if let Some(stripped) = s.strip_prefix(r"//?/") {
+        PathBuf::from(stripped)
+    } else if let Some(stripped) = s.strip_prefix(r"//?\") {
+        PathBuf::from(stripped)
+    } else {
+        path.to_path_buf()
+    }
+}
+
 fn get_app_data_dir() -> PathBuf {
     let local = std::env::var("LOCALAPPDATA")
         .unwrap_or_else(|_| std::env::var("USERPROFILE").unwrap_or_else(|_| ".".into()));
-    let base = PathBuf::from(local).join("Omnitome");
+    let base = strip_windows_verbatim(&PathBuf::from(local)).join("Omnitome");
     let _ = fs::create_dir_all(base.join("logs"));
     let _ = fs::create_dir_all(base.join("models"));
-    base
+    strip_windows_verbatim(&base)
 }
 
 fn log_crash(error_msg: &str) {
@@ -313,69 +336,83 @@ fn is_root_or_empty(s: &str) -> bool {
     false
 }
 
-#[allow(dead_code)]
-fn resolve_node_paths(resource_dir: &Path) -> Option<(PathBuf, Vec<String>, PathBuf)> {
-    let res_str = resource_dir.to_string_lossy();
-    if is_root_or_empty(&res_str) {
+fn resolve_node_paths(install_dir: &Path) -> Option<(PathBuf, Vec<String>, PathBuf)> {
+    let clean_install_dir = strip_windows_verbatim(install_dir);
+    let dir_str = clean_install_dir.to_string_lossy();
+    if is_root_or_empty(&dir_str) || !clean_install_dir.exists() {
         return None;
     }
-    if !resource_dir.exists() {
-        return None;
-    }
-    let bundled_node = resource_dir.join("node").join("node.exe");
-    let bundled_server = resource_dir.join("backend").join("server.js");
-    let server_arg = bundled_server.to_string_lossy().to_string();
-    if is_root_or_empty(&server_arg) {
-        return None;
-    }
-    if bundled_node.exists() && bundled_server.exists() {
-        let working_dir = resource_dir.join("backend");
-        return Some((bundled_node, vec![server_arg], working_dir));
-    }
-    None
-}
 
-fn resolve_bundled_sidecar_exe(resource_dir: Option<&Path>, exe_dir: Option<&Path>) -> Option<(PathBuf, Vec<String>, PathBuf)> {
-    if let Some(res_dir) = resource_dir {
-        let bundled_exe = res_dir.join("sidecar").join("omnitome-sidecar.exe");
-        if bundled_exe.exists() {
-            let working_dir = bundled_exe.parent().unwrap_or(res_dir).to_path_buf();
-            return Some((bundled_exe, vec![], working_dir));
+    let node_bin = strip_windows_verbatim(&clean_install_dir.join("resources").join("node").join("node.exe"));
+    let server_js = strip_windows_verbatim(&clean_install_dir.join("resources").join("backend").join("server.js"));
+    let working_dir = strip_windows_verbatim(&clean_install_dir.join("resources").join("backend"));
+    let server_arg = server_js.to_string_lossy().to_string();
+
+    if !is_root_or_empty(&server_arg) && !is_root_or_empty(&node_bin.to_string_lossy()) {
+        if node_bin.exists() && server_js.exists() {
+            return Some((node_bin, vec![server_arg], working_dir));
         }
     }
 
-    if let Some(e_dir) = exe_dir {
-        let alongside_exe = e_dir.join("resources").join("sidecar").join("omnitome-sidecar.exe");
-        if alongside_exe.exists() {
-            let working_dir = alongside_exe.parent().unwrap_or(e_dir).to_path_buf();
-            return Some((alongside_exe, vec![], working_dir));
+    // Fallback: check alongside exe (install_dir without 'resources' nesting)
+    let alt_node = strip_windows_verbatim(&clean_install_dir.join("node").join("node.exe"));
+    let alt_server = strip_windows_verbatim(&clean_install_dir.join("backend").join("server.js"));
+    let alt_working_dir = strip_windows_verbatim(&clean_install_dir.join("backend"));
+    let alt_server_arg = alt_server.to_string_lossy().to_string();
+
+    if !is_root_or_empty(&alt_server_arg) && !is_root_or_empty(&alt_node.to_string_lossy()) {
+        if alt_node.exists() && alt_server.exists() {
+            return Some((alt_node, vec![alt_server_arg], alt_working_dir));
         }
     }
 
     None
 }
 
-fn get_candidate_sidecar_archives(resource_dir: Option<&Path>, exe_dir: Option<&Path>) -> Vec<PathBuf> {
+fn resolve_bundled_sidecar_exe(install_dir: &Path) -> Option<(PathBuf, Vec<String>, PathBuf)> {
+    let clean_dir = strip_windows_verbatim(install_dir);
+    let dir_str = clean_dir.to_string_lossy();
+    if is_root_or_empty(&dir_str) || !clean_dir.exists() {
+        return None;
+    }
+
+    let prebundled_res = strip_windows_verbatim(&clean_dir.join("resources").join("sidecar").join("omnitome-sidecar.exe"));
+    if !is_root_or_empty(&prebundled_res.to_string_lossy()) && prebundled_res.exists() {
+        let working_dir = prebundled_res.parent().unwrap_or(&clean_dir).to_path_buf();
+        return Some((prebundled_res, vec![], working_dir));
+    }
+
+    let prebundled_direct = strip_windows_verbatim(&clean_dir.join("sidecar").join("omnitome-sidecar.exe"));
+    if !is_root_or_empty(&prebundled_direct.to_string_lossy()) && prebundled_direct.exists() {
+        let working_dir = prebundled_direct.parent().unwrap_or(&clean_dir).to_path_buf();
+        return Some((prebundled_direct, vec![], working_dir));
+    }
+
+    None
+}
+
+fn get_candidate_sidecar_archives(install_dir: &Path) -> Vec<PathBuf> {
+    let clean_dir = strip_windows_verbatim(install_dir);
+    let dir_str = clean_dir.to_string_lossy();
+    if is_root_or_empty(&dir_str) {
+        return Vec::new();
+    }
     let mut candidate_archives = Vec::new();
-    if let Some(res_dir) = resource_dir {
-        candidate_archives.push(res_dir.join("sidecar.7z"));
-    }
-    if let Some(e_dir) = exe_dir {
-        candidate_archives.push(e_dir.join("resources").join("sidecar.7z"));
-    }
+    candidate_archives.push(strip_windows_verbatim(&clean_dir.join("resources").join("sidecar.7z")));
+    candidate_archives.push(strip_windows_verbatim(&clean_dir.join("sidecar.7z")));
     candidate_archives
 }
 
-fn find_sidecar_executable(app: &tauri::AppHandle, _project_root: &Path) -> Result<(PathBuf, Vec<String>, PathBuf), Box<dyn std::error::Error>> {
+fn find_sidecar_executable(_app: &tauri::AppHandle, _project_root: &Path) -> Result<(PathBuf, Vec<String>, PathBuf), Box<dyn std::error::Error>> {
     // 1. In dev mode (debug_assertions), prefer venv python main.py or local frozen sidecar
     #[cfg(debug_assertions)]
     {
-        let venv_python = _project_root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe");
-        let script = _project_root.join("sidecars").join("python").join("main.py");
+        let venv_python = strip_windows_verbatim(&_project_root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe"));
+        let script = strip_windows_verbatim(&_project_root.join("sidecars").join("python").join("main.py"));
         if venv_python.exists() && script.exists() {
-            return Ok((venv_python, vec![script.to_string_lossy().to_string()], _project_root.to_path_buf()));
+            return Ok((venv_python, vec![script.to_string_lossy().to_string()], strip_windows_verbatim(_project_root)));
         }
-        let local_frozen = _project_root.join("dist-sidecar").join("omnitome-sidecar").join("omnitome-sidecar.exe");
+        let local_frozen = strip_windows_verbatim(&_project_root.join("dist-sidecar").join("omnitome-sidecar").join("omnitome-sidecar.exe"));
         if local_frozen.exists() {
             let working_dir = local_frozen.parent().unwrap_or(_project_root).to_path_buf();
             return Ok((local_frozen, vec![], working_dir));
@@ -384,38 +421,43 @@ fn find_sidecar_executable(app: &tauri::AppHandle, _project_root: &Path) -> Resu
 
     // 2. In release/packaged mode:
     // First, check if extracted sidecar already exists in %LOCALAPPDATA%\Omnitome\sidecar\
-    let app_data = get_app_data_dir();
-    let local_sidecar_dir = app_data.join("sidecar");
-    let local_sidecar_exe = local_sidecar_dir.join("omnitome-sidecar.exe");
+    let app_data = strip_windows_verbatim(&get_app_data_dir());
+    let local_sidecar_dir = strip_windows_verbatim(&app_data.join("sidecar"));
+    let local_sidecar_exe = strip_windows_verbatim(&local_sidecar_dir.join("omnitome-sidecar.exe"));
 
     if local_sidecar_exe.exists() {
         return Ok((local_sidecar_exe, vec![], local_sidecar_dir));
     }
-    let nested_local_exe = local_sidecar_dir.join("omnitome-sidecar").join("omnitome-sidecar.exe");
+    let nested_local_exe = strip_windows_verbatim(&local_sidecar_dir.join("omnitome-sidecar").join("omnitome-sidecar.exe"));
     if nested_local_exe.exists() {
-        let nested_dir = local_sidecar_dir.join("omnitome-sidecar");
+        let nested_dir = strip_windows_verbatim(&local_sidecar_dir.join("omnitome-sidecar"));
         return Ok((nested_local_exe, vec![], nested_dir));
     }
 
-    let resource_dir = app.path().resource_dir().ok();
-    let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf()));
+    let exe_path = strip_windows_verbatim(&std::env::current_exe()?);
+    let install_dir = exe_path.parent().ok_or("Failed to get install dir")?;
+    let install_dir = strip_windows_verbatim(install_dir);
+    let install_dir_str = install_dir.to_string_lossy();
+    if is_root_or_empty(&install_dir_str) {
+        return Err(format!("Installation directory resolves to root or empty: {:?}", install_dir).into());
+    }
+    eprintln!("[Supervisor] Found installation directory for sidecar: {:?}", install_dir);
 
     // If missing, check candidate locations for bundled sidecar.7z
-    #[allow(unused_mut)]
-    let mut candidate_archives = get_candidate_sidecar_archives(resource_dir.as_deref(), exe_dir.as_deref());
+    let mut candidate_archives = get_candidate_sidecar_archives(&install_dir);
     #[cfg(debug_assertions)]
     {
-        candidate_archives.push(_project_root.join("resources").join("sidecar.7z"));
+        candidate_archives.push(strip_windows_verbatim(&_project_root.join("resources").join("sidecar.7z")));
     }
 
-    for archive_path in candidate_archives {
+    for archive_path in &candidate_archives {
         if archive_path.exists() {
-            unpack_sidecar_7z(&archive_path, &local_sidecar_dir)?;
+            unpack_sidecar_7z(archive_path, &local_sidecar_dir)?;
             if local_sidecar_exe.exists() {
                 return Ok((local_sidecar_exe, vec![], local_sidecar_dir));
             }
             if nested_local_exe.exists() {
-                let nested_dir = local_sidecar_dir.join("omnitome-sidecar");
+                let nested_dir = strip_windows_verbatim(&local_sidecar_dir.join("omnitome-sidecar"));
                 return Ok((nested_local_exe, vec![], nested_dir));
             }
             return Err(format!(
@@ -425,53 +467,56 @@ fn find_sidecar_executable(app: &tauri::AppHandle, _project_root: &Path) -> Resu
         }
     }
 
-    // 3. Pre-bundled sidecar executable (if pre-extracted in resource_dir or alongside exe)
-    if let Some(paths) = resolve_bundled_sidecar_exe(resource_dir.as_deref(), exe_dir.as_deref()) {
+    // 3. Pre-bundled sidecar executable (if pre-extracted in install_dir/resources or alongside exe)
+    if let Some(paths) = resolve_bundled_sidecar_exe(&install_dir) {
         return Ok(paths);
     }
 
+    let checked_archive = install_dir.join("resources").join("sidecar.7z");
+    let checked_prebundled = install_dir.join("resources").join("sidecar").join("omnitome-sidecar.exe");
+
     Err(format!(
-        "Failed to locate Omnitome sidecar executable. Checked local directory ({:?}) and resources directory.",
-        local_sidecar_exe
+        "Failed to locate Omnitome sidecar executable. Checked local directory ({:?}), archive ({:?}), and pre-bundled executable ({:?})",
+        local_sidecar_exe, checked_archive, checked_prebundled
     ).into())
 }
 
-fn find_node_executable(app: &tauri::AppHandle, _project_root: &Path) -> Result<(PathBuf, Vec<String>, PathBuf), Box<dyn std::error::Error>> {
+fn find_node_executable(_app: &tauri::AppHandle, _project_root: &Path) -> Result<(PathBuf, Vec<String>, PathBuf), Box<dyn std::error::Error>> {
     // 1. In dev mode (debug_assertions), prefer project backend and local/nvm node
     #[cfg(debug_assertions)]
     {
-        let server_js = _project_root.join("backend").join("server.js");
+        let server_js = strip_windows_verbatim(&_project_root.join("backend").join("server.js"));
         let nvm_node = PathBuf::from(r"C:\Users\Godsa\AppData\Local\Author Software\nvm\installs\v22.23.2\node.exe");
         if nvm_node.exists() && server_js.exists() {
-            return Ok((nvm_node, vec![server_js.to_string_lossy().to_string()], _project_root.to_path_buf()));
+            return Ok((strip_windows_verbatim(&nvm_node), vec![server_js.to_string_lossy().to_string()], strip_windows_verbatim(_project_root)));
         }
         if server_js.exists() {
-            return Ok(("node".into(), vec![server_js.to_string_lossy().to_string()], _project_root.to_path_buf()));
+            return Ok(("node".into(), vec![server_js.to_string_lossy().to_string()], strip_windows_verbatim(_project_root)));
         }
     }
 
-    let resource_dir = app.path().resource_dir().map_err(|e| format!("Resource dir error: {}", e))?;
-    let res_str = resource_dir.to_string_lossy();
-    if is_root_or_empty(&res_str) {
-        return Err("Resource directory is root or empty".into());
+    let exe_path = strip_windows_verbatim(&std::env::current_exe()?);
+    let install_dir = exe_path.parent().ok_or("Failed to get install dir")?;
+    let install_dir = strip_windows_verbatim(install_dir);
+    let install_dir_str = install_dir.to_string_lossy();
+    if is_root_or_empty(&install_dir_str) {
+        return Err(format!("Installation directory resolves to root or empty: {:?}", install_dir).into());
     }
-    if !resource_dir.exists() {
-        return Err("Resource directory does not exist".into());
+    eprintln!("[Supervisor] Found installation directory: {:?}", install_dir);
+
+    if let Some(paths) = resolve_node_paths(&install_dir) {
+        return Ok(paths);
     }
 
-    let bundled_node = resource_dir.join("node").join("node.exe");
-    let bundled_server = resource_dir.join("backend").join("server.js");
-    let server_arg = bundled_server.to_string_lossy().to_string();
-    if is_root_or_empty(&server_arg) {
-        return Err("Bundled server script path resolves to C: or empty".into());
-    }
+    let node_bin = install_dir.join("resources").join("node").join("node.exe");
+    let server_js = install_dir.join("resources").join("backend").join("server.js");
+    let alt_node = install_dir.join("node").join("node.exe");
+    let alt_server = install_dir.join("backend").join("server.js");
 
-    if bundled_node.exists() && bundled_server.exists() {
-        let working_dir = resource_dir.join("backend");
-        return Ok((bundled_node, vec![server_arg], working_dir));
-    }
-
-    Err("Could not find bundled Node.js or backend/server.js".into())
+    Err(format!(
+        "Could not find bundled Node.js or backend/server.js. Checked: node_bin={:?} (exists={}), server_js={:?} (exists={}), alt_node={:?} (exists={}), alt_server={:?} (exists={})",
+        node_bin, node_bin.exists(), server_js, server_js.exists(), alt_node, alt_node.exists(), alt_server, alt_server.exists()
+    ).into())
 }
 
 fn stream_output(
@@ -530,26 +575,28 @@ fn stream_output(
 }
 
 fn setup_supervisor(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let app_dir = get_app_data_dir();
-    let logs_dir = app_dir.join("logs");
-    let models_dir = app_dir.join("models");
+    let app_dir = strip_windows_verbatim(&get_app_data_dir());
+    let logs_dir = strip_windows_verbatim(&app_dir.join("logs"));
+    let models_dir = strip_windows_verbatim(&app_dir.join("models"));
 
     // 1. Clean stale processes from previous crashes
     cleanup_stale_pids(&app_dir);
 
     // 2. Setup log paths and rotation
-    let sidecar_log = logs_dir.join("sidecar.log");
+    let sidecar_log = strip_windows_verbatim(&logs_dir.join("sidecar.log"));
     rotate_log_if_needed(&sidecar_log);
-    let node_log = logs_dir.join("node.log");
+    let node_log = strip_windows_verbatim(&logs_dir.join("node.log"));
     rotate_log_if_needed(&node_log);
 
     #[cfg(debug_assertions)]
-    let project_root = find_project_root();
+    let project_root = strip_windows_verbatim(&find_project_root());
     #[cfg(not(debug_assertions))]
     let project_root = PathBuf::new();
 
     // 3. Spawn Python sidecar
     let (sidecar_bin, mut sidecar_args, sidecar_cwd) = find_sidecar_executable(app, &project_root)?;
+    let sidecar_bin = strip_windows_verbatim(&sidecar_bin);
+    let sidecar_cwd = strip_windows_verbatim(&sidecar_cwd);
     sidecar_args.extend(["--port".into(), "0".into()]);
 
     let mut sidecar_cmd = Command::new(&sidecar_bin);
@@ -611,9 +658,15 @@ fn setup_supervisor(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Er
 
     // 4. Spawn Node backend with OMNITOME_SIDECAR_PORT
     let (node_bin, mut node_args, node_cwd) = find_node_executable(app, &project_root)?;
+    let node_bin = strip_windows_verbatim(&node_bin);
+    let node_cwd = strip_windows_verbatim(&node_cwd);
+
     if node_args.is_empty() {
         return Err("Node script arguments are empty before extending flags".into());
     }
+    // Clean Windows verbatim prefix from script argument
+    node_args[0] = strip_windows_verbatim(Path::new(&node_args[0])).to_string_lossy().to_string();
+
     if is_root_or_empty(&node_args[0]) {
         return Err(format!("Node script argument resolves to root or empty before extending flags: {:?}", node_args[0]).into());
     }
@@ -636,9 +689,12 @@ fn setup_supervisor(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Er
 
     #[cfg(not(debug_assertions))]
     {
-        node_cmd.env("STORAGE_DIR", &app_dir);
-        node_cmd.env("DB_PATH", app_dir.join("data.db"));
-        node_cmd.env("SETTINGS_FILE_PATH", app_dir.join("settings.json"));
+        let storage_dir = strip_windows_verbatim(&app_dir);
+        let db_path = strip_windows_verbatim(&app_dir.join("data.db"));
+        let settings_file_path = strip_windows_verbatim(&app_dir.join("settings.json"));
+        node_cmd.env("STORAGE_DIR", &storage_dir);
+        node_cmd.env("DB_PATH", &db_path);
+        node_cmd.env("SETTINGS_FILE_PATH", &settings_file_path);
     }
 
     node_cmd.stdout(Stdio::piped());
@@ -648,6 +704,12 @@ fn setup_supervisor(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Er
     node_cmd.creation_flags(CREATE_NO_WINDOW);
 
     eprintln!("[Supervisor] About to spawn Node: {:?} {:?} in {:?}", node_bin, node_args, node_cwd);
+
+    if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&node_log) {
+        let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+        let _ = writeln!(f, "[{}] [supervisor] Spawning node: {:?} {:?} in {:?}", ts, node_bin, node_args, node_cwd);
+        let _ = f.flush();
+    }
 
     let mut node_child = node_cmd.spawn()
         .map_err(|e| format!("Failed to spawn Node backend ({:?}): {}", node_bin, e))?;
@@ -985,8 +1047,29 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_node_paths_resource_dir_valid() {
-        let temp_dir = std::env::temp_dir().join("omnitome_test_node_res_dir");
+    fn test_resolve_node_paths_install_dir_valid() {
+        let temp_dir = std::env::temp_dir().join("omnitome_test_node_install_dir");
+        let _ = wipe_dir(&temp_dir);
+        let node_dir = temp_dir.join("resources").join("node");
+        let backend_dir = temp_dir.join("resources").join("backend");
+        fs::create_dir_all(&node_dir).unwrap();
+        fs::create_dir_all(&backend_dir).unwrap();
+        fs::write(node_dir.join("node.exe"), b"mock node").unwrap();
+        fs::write(backend_dir.join("server.js"), b"mock server").unwrap();
+
+        let resolved = resolve_node_paths(&temp_dir);
+        assert!(resolved.is_some());
+        let (bin, args, cwd) = resolved.unwrap();
+        assert_eq!(bin, node_dir.join("node.exe"));
+        assert_eq!(args, vec![backend_dir.join("server.js").to_string_lossy().to_string()]);
+        assert_eq!(cwd, backend_dir);
+
+        let _ = wipe_dir(&temp_dir);
+    }
+
+    #[test]
+    fn test_resolve_node_paths_fallback_alongside_exe() {
+        let temp_dir = std::env::temp_dir().join("omnitome_test_node_fallback");
         let _ = wipe_dir(&temp_dir);
         let node_dir = temp_dir.join("node");
         let backend_dir = temp_dir.join("backend");
@@ -1006,10 +1089,76 @@ mod tests {
     }
 
     #[test]
+    fn test_strip_windows_verbatim() {
+        assert_eq!(
+            strip_windows_verbatim(Path::new(r"\\?\C:\Program Files\Omnitome\server.js")),
+            PathBuf::from(r"C:\Program Files\Omnitome\server.js")
+        );
+        assert_eq!(
+            strip_windows_verbatim(Path::new(r"\\?\UNC\server\share\file.txt")),
+            PathBuf::from(r"\\server\share\file.txt")
+        );
+        assert_eq!(
+            strip_windows_verbatim(Path::new(r"\\?\unc\server\share\file.txt")),
+            PathBuf::from(r"\\server\share\file.txt")
+        );
+        assert_eq!(
+            strip_windows_verbatim(Path::new(r"//?/UNC/server/share/file.txt")),
+            PathBuf::from(r"//server/share/file.txt")
+        );
+        assert_eq!(
+            strip_windows_verbatim(Path::new(r"\\?/C:/Program Files/Omnitome/server.js")),
+            PathBuf::from(r"C:/Program Files/Omnitome/server.js")
+        );
+        assert_eq!(
+            strip_windows_verbatim(Path::new(r"//?/C:/Program Files/Omnitome/server.js")),
+            PathBuf::from(r"C:/Program Files/Omnitome/server.js")
+        );
+        assert_eq!(
+            strip_windows_verbatim(Path::new(r"C:\Users\Omnitome")),
+            PathBuf::from(r"C:\Users\Omnitome")
+        );
+        assert_eq!(
+            strip_windows_verbatim(Path::new("relative/path/test.js")),
+            PathBuf::from("relative/path/test.js")
+        );
+        assert_eq!(
+            strip_windows_verbatim(Path::new("")),
+            PathBuf::from("")
+        );
+    }
+
+    #[test]
+    fn test_resolve_node_paths_strips_windows_verbatim() {
+        let temp_dir = std::env::temp_dir().join("omnitome_test_node_verbatim");
+        let _ = wipe_dir(&temp_dir);
+        let node_dir = temp_dir.join("resources").join("node");
+        let backend_dir = temp_dir.join("resources").join("backend");
+        fs::create_dir_all(&node_dir).unwrap();
+        fs::create_dir_all(&backend_dir).unwrap();
+        fs::write(node_dir.join("node.exe"), b"mock node").unwrap();
+        fs::write(backend_dir.join("server.js"), b"mock server").unwrap();
+
+        let verbatim_path = PathBuf::from(format!(r"\\?\{}", temp_dir.to_string_lossy()));
+        let resolved = resolve_node_paths(&verbatim_path);
+        assert!(resolved.is_some());
+        let (bin, args, cwd) = resolved.unwrap();
+        assert!(!bin.to_string_lossy().starts_with(r"\\?\"), "node binary should not have verbatim prefix: {:?}", bin);
+        assert!(!args[0].starts_with(r"\\?\"), "server arg should not have verbatim prefix: {:?}", args[0]);
+        assert!(!cwd.to_string_lossy().starts_with(r"\\?\"), "working dir should not have verbatim prefix: {:?}", cwd);
+
+        assert_eq!(bin, node_dir.join("node.exe"));
+        assert_eq!(args, vec![backend_dir.join("server.js").to_string_lossy().to_string()]);
+        assert_eq!(cwd, backend_dir);
+
+        let _ = wipe_dir(&temp_dir);
+    }
+
+    #[test]
     fn test_resolve_node_paths_partial_or_missing_fails() {
         let temp_dir = std::env::temp_dir().join("omnitome_test_node_missing");
         let _ = wipe_dir(&temp_dir);
-        let node_dir = temp_dir.join("node");
+        let node_dir = temp_dir.join("resources").join("node");
         fs::create_dir_all(&node_dir).unwrap();
         fs::write(node_dir.join("node.exe"), b"mock node").unwrap();
 
@@ -1019,7 +1168,7 @@ mod tests {
         // server.js exists but node.exe is missing
         let temp_dir2 = std::env::temp_dir().join("omnitome_test_node_missing_exe");
         let _ = wipe_dir(&temp_dir2);
-        let backend_dir2 = temp_dir2.join("backend");
+        let backend_dir2 = temp_dir2.join("resources").join("backend");
         fs::create_dir_all(&backend_dir2).unwrap();
         fs::write(backend_dir2.join("server.js"), b"mock server").unwrap();
         assert!(resolve_node_paths(&temp_dir2).is_none());
@@ -1074,37 +1223,62 @@ mod tests {
         let temp_dir = std::env::temp_dir().join("omnitome_test_sidecar_bundled");
         let _ = wipe_dir(&temp_dir);
 
-        // 1. resource_dir hit
-        let sidecar_dir1 = temp_dir.join("res").join("sidecar");
-        fs::create_dir_all(&sidecar_dir1).unwrap();
-        fs::write(sidecar_dir1.join("omnitome-sidecar.exe"), b"mock exe").unwrap();
-        let res = resolve_bundled_sidecar_exe(Some(&temp_dir.join("res")), None);
+        // 1. install_dir/resources/sidecar/omnitome-sidecar.exe hit
+        let sidecar_res_dir = temp_dir.join("resources").join("sidecar");
+        fs::create_dir_all(&sidecar_res_dir).unwrap();
+        fs::write(sidecar_res_dir.join("omnitome-sidecar.exe"), b"mock exe").unwrap();
+        let res = resolve_bundled_sidecar_exe(&temp_dir);
         assert!(res.is_some());
         let (bin, _, cwd) = res.unwrap();
-        assert_eq!(bin, sidecar_dir1.join("omnitome-sidecar.exe"));
-        assert_eq!(cwd, sidecar_dir1);
+        assert_eq!(bin, sidecar_res_dir.join("omnitome-sidecar.exe"));
+        assert_eq!(cwd, sidecar_res_dir);
 
-        // 2. exe_dir/resources hit
-        let sidecar_dir2 = temp_dir.join("app").join("resources").join("sidecar");
-        fs::create_dir_all(&sidecar_dir2).unwrap();
-        fs::write(sidecar_dir2.join("omnitome-sidecar.exe"), b"mock exe").unwrap();
-        let res2 = resolve_bundled_sidecar_exe(None, Some(&temp_dir.join("app")));
+        // 2. install_dir/sidecar/omnitome-sidecar.exe fallback hit
+        let temp_dir2 = std::env::temp_dir().join("omnitome_test_sidecar_bundled_fallback");
+        let _ = wipe_dir(&temp_dir2);
+        let sidecar_direct_dir = temp_dir2.join("sidecar");
+        fs::create_dir_all(&sidecar_direct_dir).unwrap();
+        fs::write(sidecar_direct_dir.join("omnitome-sidecar.exe"), b"mock exe").unwrap();
+        let res2 = resolve_bundled_sidecar_exe(&temp_dir2);
         assert!(res2.is_some());
         let (bin2, _, cwd2) = res2.unwrap();
-        assert_eq!(bin2, sidecar_dir2.join("omnitome-sidecar.exe"));
-        assert_eq!(cwd2, sidecar_dir2);
+        assert_eq!(bin2, sidecar_direct_dir.join("omnitome-sidecar.exe"));
+        assert_eq!(cwd2, sidecar_direct_dir);
+
+        // 3. Verbatim prefix stripping
+        let verbatim_temp = PathBuf::from(format!(r"\\?\{}", temp_dir.to_string_lossy()));
+        let res3 = resolve_bundled_sidecar_exe(&verbatim_temp);
+        assert!(res3.is_some());
+        let (bin3, _, cwd3) = res3.unwrap();
+        assert!(!bin3.to_string_lossy().starts_with(r"\\?\"));
+        assert!(!cwd3.to_string_lossy().starts_with(r"\\?\"));
+
+        // 4. Root and empty checks
+        assert!(resolve_bundled_sidecar_exe(Path::new("")).is_none());
+        assert!(resolve_bundled_sidecar_exe(Path::new(r"C:\")).is_none());
 
         let _ = wipe_dir(&temp_dir);
+        let _ = wipe_dir(&temp_dir2);
     }
 
     #[test]
     fn test_get_candidate_sidecar_archives_strict_order() {
-        let res_dir = PathBuf::from(r"C:\App\resources_dir");
-        let exe_dir = PathBuf::from(r"C:\App\bin");
-        let archives = get_candidate_sidecar_archives(Some(&res_dir), Some(&exe_dir));
+        let install_dir = PathBuf::from(r"C:\Program Files\Omnitome");
+        let archives = get_candidate_sidecar_archives(&install_dir);
         assert_eq!(archives.len(), 2);
-        assert_eq!(archives[0], res_dir.join("sidecar.7z"));
-        assert_eq!(archives[1], exe_dir.join("resources").join("sidecar.7z"));
+        assert_eq!(archives[0], install_dir.join("resources").join("sidecar.7z"));
+        assert_eq!(archives[1], install_dir.join("sidecar.7z"));
+
+        // With verbatim prefix
+        let verbatim_install = PathBuf::from(r"\\?\C:\Program Files\Omnitome");
+        let verbatim_archives = get_candidate_sidecar_archives(&verbatim_install);
+        assert_eq!(verbatim_archives.len(), 2);
+        assert!(!verbatim_archives[0].to_string_lossy().starts_with(r"\\?\"));
+        assert_eq!(verbatim_archives[0], install_dir.join("resources").join("sidecar.7z"));
+
+        // Root and empty check
+        assert!(get_candidate_sidecar_archives(Path::new("")).is_empty());
+        assert!(get_candidate_sidecar_archives(Path::new(r"C:\")).is_empty());
     }
 
     #[test]
