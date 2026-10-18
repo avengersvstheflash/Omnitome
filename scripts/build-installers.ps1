@@ -4,7 +4,9 @@ param(
     [switch]$SkipSidecarBuild = $false,
     [switch]$SkipBackendStaging = $false,
     [switch]$SkipZip = $false,
-    [switch]$ForceZip = $false
+    [switch]$ForceZip = $false,
+    [switch]$SkipArchive = $false,
+    [switch]$ForceArchive = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,19 +25,25 @@ if (-not (Test-Path $sidecarExe) -and -not $SkipSidecarBuild) {
     Write-Host "`n[1/5] Using existing PyInstaller sidecar at $sidecarExe" -ForegroundColor Green
 }
 
-# 2. Pre-archive Sidecar into resources/sidecar.zip (Required to stay under 2GB NSIS limit)
-$sidecarZip = Join-Path $rootDir "resources\sidecar.zip"
+# 2. Pre-archive Sidecar into resources/sidecar.7z (Required to stay under 2GB NSIS limit)
+$sidecar7z = Join-Path $rootDir "resources\sidecar.7z"
 $sidecarDir = Join-Path $rootDir "dist-sidecar\omnitome-sidecar"
 
-if (-not $SkipZip) {
-    if (-not (Test-Path $sidecarZip) -or $ForceZip) {
-        Write-Host "`n[2/5] Archiving sidecar into resources\sidecar.zip (bypasses 2GB NSIS limit)..." -ForegroundColor Yellow
+if (-not ($SkipZip -or $SkipArchive)) {
+    $needsArchive = -not (Test-Path $sidecar7z) -or ((Get-Item $sidecar7z).Length -lt 10MB) -or $ForceZip -or $ForceArchive
+    if ($needsArchive) {
+        Write-Host "`n[2/5] Archiving sidecar into resources\sidecar.7z (bypasses 2GB NSIS limit)..." -ForegroundColor Yellow
         $resourcesDir = Join-Path $rootDir "resources"
         if (-not (Test-Path $resourcesDir)) {
             New-Item -ItemType Directory -Force -Path $resourcesDir | Out-Null
         }
-        if (Test-Path $sidecarZip) {
-            Remove-Item -Force $sidecarZip
+        if (Test-Path $sidecar7z) {
+            Remove-Item -Force $sidecar7z
+        }
+        $oldSidecarZip = Join-Path $rootDir "resources\sidecar.zip"
+        if (Test-Path $oldSidecarZip) {
+            Write-Host "  Removing obsolete resources\sidecar.zip..." -ForegroundColor Gray
+            Remove-Item -Force $oldSidecarZip
         }
 
         $swZip = [System.Diagnostics.Stopwatch]::StartNew()
@@ -49,36 +57,26 @@ if (-not $SkipZip) {
 
         if ($sevenZipCandidates) {
             $sevenZip = $sevenZipCandidates[0]
-            Write-Host "  Using 7-Zip ($sevenZip) to compress $sidecarDir -> $sidecarZip..." -ForegroundColor Gray
+            Write-Host "  Using 7-Zip ($sevenZip) to compress $sidecarDir -> $sidecar7z..." -ForegroundColor Gray
             Push-Location $sidecarDir
             try {
-                & $sevenZip a -tzip -mm=LZMA -mx=5 $sidecarZip * | Out-Null
+                & $sevenZip a -t7z -mx=5 $sidecar7z * | Out-Null
                 if ($LASTEXITCODE -ne 0) {
-                    throw "7-Zip failed to create $sidecarZip with exit code $LASTEXITCODE"
+                    if (Test-Path $sidecar7z) { Remove-Item -Force $sidecar7z -ErrorAction SilentlyContinue }
+                    throw "7-Zip failed to create $sidecar7z with exit code $LASTEXITCODE"
                 }
             } finally {
                 Pop-Location
             }
         } else {
-            $tarCmd = Get-Command tar.exe -ErrorAction SilentlyContinue
-            if ($tarCmd) {
-                Write-Host "  Using tar.exe to compress $sidecarDir -> $sidecarZip..." -ForegroundColor Gray
-                & $tarCmd -a -cf $sidecarZip -C $sidecarDir .
-                if ($LASTEXITCODE -ne 0) {
-                    throw "tar.exe failed to create $sidecarZip with exit code $LASTEXITCODE"
-                }
-            } else {
-                Write-Host "  Using System.IO.Compression.ZipFile to compress $sidecarDir -> $sidecarZip..." -ForegroundColor Gray
-                Add-Type -AssemblyName System.IO.Compression.FileSystem
-                [System.IO.Compression.ZipFile]::CreateFromDirectory($sidecarDir, $sidecarZip, [System.IO.Compression.CompressionLevel]::Fastest, $false)
-            }
+            throw "7z.exe is required to create sidecar.7z but was not found in PATH or standard installation directories."
         }
         $swZip.Stop()
-        $zipSizeMB = [Math]::Round((Get-Item $sidecarZip).Length / 1MB, 2)
-        Write-Host "  sidecar.zip created in $([Math]::Round($swZip.Elapsed.TotalSeconds, 1))s: $zipSizeMB MB" -ForegroundColor Green
+        $archiveSizeMB = [Math]::Round((Get-Item $sidecar7z).Length / 1MB, 2)
+        Write-Host "  sidecar.7z created in $([Math]::Round($swZip.Elapsed.TotalSeconds, 1))s: $archiveSizeMB MB" -ForegroundColor Green
     } else {
-        $zipSizeMB = [Math]::Round((Get-Item $sidecarZip).Length / 1MB, 2)
-        Write-Host "`n[2/5] Using existing sidecar.zip ($zipSizeMB MB)" -ForegroundColor Green
+        $archiveSizeMB = [Math]::Round((Get-Item $sidecar7z).Length / 1MB, 2)
+        Write-Host "`n[2/5] Using existing sidecar.7z ($archiveSizeMB MB)" -ForegroundColor Green
     }
 }
 

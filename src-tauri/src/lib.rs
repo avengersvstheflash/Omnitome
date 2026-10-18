@@ -68,6 +68,44 @@ fn get_app_data_dir() -> PathBuf {
     base
 }
 
+fn log_crash(error_msg: &str) {
+    let app_dir = get_app_data_dir();
+    let crash_log = app_dir.join("logs").join("crash.log");
+    rotate_log_if_needed(&crash_log);
+    let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+    let entry = format!("[{}] [CRASH] {}\n", ts, error_msg);
+    if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&crash_log) {
+        let _ = f.write_all(entry.as_bytes());
+        let _ = f.flush();
+    }
+    eprintln!("[CRASH] {}", error_msg);
+}
+
+#[cfg(windows)]
+fn show_error_dialog(title: &str, message: &str) {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+
+    let title_wide: Vec<u16> = OsStr::new(title).encode_wide().chain(Some(0)).collect();
+    let msg_wide: Vec<u16> = OsStr::new(message).encode_wide().chain(Some(0)).collect();
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn MessageBoxW(hwnd: *mut std::ffi::c_void, text: *const u16, caption: *const u16, utype: u32) -> i32;
+    }
+
+    unsafe {
+        // MB_OK (0x0) | MB_ICONERROR (0x10) | MB_SYSTEMMODAL (0x1000) | MB_SETFOREGROUND (0x10000) | MB_TOPMOST (0x40000) = 0x51010
+        MessageBoxW(std::ptr::null_mut(), msg_wide.as_ptr(), title_wide.as_ptr(), 0x51010);
+    }
+}
+
+#[cfg(not(windows))]
+fn show_error_dialog(title: &str, message: &str) {
+    eprintln!("{}: {}", title, message);
+}
+
+
 fn rotate_log_if_needed(log_path: &Path) {
     if let Ok(meta) = fs::metadata(log_path) {
         if meta.len() > 5 * 1024 * 1024 {
@@ -147,42 +185,111 @@ fn find_project_root() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
-fn unpack_sidecar_zip(zip_path: &Path, target_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    eprintln!("[Supervisor] Unpacking sidecar engine from {:?} to {:?}", zip_path, target_dir);
-    let file = fs::File::open(zip_path)?;
-    let mut archive = zip::ZipArchive::new(file)?;
+fn wipe_dir(dir: &Path) -> std::io::Result<()> {
+    if !dir.exists() {
+        return Ok(());
+    }
+
+    // Attempt direct removal first
+    if fs::remove_dir_all(dir).is_ok() {
+        return Ok(());
+    }
+
+    // On Windows, read-only file attributes or indexing can cause remove_dir_all to fail.
+    // Recursively clear read-only permissions and retry with backoff.
+    fn unset_readonly_recursive(p: &Path) {
+        if let Ok(entries) = fs::read_dir(p) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Ok(meta) = entry.metadata() {
+                    let mut perms = meta.permissions();
+                    if perms.readonly() {
+                        perms.set_readonly(false);
+                        let _ = fs::set_permissions(&path, perms);
+                    }
+                    if meta.is_dir() {
+                        unset_readonly_recursive(&path);
+                    }
+                }
+            }
+        }
+    }
+    unset_readonly_recursive(dir);
+
+    let mut last_err = None;
+    for attempt in 0..5 {
+        match fs::remove_dir_all(dir) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                last_err = Some(e);
+                thread::sleep(Duration::from_millis(50 * (attempt + 1)));
+            }
+        }
+    }
+
+    if dir.exists() {
+        Err(last_err.unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Failed to remove directory")))
+    } else {
+        Ok(())
+    }
+}
+
+fn atomic_rename_dir(from: &Path, to: &Path) -> std::io::Result<()> {
+    let mut last_err = None;
+    for attempt in 0..5 {
+        match fs::rename(from, to) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                last_err = Some(e);
+                thread::sleep(Duration::from_millis(50 * (attempt + 1)));
+            }
+        }
+    }
+    Err(last_err.unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "Failed to rename directory")))
+}
+
+fn unpack_sidecar_7z(archive_path: &Path, target_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    eprintln!("[Supervisor] Unpacking sidecar engine from {:?} to {:?}", archive_path, target_dir);
 
     let staging_dir = target_dir.with_extension("staging");
     if staging_dir.exists() {
-        let _ = fs::remove_dir_all(&staging_dir);
+        eprintln!("[Supervisor] Cleaning stale staging directory {:?}", staging_dir);
+        wipe_dir(&staging_dir)
+            .map_err(|e| format!("Failed to remove stale staging directory {:?}: {}", staging_dir, e))?;
     }
-    fs::create_dir_all(&staging_dir)?;
+    fs::create_dir_all(&staging_dir)
+        .map_err(|e| format!("Failed to create staging directory {:?}: {}", staging_dir, e))?;
 
-    archive.extract(&staging_dir)?;
+    if let Err(e) = sevenz_rust::decompress_file(archive_path, &staging_dir) {
+        let _ = wipe_dir(&staging_dir);
+        return Err(format!("Failed to decompress 7z archive {:?}: {}", archive_path, e).into());
+    }
 
     if target_dir.exists() {
-        let _ = fs::remove_dir_all(target_dir);
+        wipe_dir(target_dir)
+            .map_err(|e| format!("Failed to remove existing target directory {:?}: {}", target_dir, e))?;
     }
-    fs::rename(&staging_dir, target_dir)?;
+    atomic_rename_dir(&staging_dir, target_dir)
+        .map_err(|e| format!("Failed to move unpacked sidecar from {:?} to {:?}: {}", staging_dir, target_dir, e))?;
 
-    // Delete sidecar.zip to reclaim 1.3 GB of disk space
-    if let Err(e) = fs::remove_file(zip_path) {
-        eprintln!("[Supervisor] Notice: Could not remove archive {:?}: {}", zip_path, e);
+    // Delete sidecar.7z to reclaim disk space
+    if let Err(e) = fs::remove_file(archive_path) {
+        eprintln!("[Supervisor] Notice: Could not remove archive {:?}: {}", archive_path, e);
     } else {
-        eprintln!("[Supervisor] Removed sidecar archive {:?} to reclaim disk space", zip_path);
+        eprintln!("[Supervisor] Removed sidecar archive {:?} to reclaim disk space", archive_path);
     }
 
     Ok(())
 }
 
-fn find_sidecar_executable(app: &tauri::App, project_root: &Path) -> (PathBuf, Vec<String>, PathBuf) {
+fn find_sidecar_executable(app: &tauri::App, project_root: &Path) -> Result<(PathBuf, Vec<String>, PathBuf), Box<dyn std::error::Error>> {
     // 1. In dev mode (debug_assertions), prefer venv python main.py
     #[cfg(debug_assertions)]
     {
         let venv_python = project_root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe");
         let script = project_root.join("sidecars").join("python").join("main.py");
         if venv_python.exists() && script.exists() {
-            return (venv_python, vec![script.to_string_lossy().to_string()], project_root.to_path_buf());
+            return Ok((venv_python, vec![script.to_string_lossy().to_string()], project_root.to_path_buf()));
         }
     }
 
@@ -193,33 +300,58 @@ fn find_sidecar_executable(app: &tauri::App, project_root: &Path) -> (PathBuf, V
     let local_sidecar_exe = local_sidecar_dir.join("omnitome-sidecar.exe");
 
     if local_sidecar_exe.exists() {
-        return (local_sidecar_exe, vec![], local_sidecar_dir);
+        return Ok((local_sidecar_exe, vec![], local_sidecar_dir));
+    }
+    let nested_local_exe = local_sidecar_dir.join("omnitome-sidecar").join("omnitome-sidecar.exe");
+    if nested_local_exe.exists() {
+        let nested_dir = local_sidecar_dir.join("omnitome-sidecar");
+        return Ok((nested_local_exe, vec![], nested_dir));
     }
 
-    // If missing, check if sidecar.zip is available in Tauri's resource_dir
+    // If missing, check candidate locations for bundled sidecar.7z
+    let mut candidate_archives = Vec::new();
     if let Ok(resource_dir) = app.path().resource_dir() {
-        let sidecar_zip = resource_dir.join("sidecar.zip");
-        if sidecar_zip.exists() {
-            if let Err(e) = unpack_sidecar_zip(&sidecar_zip, &local_sidecar_dir) {
-                eprintln!("[Supervisor] Error unpacking sidecar archive: {}", e);
-            } else if local_sidecar_exe.exists() {
-                return (local_sidecar_exe, vec![], local_sidecar_dir);
-            }
+        candidate_archives.push(resource_dir.join("sidecar.7z"));
+        candidate_archives.push(resource_dir.join("resources").join("sidecar.7z"));
+    }
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            candidate_archives.push(parent.join("sidecar.7z"));
+            candidate_archives.push(parent.join("resources").join("sidecar.7z"));
         }
+    }
+    candidate_archives.push(project_root.join("resources").join("sidecar.7z"));
 
-        // Also check if already extracted directly in resource_dir/sidecar/
+    for archive_path in candidate_archives {
+        if archive_path.exists() {
+            unpack_sidecar_7z(&archive_path, &local_sidecar_dir)?;
+            if local_sidecar_exe.exists() {
+                return Ok((local_sidecar_exe, vec![], local_sidecar_dir));
+            }
+            if nested_local_exe.exists() {
+                let nested_dir = local_sidecar_dir.join("omnitome-sidecar");
+                return Ok((nested_local_exe, vec![], nested_dir));
+            }
+            return Err(format!(
+                "Unpacked sidecar archive {:?} into {:?}, but executable {:?} was not found",
+                archive_path, local_sidecar_dir, local_sidecar_exe
+            ).into());
+        }
+    }
+
+    // 3. Fallback: check already extracted directories in resource_dir, dist-sidecar, or alongside exe
+    if let Ok(resource_dir) = app.path().resource_dir() {
         let bundled_exe = resource_dir.join("sidecar").join("omnitome-sidecar.exe");
         if bundled_exe.exists() {
             let working_dir = bundled_exe.parent().unwrap_or(&resource_dir).to_path_buf();
-            return (bundled_exe, vec![], working_dir);
+            return Ok((bundled_exe, vec![], working_dir));
         }
     }
 
-    // 3. Fallback: check dist-sidecar in project root or adjacent to exe
     let local_frozen = project_root.join("dist-sidecar").join("omnitome-sidecar").join("omnitome-sidecar.exe");
     if local_frozen.exists() {
         let working_dir = local_frozen.parent().unwrap_or(project_root).to_path_buf();
-        return (local_frozen, vec![], working_dir);
+        return Ok((local_frozen, vec![], working_dir));
     }
 
     if let Ok(exe_path) = std::env::current_exe() {
@@ -227,7 +359,7 @@ fn find_sidecar_executable(app: &tauri::App, project_root: &Path) -> (PathBuf, V
             let alongside = parent.join("resources").join("sidecar").join("omnitome-sidecar.exe");
             if alongside.exists() {
                 let working_dir = alongside.parent().unwrap_or(parent).to_path_buf();
-                return (alongside, vec![], working_dir);
+                return Ok((alongside, vec![], working_dir));
             }
         }
     }
@@ -235,7 +367,14 @@ fn find_sidecar_executable(app: &tauri::App, project_root: &Path) -> (PathBuf, V
     // Dev fallback
     let venv_python = project_root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe");
     let script = project_root.join("sidecars").join("python").join("main.py");
-    (venv_python, vec![script.to_string_lossy().to_string()], project_root.to_path_buf())
+    if venv_python.exists() && script.exists() {
+        return Ok((venv_python, vec![script.to_string_lossy().to_string()], project_root.to_path_buf()));
+    }
+
+    Err(format!(
+        "Failed to locate Omnitome sidecar executable. Checked local directory ({:?}) and resources directory.",
+        local_sidecar_exe
+    ).into())
 }
 
 fn find_node_executable(app: &tauri::App, project_root: &Path) -> (PathBuf, Vec<String>, PathBuf) {
@@ -355,7 +494,7 @@ fn setup_supervisor(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
     let project_root = find_project_root();
 
     // 3. Spawn Python sidecar
-    let (sidecar_bin, mut sidecar_args, sidecar_cwd) = find_sidecar_executable(app, &project_root);
+    let (sidecar_bin, mut sidecar_args, sidecar_cwd) = find_sidecar_executable(app, &project_root)?;
     sidecar_args.extend(["--port".into(), "0".into()]);
 
     let mut sidecar_cmd = Command::new(&sidecar_bin);
@@ -379,11 +518,41 @@ fn setup_supervisor(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
     let sidecar_stderr = sidecar_child.stderr.take().ok_or("Failed to capture sidecar stderr")?;
 
     stream_output("sidecar", sidecar_stdout, sidecar_log.clone(), "python-sidecar", Some(sidecar_port_tx));
-    stream_output("sidecar:err", sidecar_stderr, sidecar_log, "python-sidecar", None);
+    stream_output("sidecar:err", sidecar_stderr, sidecar_log.clone(), "python-sidecar", None);
 
-    // Await sidecar boot sentinel
-    let sidecar_port = sidecar_port_rx.recv_timeout(Duration::from_secs(30))
-        .map_err(|_| "Timeout (30s) waiting for Python sidecar boot handshake sentinel".to_string())?;
+    // Await sidecar boot sentinel with responsive child exit detection
+    let start_sidecar = std::time::Instant::now();
+    let timeout = Duration::from_secs(30);
+    let sidecar_port = loop {
+        match sidecar_port_rx.recv_timeout(Duration::from_millis(200)) {
+            Ok(port) => break port,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                if let Ok(Some(status)) = sidecar_child.try_wait() {
+                    return Err(format!(
+                        "Python sidecar exited prematurely with {}. Check {:?} for details.",
+                        status, sidecar_log
+                    ).into());
+                }
+                if start_sidecar.elapsed() >= timeout {
+                    let _ = sidecar_child.kill();
+                    return Err(format!(
+                        "Timeout (30s) waiting for Python sidecar boot handshake sentinel. Check {:?} for details.",
+                        sidecar_log
+                    ).into());
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                let status_msg = match sidecar_child.try_wait() {
+                    Ok(Some(status)) => format!("exited with {}", status),
+                    _ => "stdout/stderr stream closed unexpectedly".into(),
+                };
+                return Err(format!(
+                    "Python sidecar stream disconnected ({}). Check {:?} for details.",
+                    status_msg, sidecar_log
+                ).into());
+            }
+        }
+    };
 
     // 4. Spawn Node backend with OMNITOME_SIDECAR_PORT
     let (node_bin, mut node_args, node_cwd) = find_node_executable(app, &project_root);
@@ -419,11 +588,44 @@ fn setup_supervisor(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
     let node_stderr = node_child.stderr.take().ok_or("Failed to capture node stderr")?;
 
     stream_output("node", node_stdout, node_log.clone(), "node-backend", Some(node_port_tx));
-    stream_output("node:err", node_stderr, node_log, "node-backend", None);
+    stream_output("node:err", node_stderr, node_log.clone(), "node-backend", None);
 
-    // Await Node backend boot sentinel
-    let node_port = node_port_rx.recv_timeout(Duration::from_secs(30))
-        .map_err(|_| "Timeout (30s) waiting for Node backend boot handshake sentinel".to_string())?;
+    // Await Node backend boot sentinel with responsive child exit detection
+    let start_node = std::time::Instant::now();
+    let node_port = loop {
+        match node_port_rx.recv_timeout(Duration::from_millis(200)) {
+            Ok(port) => break port,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                if let Ok(Some(status)) = node_child.try_wait() {
+                    let _ = sidecar_child.kill();
+                    return Err(format!(
+                        "Node backend exited prematurely with {}. Check {:?} for details.",
+                        status, node_log
+                    ).into());
+                }
+                if start_node.elapsed() >= timeout {
+                    let _ = node_child.kill();
+                    let _ = sidecar_child.kill();
+                    return Err(format!(
+                        "Timeout (30s) waiting for Node backend boot handshake sentinel. Check {:?} for details.",
+                        node_log
+                    ).into());
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                let _ = node_child.kill();
+                let _ = sidecar_child.kill();
+                let status_msg = match node_child.try_wait() {
+                    Ok(Some(status)) => format!("exited with {}", status),
+                    _ => "stdout/stderr stream closed unexpectedly".into(),
+                };
+                return Err(format!(
+                    "Node backend stream disconnected ({}). Check {:?} for details.",
+                    status_msg, node_log
+                ).into());
+            }
+        }
+    };
 
     // 5. Write atomic PID record
     write_atomic_pids(&app_dir, sidecar_pid, node_pid);
@@ -456,7 +658,7 @@ fn setup_supervisor(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 if let Some(pm) = window.app_handle().try_state::<ProcessManager>() {
@@ -465,11 +667,30 @@ pub fn run() {
             }
         })
         .setup(|app| {
-            setup_supervisor(app)?;
+            if let Err(e) = setup_supervisor(app) {
+                let err_str = e.to_string();
+                log_crash(&err_str);
+                let crash_log_path = get_app_data_dir().join("logs").join("crash.log");
+                let dialog_msg = format!(
+                    "Omnitome encountered a fatal error during startup:\n\n{}\n\nA detailed crash log was written to:\n{}",
+                    err_str,
+                    crash_log_path.to_string_lossy()
+                );
+                show_error_dialog("Omnitome Startup Error", &dialog_msg);
+                return Err(e);
+            }
             Ok(())
-        })
-        .build(tauri::generate_context!())
-        .expect("error while building tauri application");
+        });
+
+    let app = match builder.build(tauri::generate_context!()) {
+        Ok(app) => app,
+        Err(err) => {
+            let err_str = format!("Fatal error building Tauri application: {}", err);
+            log_crash(&err_str);
+            show_error_dialog("Omnitome Fatal Error", &err_str);
+            std::process::exit(1);
+        }
+    };
 
     app.run(|app_handle, event| {
         match event {
@@ -492,3 +713,176 @@ pub fn run() {
         }
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_unpack_sidecar_7z_success() {
+        let temp_dir = std::env::temp_dir().join("omnitome_test_unpack_success");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let src_dir = temp_dir.join("src_sidecar");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join("omnitome-sidecar.exe"), b"mock binary content").unwrap();
+        fs::write(src_dir.join("config.json"), b"mock config").unwrap();
+
+        let archive_path = temp_dir.join("sidecar.7z");
+        sevenz_rust::compress_to_path(&src_dir, &archive_path).unwrap();
+        assert!(archive_path.exists());
+
+        let target_dir = temp_dir.join("sidecar");
+        let staging_dir = target_dir.with_extension("staging");
+
+        let res = unpack_sidecar_7z(&archive_path, &target_dir);
+        assert!(res.is_ok(), "unpack_sidecar_7z failed: {:?}", res.err());
+
+        assert!(target_dir.join("omnitome-sidecar.exe").exists());
+        assert!(target_dir.join("config.json").exists());
+        assert!(!staging_dir.exists(), "staging directory should not exist after rename");
+        assert!(!archive_path.exists(), "archive file should have been deleted");
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_unpack_sidecar_7z_cleans_stale_staging() {
+        let temp_dir = std::env::temp_dir().join("omnitome_test_unpack_stale");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let src_dir = temp_dir.join("src_sidecar");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join("omnitome-sidecar.exe"), b"mock binary content").unwrap();
+
+        let archive_path = temp_dir.join("sidecar.7z");
+        sevenz_rust::compress_to_path(&src_dir, &archive_path).unwrap();
+
+        let target_dir = temp_dir.join("sidecar");
+        let staging_dir = target_dir.with_extension("staging");
+        fs::create_dir_all(&staging_dir).unwrap();
+        fs::write(staging_dir.join("stale_garbage.txt"), b"stale data").unwrap();
+
+        let res = unpack_sidecar_7z(&archive_path, &target_dir);
+        assert!(res.is_ok(), "unpack_sidecar_7z failed: {:?}", res.err());
+
+        assert!(target_dir.join("omnitome-sidecar.exe").exists());
+        assert!(!target_dir.join("stale_garbage.txt").exists(), "stale staging contents should be wiped");
+        assert!(!staging_dir.exists());
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_unpack_sidecar_7z_corrupt_archive_fails_cleanly() {
+        let temp_dir = std::env::temp_dir().join("omnitome_test_unpack_corrupt");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let archive_path = temp_dir.join("corrupt.7z");
+        fs::write(&archive_path, b"not a real 7z archive file").unwrap();
+
+        let target_dir = temp_dir.join("sidecar");
+        let staging_dir = target_dir.with_extension("staging");
+
+        let res = unpack_sidecar_7z(&archive_path, &target_dir);
+        assert!(res.is_err(), "unpack_sidecar_7z should fail on corrupt archive");
+        assert!(!staging_dir.exists(), "staging dir should be cleaned up on error");
+        assert!(!target_dir.exists(), "target dir should not have been created");
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_unpack_sidecar_7z_cleans_stale_staging_with_readonly_file() {
+        let temp_dir = std::env::temp_dir().join("omnitome_test_unpack_readonly");
+        let _ = wipe_dir(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let src_dir = temp_dir.join("src_sidecar");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join("omnitome-sidecar.exe"), b"mock binary content").unwrap();
+
+        let archive_path = temp_dir.join("sidecar.7z");
+        sevenz_rust::compress_to_path(&src_dir, &archive_path).unwrap();
+
+        let target_dir = temp_dir.join("sidecar");
+        let staging_dir = target_dir.with_extension("staging");
+        fs::create_dir_all(&staging_dir).unwrap();
+        let ro_file = staging_dir.join("readonly_stale.txt");
+        fs::write(&ro_file, b"cannot delete me easily").unwrap();
+        let mut perms = fs::metadata(&ro_file).unwrap().permissions();
+        perms.set_readonly(true);
+        fs::set_permissions(&ro_file, perms).unwrap();
+
+        let res = unpack_sidecar_7z(&archive_path, &target_dir);
+        assert!(res.is_ok(), "unpack_sidecar_7z failed with readonly file in staging: {:?}", res.err());
+
+        assert!(target_dir.join("omnitome-sidecar.exe").exists());
+        assert!(!staging_dir.exists());
+
+        let _ = wipe_dir(&temp_dir);
+    }
+
+    #[test]
+    fn test_unpack_sidecar_7z_created_by_7z_exe() {
+        let candidate_7z = [
+            r"C:\Program Files\7-Zip\7z.exe",
+            r"C:\Program Files (x86)\7-Zip\7z.exe",
+        ];
+        let mut seven_zip = None;
+        for c in &candidate_7z {
+            if Path::new(c).exists() {
+                seven_zip = Some(*c);
+                break;
+            }
+        }
+        let Some(seven_zip_path) = seven_zip else {
+            eprintln!("Skipping test_unpack_sidecar_7z_created_by_7z_exe: 7z.exe not found");
+            return;
+        };
+
+        let temp_dir = std::env::temp_dir().join("omnitome_test_unpack_7z_exe");
+        let _ = wipe_dir(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let src_dir = temp_dir.join("src_sidecar");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join("omnitome-sidecar.exe"), b"real 7z binary content").unwrap();
+        fs::create_dir_all(src_dir.join("_internal")).unwrap();
+        fs::write(src_dir.join("_internal").join("test_dll.dll"), b"mock internal dll").unwrap();
+
+        let archive_path = temp_dir.join("sidecar.7z");
+        let mut cmd = Command::new(seven_zip_path);
+        cmd.args(["a", "-t7z", "-mx=5", &archive_path.to_string_lossy(), "*"]);
+        cmd.current_dir(&src_dir);
+        let status = cmd.status().expect("failed to execute 7z.exe");
+        assert!(status.success(), "7z.exe compression failed");
+        assert!(archive_path.exists());
+
+        let target_dir = temp_dir.join("sidecar");
+        let res = unpack_sidecar_7z(&archive_path, &target_dir);
+        assert!(res.is_ok(), "unpack_sidecar_7z failed on 7z.exe archive: {:?}", res.err());
+
+        assert!(target_dir.join("omnitome-sidecar.exe").exists());
+        assert!(target_dir.join("_internal").join("test_dll.dll").exists());
+        assert!(!archive_path.exists(), "archive file should have been removed to save space");
+
+        let _ = wipe_dir(&temp_dir);
+    }
+
+    #[test]
+    fn test_log_crash() {
+        let unique_marker = format!("TEST_CRASH_MARKER_{}", chrono::Local::now().timestamp_nanos_opt().unwrap_or(0));
+        log_crash(&unique_marker);
+
+        let crash_log = get_app_data_dir().join("logs").join("crash.log");
+        assert!(crash_log.exists());
+        let content = fs::read_to_string(&crash_log).unwrap();
+        assert!(content.contains(&unique_marker));
+    }
+}
+

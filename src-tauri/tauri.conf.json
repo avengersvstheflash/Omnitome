@@ -23,7 +23,7 @@
       "icons/icon.png"
     ],
     "resources": {
-      "../resources/sidecar.zip": "sidecar.zip",
+      "../resources/sidecar.7z": "sidecar.7z",
       "../resources/backend-runtime": "backend",
       "../resources/node": "node"
     },
