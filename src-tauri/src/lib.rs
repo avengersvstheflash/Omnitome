@@ -289,13 +289,48 @@ fn unpack_sidecar_7z(archive_path: &Path, target_dir: &Path) -> Result<(), Box<d
     Ok(())
 }
 
+fn is_root_or_empty(s: &str) -> bool {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return true;
+    }
+    if trimmed == "C:" || trimmed == r"C:\" || trimmed == "C:/"
+        || trimmed.eq_ignore_ascii_case("c:")
+        || trimmed.eq_ignore_ascii_case(r"c:\")
+        || trimmed.eq_ignore_ascii_case("c:/") {
+        return true;
+    }
+    if trimmed == "/" || trimmed == "\\" {
+        return true;
+    }
+    let bytes = trimmed.as_bytes();
+    if bytes.len() == 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
+        return true;
+    }
+    if bytes.len() == 3 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && (bytes[2] == b'\\' || bytes[2] == b'/') {
+        return true;
+    }
+    false
+}
+
 #[allow(dead_code)]
 fn resolve_node_paths(resource_dir: &Path) -> Option<(PathBuf, Vec<String>, PathBuf)> {
+    let res_str = resource_dir.to_string_lossy();
+    if is_root_or_empty(&res_str) {
+        return None;
+    }
+    if !resource_dir.exists() {
+        return None;
+    }
     let bundled_node = resource_dir.join("node").join("node.exe");
     let bundled_server = resource_dir.join("backend").join("server.js");
+    let server_arg = bundled_server.to_string_lossy().to_string();
+    if is_root_or_empty(&server_arg) {
+        return None;
+    }
     if bundled_node.exists() && bundled_server.exists() {
         let working_dir = resource_dir.join("backend");
-        return Some((bundled_node, vec![bundled_server.to_string_lossy().to_string()], working_dir));
+        return Some((bundled_node, vec![server_arg], working_dir));
     }
     None
 }
@@ -415,12 +450,25 @@ fn find_node_executable(app: &tauri::AppHandle, _project_root: &Path) -> Result<
         }
     }
 
-    let resource_dir = app.path().resource_dir()?;
+    let resource_dir = app.path().resource_dir().map_err(|e| format!("Resource dir error: {}", e))?;
+    let res_str = resource_dir.to_string_lossy();
+    if is_root_or_empty(&res_str) {
+        return Err("Resource directory is root or empty".into());
+    }
+    if !resource_dir.exists() {
+        return Err("Resource directory does not exist".into());
+    }
+
     let bundled_node = resource_dir.join("node").join("node.exe");
     let bundled_server = resource_dir.join("backend").join("server.js");
+    let server_arg = bundled_server.to_string_lossy().to_string();
+    if is_root_or_empty(&server_arg) {
+        return Err("Bundled server script path resolves to C: or empty".into());
+    }
+
     if bundled_node.exists() && bundled_server.exists() {
         let working_dir = resource_dir.join("backend");
-        return Ok((bundled_node, vec![bundled_server.to_string_lossy().to_string()], working_dir));
+        return Ok((bundled_node, vec![server_arg], working_dir));
     }
 
     Err("Could not find bundled Node.js or backend/server.js".into())
@@ -563,9 +611,21 @@ fn setup_supervisor(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Er
 
     // 4. Spawn Node backend with OMNITOME_SIDECAR_PORT
     let (node_bin, mut node_args, node_cwd) = find_node_executable(app, &project_root)?;
+    if node_args.is_empty() {
+        return Err("Node script arguments are empty before extending flags".into());
+    }
+    if is_root_or_empty(&node_args[0]) {
+        return Err(format!("Node script argument resolves to root or empty before extending flags: {:?}", node_args[0]).into());
+    }
+
     node_args.extend(["--port".into(), "0".into()]);
 
-    eprintln!("[Supervisor] Spawning Node: {:?} {:?} in {:?}", node_bin, node_args, node_cwd);
+    if node_args.is_empty() {
+        return Err("Node script arguments are empty after extending flags".into());
+    }
+    if is_root_or_empty(&node_args[0]) {
+        return Err(format!("Node script argument resolves to root or empty after extending flags: {:?}", node_args[0]).into());
+    }
 
     let mut node_cmd = Command::new(&node_bin);
     node_cmd.args(&node_args);
@@ -586,6 +646,8 @@ fn setup_supervisor(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Er
 
     #[cfg(windows)]
     node_cmd.creation_flags(CREATE_NO_WINDOW);
+
+    eprintln!("[Supervisor] About to spawn Node: {:?} {:?} in {:?}", node_bin, node_args, node_cwd);
 
     let mut node_child = node_cmd.spawn()
         .map_err(|e| format!("Failed to spawn Node backend ({:?}): {}", node_bin, e))?;
@@ -968,6 +1030,43 @@ mod tests {
         assert!(resolve_node_paths(&non_existent).is_none());
 
         let _ = wipe_dir(&temp_dir);
+    }
+
+    #[test]
+    fn test_is_root_or_empty() {
+        assert!(is_root_or_empty(""));
+        assert!(is_root_or_empty("   "));
+        assert!(is_root_or_empty("C:"));
+        assert!(is_root_or_empty(r"C:\"));
+        assert!(is_root_or_empty("C:/"));
+        assert!(is_root_or_empty("c:"));
+        assert!(is_root_or_empty(r"c:\"));
+        assert!(is_root_or_empty("c:/"));
+        assert!(is_root_or_empty("D:"));
+        assert!(is_root_or_empty(r"D:\"));
+        assert!(is_root_or_empty("D:/"));
+        assert!(is_root_or_empty("/"));
+        assert!(is_root_or_empty("\\"));
+        assert!(!is_root_or_empty(r"C:\backend\server.js"));
+        assert!(!is_root_or_empty("backend/server.js"));
+        assert!(!is_root_or_empty(r"C:\Program Files\Omnitome"));
+    }
+
+    #[test]
+    fn test_resolve_node_paths_rejects_root_and_empty() {
+        assert!(resolve_node_paths(Path::new("")).is_none());
+        assert!(resolve_node_paths(Path::new("   ")).is_none());
+        assert!(resolve_node_paths(Path::new("C:")).is_none());
+        assert!(resolve_node_paths(Path::new(r"C:\")).is_none());
+        assert!(resolve_node_paths(Path::new("C:/")).is_none());
+        assert!(resolve_node_paths(Path::new("c:")).is_none());
+        assert!(resolve_node_paths(Path::new(r"c:\")).is_none());
+        assert!(resolve_node_paths(Path::new("c:/")).is_none());
+        assert!(resolve_node_paths(Path::new("D:")).is_none());
+        assert!(resolve_node_paths(Path::new(r"D:\")).is_none());
+        assert!(resolve_node_paths(Path::new("D:/")).is_none());
+        assert!(resolve_node_paths(Path::new("/")).is_none());
+        assert!(resolve_node_paths(Path::new("\\")).is_none());
     }
 
     #[test]
