@@ -47,29 +47,54 @@ if (-not ($SkipZip -or $SkipArchive)) {
         }
 
         $swZip = [System.Diagnostics.Stopwatch]::StartNew()
-        $sevenZipCmd = Get-Command 7z.exe -ErrorAction SilentlyContinue
-        $sevenZipFromPath = if ($sevenZipCmd) { $sevenZipCmd.Source } else { $null }
-        $sevenZipCandidates = @(
-            $sevenZipFromPath,
-            "${env:ProgramFiles}\7-Zip\7z.exe",
-            "${env:ProgramFiles(x86)}\7-Zip\7z.exe"
-        ) | Where-Object { $_ -and (Test-Path $_) }
+        $sevenZip = $null
 
-        if ($sevenZipCandidates) {
-            $sevenZip = $sevenZipCandidates[0]
-            Write-Host "  Using 7-Zip ($sevenZip) to compress $sidecarDir -> $sidecar7z..." -ForegroundColor Gray
-            Push-Location $sidecarDir
-            try {
-                & $sevenZip a -t7z -mx=5 $sidecar7z * | Out-Null
-                if ($LASTEXITCODE -ne 0) {
-                    if (Test-Path $sidecar7z) { Remove-Item -Force $sidecar7z -ErrorAction SilentlyContinue }
-                    throw "7-Zip failed to create $sidecar7z with exit code $LASTEXITCODE"
-                }
-            } finally {
-                Pop-Location
+        # 1. Check standard hardcoded paths first: C:\Program Files\7-Zip\7z.exe and C:\Program Files (x86)\7-Zip\7z.exe
+        $standardPaths = @(
+            "C:\Program Files\7-Zip\7z.exe",
+            "C:\Program Files (x86)\7-Zip\7z.exe"
+        )
+        foreach ($path in $standardPaths) {
+            if (Test-Path $path) {
+                $sevenZip = [string]$path
+                break
             }
-        } else {
-            throw "7z.exe is required to create sidecar.7z but was not found in PATH or standard installation directories."
+        }
+
+        # 2. If not found there, use (Get-Command 7z -ErrorAction SilentlyContinue).Source
+        # but ensure it explicitly casts to a single string, not an array of characters.
+        if (-not $sevenZip) {
+            $cmdSource = (Get-Command 7z -ErrorAction SilentlyContinue).Source
+            if ($cmdSource) {
+                if ($cmdSource -is [array]) {
+                    $validSource = $cmdSource | Where-Object { 
+                        -not [string]::IsNullOrWhiteSpace($_) -and ($_ -like "*.exe") -and (Test-Path $_) 
+                    } | Select-Object -First 1
+                    if (-not $validSource) {
+                        $validSource = $cmdSource | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
+                    }
+                    $sevenZip = [string]$validSource
+                } else {
+                    $sevenZip = [string]$cmdSource
+                }
+            }
+        }
+
+        # 3. Add a safety check: if $sevenZip is not a valid path ending in .exe or if Test-Path $sevenZip returns false, throw a clear error message
+        if ([string]::IsNullOrWhiteSpace($sevenZip) -or ($sevenZip -notlike "*.exe") -or (-not (Test-Path $sevenZip))) {
+            throw "7z.exe is required to create sidecar.7z but was not found in standard paths or PATH (resolved to: '$sevenZip')."
+        }
+
+        Write-Host "  Using 7-Zip ($sevenZip) to compress $sidecarDir -> $sidecar7z..." -ForegroundColor Gray
+        Push-Location $sidecarDir
+        try {
+            & $sevenZip a -t7z -mx=5 $sidecar7z * | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                if (Test-Path $sidecar7z) { Remove-Item -Force $sidecar7z -ErrorAction SilentlyContinue }
+                throw "7-Zip failed to create $sidecar7z with exit code $LASTEXITCODE"
+            }
+        } finally {
+            Pop-Location
         }
         $swZip.Stop()
         $archiveSizeMB = [Math]::Round((Get-Item $sidecar7z).Length / 1MB, 2)
