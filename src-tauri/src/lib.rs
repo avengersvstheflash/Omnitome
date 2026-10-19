@@ -204,6 +204,9 @@ fn find_project_root() -> PathBuf {
         if dir.join("backend").join("server.js").exists() {
             return dir;
         }
+        if dir.join("..").join("backend").join("server.js").exists() {
+            return dir.join("..").canonicalize().unwrap_or_else(|_| dir.join(".."));
+        }
     }
     if let Ok(mut exe) = std::env::current_exe() {
         while exe.pop() {
@@ -407,15 +410,33 @@ fn find_sidecar_executable(_app: &tauri::AppHandle, _project_root: &Path) -> Res
     // 1. In dev mode (debug_assertions), prefer venv python main.py or local frozen sidecar
     #[cfg(debug_assertions)]
     {
-        let venv_python = strip_windows_verbatim(&_project_root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe"));
-        let script = strip_windows_verbatim(&_project_root.join("sidecars").join("python").join("main.py"));
-        if venv_python.exists() && script.exists() {
-            return Ok((venv_python, vec![script.to_string_lossy().to_string()], strip_windows_verbatim(_project_root)));
+        // 1. Check if we are in project root
+        let candidate_venv = strip_windows_verbatim(&_project_root.join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe"));
+        let candidate_script = strip_windows_verbatim(&_project_root.join("sidecars").join("python").join("main.py"));
+
+        // 2. Check the parent directory (project root if running from src-tauri)
+        let parent_venv = strip_windows_verbatim(&_project_root.join("..").join("sidecars").join("python").join(".venv").join("Scripts").join("python.exe"));
+        let parent_script = strip_windows_verbatim(&_project_root.join("..").join("sidecars").join("python").join("main.py"));
+
+        if candidate_venv.exists() && candidate_script.exists() {
+            return Ok((candidate_venv, vec![candidate_script.to_string_lossy().to_string()], strip_windows_verbatim(_project_root)));
         }
+        if parent_venv.exists() && parent_script.exists() {
+            let parent_root = _project_root.join("..").canonicalize().unwrap_or_else(|_| _project_root.join(".."));
+            return Ok((parent_venv, vec![parent_script.to_string_lossy().to_string()], strip_windows_verbatim(&parent_root)));
+        }
+
         let local_frozen = strip_windows_verbatim(&_project_root.join("dist-sidecar").join("omnitome-sidecar").join("omnitome-sidecar.exe"));
         if local_frozen.exists() {
             let working_dir = local_frozen.parent().unwrap_or(_project_root).to_path_buf();
             return Ok((local_frozen, vec![], working_dir));
+        }
+
+        let parent_frozen = strip_windows_verbatim(&_project_root.join("..").join("dist-sidecar").join("omnitome-sidecar").join("omnitome-sidecar.exe"));
+        if parent_frozen.exists() {
+            let parent_root = _project_root.join("..").canonicalize().unwrap_or_else(|_| _project_root.join(".."));
+            let working_dir = parent_frozen.parent().unwrap_or(&parent_root).to_path_buf();
+            return Ok((parent_frozen, vec![], working_dir));
         }
     }
 
@@ -448,6 +469,7 @@ fn find_sidecar_executable(_app: &tauri::AppHandle, _project_root: &Path) -> Res
     #[cfg(debug_assertions)]
     {
         candidate_archives.push(strip_windows_verbatim(&_project_root.join("resources").join("sidecar.7z")));
+        candidate_archives.push(strip_windows_verbatim(&_project_root.join("..").join("resources").join("sidecar.7z")));
     }
 
     for archive_path in &candidate_archives {
@@ -485,13 +507,24 @@ fn find_node_executable(_app: &tauri::AppHandle, _project_root: &Path) -> Result
     // 1. In dev mode (debug_assertions), prefer project backend and local/nvm node
     #[cfg(debug_assertions)]
     {
-        let server_js = strip_windows_verbatim(&_project_root.join("backend").join("server.js"));
+        let candidate_server = strip_windows_verbatim(&_project_root.join("backend").join("server.js"));
+        let parent_server = strip_windows_verbatim(&_project_root.join("..").join("backend").join("server.js"));
+
+        let (server_js, working_dir) = if candidate_server.exists() {
+            (candidate_server, strip_windows_verbatim(_project_root))
+        } else if parent_server.exists() {
+            let parent_root = _project_root.join("..").canonicalize().unwrap_or_else(|_| _project_root.join(".."));
+            (parent_server, strip_windows_verbatim(&parent_root))
+        } else {
+            (candidate_server, strip_windows_verbatim(_project_root))
+        };
+
         let nvm_node = PathBuf::from(r"C:\Users\Godsa\AppData\Local\Author Software\nvm\installs\v22.23.2\node.exe");
         if nvm_node.exists() && server_js.exists() {
-            return Ok((strip_windows_verbatim(&nvm_node), vec![server_js.to_string_lossy().to_string()], strip_windows_verbatim(_project_root)));
+            return Ok((strip_windows_verbatim(&nvm_node), vec![server_js.to_string_lossy().to_string()], working_dir));
         }
         if server_js.exists() {
-            return Ok(("node".into(), vec![server_js.to_string_lossy().to_string()], strip_windows_verbatim(_project_root)));
+            return Ok(("node".into(), vec![server_js.to_string_lossy().to_string()], working_dir));
         }
     }
 
