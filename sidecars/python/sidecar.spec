@@ -54,12 +54,15 @@ def should_exclude_data_file(src, dst=''):
     dst_clean = str(dst).replace('\\', '/').lower()
     if 'paddle/include' in src_clean or 'paddle/include' in dst_clean:
         return True
+    # Keep thinc CUDA kernel files (.cu) required by thinc backends
+    if ('thinc' in src_clean or 'thinc' in dst_clean) and (src_clean.endswith('.cu') or dst_clean.endswith('.cu')):
+        return False
     if src_clean.endswith(('.h', '.hpp', '.cuh', '.c', '.cpp', '.cu')):
         return True
     return False
 
 # Collect data files from installed packages
-for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 'sentence_transformers']:
+for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 'sentence_transformers', 'thinc']:
     try:
         pkg_datas = collect_data_files(pkg)
         for item in pkg_datas:
@@ -75,7 +78,7 @@ for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 
 datas = [d for d in datas if not should_exclude_data_file(d[0], d[1])]
 
 # Collect package dist-info metadata (required for packages using importlib.metadata.version)
-for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers', 'torch', 'paddleocr', 'kokoro', 'misaki', 'tokenizers', 'safetensors', 'filelock', 'numpy', 'scipy', 'pydantic', 'fastapi']:
+for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers', 'torch', 'paddleocr', 'kokoro', 'misaki', 'tokenizers', 'safetensors', 'filelock', 'numpy', 'scipy', 'pydantic', 'fastapi', 'thinc']:
     try:
         datas += copy_metadata(pkg)
     except Exception as e:
@@ -124,6 +127,7 @@ hiddenimports = [
     'transformers',
     'transformers.models.xlm_roberta',
     'transformers.models.auto',
+    'transformers.models.metaclip_2',
     'tokenizers',
     'safetensors',
 
@@ -133,6 +137,7 @@ hiddenimports = [
     'docx',
     'striprtf',
     'pysbd',
+    'thinc',
 
     # Text-to-Speech (Kokoro & Phonemizers)
     'kokoro',
@@ -166,7 +171,7 @@ hiddenimports = [
 ]
 
 # Collect submodules for core dynamic packages
-for pkg in ['pydantic', 'pydantic_core', 'uvicorn', 'fastapi', 'sentence_transformers']:
+for pkg in ['pydantic', 'pydantic_core', 'uvicorn', 'fastapi', 'sentence_transformers', 'transformers.models.auto', 'transformers.models.xlm_roberta', 'transformers.models.metaclip_2', 'thinc']:
     try:
         hiddenimports += collect_submodules(pkg)
     except Exception as e:

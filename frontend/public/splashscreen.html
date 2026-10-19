@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Omnitome</title>
+  <!-- Omnitome Splash: Unpacking neural engine... -->
   <style>
     * {
       box-sizing: border-box;
@@ -29,22 +30,22 @@
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 24px 20px 20px;
+      padding: 24px 20px 22px;
       border: 1px solid rgba(168, 85, 247, 0.35);
       -webkit-app-region: drag;
-      box-shadow: inset 0 0 40px rgba(168, 85, 247, 0.08);
+      box-shadow: inset 0 0 50px rgba(168, 85, 247, 0.08);
       position: relative;
     }
 
     /* Ambient background glow */
     .glow-bg {
       position: absolute;
-      top: 20%;
+      top: 36%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 260px;
-      height: 120px;
-      background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.18) 0%, rgba(10, 12, 20, 0) 70%);
+      width: 280px;
+      height: 150px;
+      background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.16) 0%, rgba(10, 12, 20, 0) 70%);
       pointer-events: none;
       z-index: 0;
     }
@@ -74,164 +75,186 @@
       text-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
     }
 
-    /* Library & Flying Books Animation Stage */
+    /* Book Stage */
     .stage {
       position: relative;
-      width: 280px;
-      height: 110px;
+      width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-end;
+      justify-content: center;
       z-index: 1;
+      margin-top: 6px;
     }
 
-    /* Glowing Bookshelf */
-    .shelf {
-      position: absolute;
-      bottom: 12px;
-      width: 220px;
-      height: 4px;
-      background: linear-gradient(90deg, transparent 0%, #7c3aed 20%, #c084fc 50%, #7c3aed 80%, transparent 100%);
-      border-radius: 2px;
-      box-shadow: 0 0 12px rgba(192, 132, 252, 0.6);
-    }
-
-    /* Central Magic Book (flipping pages) */
-    .magic-book {
+    /* Floating Book Container */
+    .book-wrapper {
       position: relative;
-      width: 64px;
-      height: 44px;
-      margin-bottom: 24px;
-      perspective: 300px;
+      animation: book-float 3s ease-in-out infinite;
+    }
+
+    @keyframes book-float {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    /* 3D Book Layout */
+    .book {
+      position: relative;
+      width: 110px;
+      height: 72px;
+      perspective: 700px;
       transform-style: preserve-3d;
     }
 
-    .cover-left, .cover-right {
+    /* Hard covers */
+    .book-cover {
       position: absolute;
       top: 0;
-      width: 32px;
-      height: 44px;
-      border-radius: 3px 0 0 3px;
-      background: linear-gradient(135deg, #581c87, #3b0764);
+      width: 55px;
+      height: 72px;
+      background: linear-gradient(135deg, #4c1d95 0%, #2e1065 100%);
       border: 1px solid rgba(192, 132, 252, 0.4);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
     }
 
-    .cover-left {
+    .book-cover.left {
       left: 0;
+      border-radius: 4px 0 0 4px;
       transform-origin: right center;
-      box-shadow: -2px 4px 10px rgba(0, 0, 0, 0.5);
     }
 
-    .cover-right {
+    .book-cover.right {
       right: 0;
+      border-radius: 0 4px 4px 0;
+      transform-origin: left center;
+    }
+
+    /* Static inner pages (left & right bases) */
+    .page-base {
+      position: absolute;
+      top: 3px;
+      width: 50px;
+      height: 66px;
+      box-shadow: inset 0 0 8px rgba(139, 92, 246, 0.2);
+    }
+
+    .page-base.left {
+      left: 3px;
+      border-radius: 3px 0 0 3px;
+      background: linear-gradient(to left, #e0e7ff 0%, #ede9fe 100%);
+    }
+
+    .page-base.right {
+      right: 3px;
+      border-radius: 0 3px 3px 0;
+      background: linear-gradient(to right, #e0e7ff 0%, #f5f3ff 100%);
+    }
+
+    /* Subtle text line markings on pages */
+    .page-lines {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 5px,
+        rgba(139, 92, 246, 0.25) 5px,
+        rgba(139, 92, 246, 0.25) 7px
+      );
+      border-radius: 1px;
+    }
+
+    /* Book Spine */
+    .book-spine {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 72px;
+      background: #1e1b4b;
+      border-left: 1px solid rgba(192, 132, 252, 0.3);
+      border-right: 1px solid rgba(192, 132, 252, 0.3);
+      z-index: 5;
+    }
+
+    /* 3D Flipping Pages */
+    .flipping-page {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 50px;
+      height: 66px;
+      background: linear-gradient(to right, #ede9fe 0%, #f5f3ff 100%);
       border-radius: 0 3px 3px 0;
       transform-origin: left center;
-      box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.5);
+      transform-style: preserve-3d;
+      backface-visibility: visible;
+      animation: flip-page 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+      box-shadow: inset 2px 0 4px rgba(124, 58, 237, 0.15);
+      z-index: 4;
     }
 
-    .page {
-      position: absolute;
-      top: 2px;
-      right: 0;
-      width: 30px;
-      height: 40px;
-      background: linear-gradient(to right, #ede9fe, #f5f3ff);
-      border-radius: 0 2px 2px 0;
-      transform-origin: left center;
-      animation: flip-page 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    .flipping-page .page-lines {
+      backface-visibility: hidden;
     }
 
-    .page-1 { animation-delay: 0s; }
-    .page-2 { animation-delay: 0.8s; }
-    .page-3 { animation-delay: 1.6s; }
+    .p1 { animation-delay: 0s; }
+    .p2 { animation-delay: 0.8s; }
+    .p3 { animation-delay: 1.6s; }
 
     @keyframes flip-page {
       0% {
         transform: rotateY(0deg);
         background: #f5f3ff;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
       }
-      40% {
+      45% {
         background: #ddd6fe;
+        box-shadow: -8px 8px 18px rgba(192, 132, 252, 0.35);
       }
       80%, 100% {
         transform: rotateY(-180deg);
         background: #ede9fe;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
       }
     }
 
-    /* Arranging Books on the shelf */
-    .shelf-books {
+    /* Glow reflection under book */
+    .book-glow {
       position: absolute;
-      bottom: 16px;
-      display: flex;
-      align-items: flex-end;
-      gap: 6px;
+      bottom: -16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 18px;
+      background: radial-gradient(ellipse at center, rgba(192, 132, 252, 0.45) 0%, rgba(10, 12, 20, 0) 70%);
+      border-radius: 50%;
+      filter: blur(5px);
+      animation: glow-pulse 3s ease-in-out infinite;
+      pointer-events: none;
     }
 
-    .shelf-book {
-      width: 10px;
-      border-radius: 2px 2px 0 0;
-      transform-origin: bottom center;
-      animation: book-bob 2s ease-in-out infinite;
-    }
-
-    .b1 { height: 32px; background: #6366f1; animation-delay: 0.1s; }
-    .b2 { height: 26px; background: #8b5cf6; animation-delay: 0.3s; }
-    .b3 { height: 36px; background: #a855f7; animation-delay: 0.5s; }
-    .b4 { height: 28px; background: #ec4899; animation-delay: 0.2s; }
-    .b5 { height: 34px; background: #3b82f6; animation-delay: 0.4s; }
-
-    @keyframes book-bob {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
-    }
-
-    /* Flying books sorting into the library */
-    .flying-book {
-      position: absolute;
-      width: 16px;
-      height: 12px;
-      border-radius: 2px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      animation: fly-and-settle 3.6s ease-in-out infinite;
-    }
-
-    .fb-1 {
-      background: #a855f7;
-      box-shadow: 0 0 8px #a855f7;
-      animation-delay: 0s;
-    }
-
-    .fb-2 {
-      background: #06b6d4;
-      box-shadow: 0 0 8px #06b6d4;
-      animation-delay: 1.8s;
-    }
-
-    @keyframes fly-and-settle {
-      0% {
-        opacity: 0;
-        transform: translate(-90px, -50px) rotate(-35deg) scale(0.6);
-      }
-      20% {
-        opacity: 1;
-        transform: translate(-40px, -30px) rotate(-15deg) scale(0.85);
+    @keyframes glow-pulse {
+      0%, 100% {
+        opacity: 0.5;
+        transform: translateX(-50%) scale(0.9);
       }
       50% {
-        transform: translate(30px, -45px) rotate(20deg) scale(1);
-      }
-      80% {
-        opacity: 1;
-        transform: translate(65px, -15px) rotate(5deg) scale(0.9);
-      }
-      100% {
-        opacity: 0;
-        transform: translate(80px, 0px) rotate(0deg) scale(0.7);
+        opacity: 0.85;
+        transform: translateX(-50%) scale(1.1);
       }
     }
 
-    /* Magical Floating Sparks */
+    /* Ambient Neural Sparks */
     .spark {
       position: absolute;
       width: 3px;
@@ -239,13 +262,14 @@
       background: #fdf4ff;
       border-radius: 50%;
       box-shadow: 0 0 6px #c084fc, 0 0 10px #a855f7;
-      animation: float-spark 2.2s ease-in infinite;
+      animation: float-spark 2.4s ease-in infinite;
+      pointer-events: none;
     }
 
-    .sp-1 { left: 45%; bottom: 25px; animation-delay: 0.2s; }
-    .sp-2 { left: 52%; bottom: 30px; animation-delay: 0.9s; }
-    .sp-3 { left: 38%; bottom: 20px; animation-delay: 1.5s; }
-    .sp-4 { left: 58%; bottom: 22px; animation-delay: 0.6s; }
+    .sp-1 { left: 28%; bottom: 6px; animation-delay: 0.2s; }
+    .sp-2 { left: 48%; bottom: 12px; animation-delay: 0.9s; }
+    .sp-3 { left: 68%; bottom: 4px; animation-delay: 1.6s; }
+    .sp-4 { left: 38%; bottom: 10px; animation-delay: 1.2s; }
 
     @keyframes float-spark {
       0% {
@@ -257,11 +281,11 @@
       }
       100% {
         opacity: 0;
-        transform: translateY(-55px) scale(1.4);
+        transform: translateY(-50px) scale(1.3);
       }
     }
 
-    /* Status Text */
+    /* Status Container & Rotating Sequence */
     .status-container {
       display: flex;
       flex-direction: column;
@@ -269,18 +293,62 @@
       gap: 6px;
       text-align: center;
       z-index: 1;
+      width: 100%;
     }
 
-    .primary-msg {
-      font-size: 13.5px;
+    /* Carousel Text Container */
+    .text-carousel {
+      display: grid;
+      place-items: center;
+      position: relative;
+      width: 100%;
+      min-height: 24px;
+    }
+
+    .text-phrase {
+      grid-area: 1 / 1;
+      font-size: 14px;
       font-weight: 500;
-      color: #f1f5f9;
+      color: #d8b4fe;
       letter-spacing: 0.3px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
+      opacity: 0;
+      animation: cycle-phrase 9s ease-in-out infinite both;
+      text-shadow: 0 0 12px rgba(192, 132, 252, 0.4);
+      pointer-events: none;
     }
 
+    .phrase-1 { animation-delay: 0s; }
+    .phrase-2 { animation-delay: 3s; }
+    .phrase-3 { animation-delay: 6s; }
+
+    @keyframes cycle-phrase {
+      0% {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      4% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      29% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      33.33% {
+        opacity: 0;
+        transform: translateY(-6px);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-6px);
+      }
+    }
+
+    /* Subtle animated dot loader next to active phrase */
     .dot-loader {
       display: inline-flex;
       gap: 3px;
@@ -289,7 +357,7 @@
     .dot-loader span {
       width: 4px;
       height: 4px;
-      background: #a855f7;
+      background: #c084fc;
       border-radius: 50%;
       animation: pulse-dot 1.4s ease-in-out infinite;
     }
@@ -298,7 +366,7 @@
     .dot-loader span:nth-child(3) { animation-delay: 0.4s; }
 
     @keyframes pulse-dot {
-      0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.85); }
       40% { opacity: 1; transform: scale(1.2); }
     }
 
@@ -306,6 +374,23 @@
       font-size: 11.5px;
       color: #94a3b8;
       letter-spacing: 0.2px;
+    }
+
+    /* Accessibility: prefers-reduced-motion */
+    @media (prefers-reduced-motion: reduce) {
+      .book-wrapper, .flipping-page, .book-glow, .spark, .dot-loader span {
+        animation: none !important;
+      }
+      .flipping-page {
+        display: none;
+      }
+      .text-phrase {
+        animation: none !important;
+        opacity: 0;
+      }
+      .phrase-1 {
+        opacity: 1;
+      }
     }
   </style>
 </head>
@@ -318,48 +403,64 @@
     <span class="header-title">Omnitome</span>
   </div>
 
-  <!-- Library & Books Animation -->
+  <!-- Stage: Book Flipping Animation -->
   <div class="stage">
-    <div class="flying-book fb-1"></div>
-    <div class="flying-book fb-2"></div>
-
     <div class="spark sp-1"></div>
     <div class="spark sp-2"></div>
     <div class="spark sp-3"></div>
     <div class="spark sp-4"></div>
 
-    <!-- Flipping open magic grimoire -->
-    <div class="magic-book">
-      <div class="cover-left"></div>
-      <div class="page page-1"></div>
-      <div class="page page-2"></div>
-      <div class="page page-3"></div>
-      <div class="cover-right"></div>
-    </div>
+    <div class="book-wrapper">
+      <div class="book">
+        <!-- Hardcovers -->
+        <div class="book-cover left"></div>
+        <div class="book-cover right"></div>
 
-    <!-- Arranged books and glowing shelf -->
-    <div class="shelf-books">
-      <div class="shelf-book b1"></div>
-      <div class="shelf-book b2"></div>
-      <div class="shelf-book b3"></div>
-      <div class="shelf-book b4"></div>
-      <div class="shelf-book b5"></div>
+        <!-- Static Base Pages -->
+        <div class="page-base left"><div class="page-lines"></div></div>
+        <div class="page-base right"><div class="page-lines"></div></div>
+
+        <!-- Spine -->
+        <div class="book-spine"></div>
+
+        <!-- Flipping Pages -->
+        <div class="flipping-page p1"><div class="page-lines"></div></div>
+        <div class="flipping-page p2"><div class="page-lines"></div></div>
+        <div class="flipping-page p3"><div class="page-lines"></div></div>
+      </div>
+      <div class="book-glow"></div>
     </div>
-    <div class="shelf"></div>
   </div>
 
-  <!-- Status Info -->
+  <!-- Status Info: Rotating Phrases -->
   <div class="status-container">
-    <div class="primary-msg">
-      Unpacking neural engine...
-      <div class="dot-loader">
-        <span></span>
-        <span></span>
-        <span></span>
+    <div class="text-carousel">
+      <div class="text-phrase phrase-1">
+        <span>Setting up the Omnitome...</span>
+        <div class="dot-loader">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+      <div class="text-phrase phrase-2">
+        <span>Building your library...</span>
+        <div class="dot-loader">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+      <div class="text-phrase phrase-3">
+        <span>Turning on the engines...</span>
+        <div class="dot-loader">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
       </div>
     </div>
     <div class="secondary-msg">First launch may take 1-2 minutes.</div>
   </div>
 </body>
 </html>
-
