@@ -62,7 +62,7 @@ def should_exclude_data_file(src, dst=''):
     return False
 
 # Collect data files from installed packages
-for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 'sentence_transformers', 'thinc']:
+for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 'sentence_transformers', 'thinc', 'language_tags']:
     try:
         pkg_datas = collect_data_files(pkg)
         for item in pkg_datas:
@@ -78,7 +78,7 @@ for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 
 datas = [d for d in datas if not should_exclude_data_file(d[0], d[1])]
 
 # Collect package dist-info metadata (required for packages using importlib.metadata.version)
-for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers', 'torch', 'paddleocr', 'kokoro', 'misaki', 'tokenizers', 'safetensors', 'filelock', 'numpy', 'scipy', 'pydantic', 'fastapi', 'thinc']:
+for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers', 'torch', 'paddleocr', 'kokoro', 'misaki', 'tokenizers', 'safetensors', 'filelock', 'numpy', 'scipy', 'pydantic', 'fastapi', 'thinc', 'language_tags']:
     try:
         datas += copy_metadata(pkg)
     except Exception as e:
@@ -144,6 +144,7 @@ hiddenimports = [
     'soundfile',
     'misaki',
     'espeakng_loader',
+    'language_tags',
 
     # PaddleOCR & Computer Vision
     'paddleocr',
@@ -171,7 +172,7 @@ hiddenimports = [
 ]
 
 # Collect submodules for core dynamic packages
-for pkg in ['pydantic', 'pydantic_core', 'uvicorn', 'fastapi', 'sentence_transformers', 'transformers.models.auto', 'transformers.models.xlm_roberta', 'transformers.models.metaclip_2', 'thinc']:
+for pkg in ['pydantic', 'pydantic_core', 'uvicorn', 'fastapi', 'sentence_transformers', 'transformers.models.auto', 'transformers.models.xlm_roberta', 'transformers.models.metaclip_2', 'thinc', 'language_tags']:
     try:
         hiddenimports += collect_submodules(pkg)
     except Exception as e:

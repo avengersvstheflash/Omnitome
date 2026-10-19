@@ -21,6 +21,8 @@ EMBED_GPU_BATCH_SIZE = int(os.environ.get("EMBED_GPU_BATCH_SIZE", "4"))
 
 router = APIRouter(prefix="", tags=["embed"])
 
+_embedder = None
+
 
 def get_embed_model_path() -> str:
     model_dir = os.environ.get("OMNITOME_MODEL_DIR")
@@ -38,9 +40,12 @@ def get_embed_model_path() -> str:
 
 def is_embed_installed() -> bool:
     local_path = get_embed_model_path()
+    has_weights = os.path.exists(os.path.join(local_path, "model.safetensors")) or os.path.exists(
+        os.path.join(local_path, "pytorch_model.bin")
+    )
     if (
         os.path.exists(local_path)
-        and os.path.exists(os.path.join(local_path, "model.safetensors"))
+        and has_weights
         and os.path.exists(os.path.join(local_path, "config.json"))
     ):
         return True
@@ -53,6 +58,9 @@ def is_embed_installed() -> bool:
 
 
 def _load_embedder():
+    global _embedder
+    if _embedder is not None:
+        return _embedder
     import torch
     from sentence_transformers import SentenceTransformer
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -64,6 +72,7 @@ def _load_embedder():
         model_id_or_path = local_path if os.path.exists(local_path) else "BAAI/bge-m3"
         model = SentenceTransformer(model_id_or_path, model_kwargs=model_kwargs, device=device, local_files_only=True)
         model.max_seq_length = EMBED_MAX_SEQ_LENGTH
+        _embedder = model
         print(f"[Embed Warmup] BGE-M3 ready on {device} in {round(time.time() - t0, 2)}s (max_seq_length={EMBED_MAX_SEQ_LENGTH})")
         return model
     except Exception as e:
@@ -72,7 +81,9 @@ def _load_embedder():
 
 
 def _unload_embedder(model=None):
+    global _embedder
     print("[Embed] Unloading BGE-M3...")
+    _embedder = None
     del model
 
 
@@ -115,7 +126,8 @@ def embed_batch(req: EmbedBatchRequest):
             }
         )
 
-    if not is_embed_installed():
+    is_loaded = (_embedder is not None) or (lifecycle_manager.get_state("embed") == ModelState.LOADED.value)
+    if not is_loaded and not is_embed_installed():
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
@@ -126,7 +138,7 @@ def embed_batch(req: EmbedBatchRequest):
             }
         )
 
-    if lifecycle_manager.get_state("embed") == ModelState.LOADING.value:
+    if _embedder is None and lifecycle_manager.get_state("embed") == ModelState.LOADING.value:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
@@ -138,11 +150,17 @@ def embed_batch(req: EmbedBatchRequest):
 
     try:
         with lifecycle_manager.acquire("embed") as embedder:
-            if embedder is None:
+            active_embedder = embedder or _embedder
+            if active_embedder is None:
                 raise RuntimeError("BGE-M3 model instance is not available")
             t0 = time.time()
-            vectors = embedder.encode(req.texts, batch_size=EMBED_GPU_BATCH_SIZE, normalize_embeddings=True)
-            embeddings = vectors.tolist() if hasattr(vectors, "tolist") else [v.tolist() for v in vectors]
+            vectors = active_embedder.encode(req.texts, batch_size=EMBED_GPU_BATCH_SIZE, normalize_embeddings=True)
+            if hasattr(vectors, "tolist"):
+                embeddings = vectors.tolist()
+            elif isinstance(vectors, list):
+                embeddings = [v.tolist() if hasattr(v, "tolist") else v for v in vectors]
+            else:
+                embeddings = list(vectors)
             dur_ms = round((time.time() - t0) * 1000, 1)
             print(f"[Routing: Embed] Encoded {len(req.texts)} texts in {dur_ms}ms")
 

@@ -153,7 +153,9 @@ async function runS13Tests() {
     const defaultManager = require('../services/resourceManager');
     const origDefaultCheck = defaultManager.checkDiskSpace;
     const origDefaultIsOnline = defaultManager.isOnline;
+    const origDefaultIsModelInstalled = defaultManager.isModelInstalled;
     defaultManager.isOnline = async () => true;
+    defaultManager.isModelInstalled = () => false;
     defaultManager.checkDiskSpace = async () => ({
       availableBytes: 500,
       requiredBytes: 5000000000,
@@ -167,6 +169,7 @@ async function runS13Tests() {
 
     defaultManager.checkDiskSpace = origDefaultCheck;
     defaultManager.isOnline = origDefaultIsOnline;
+    defaultManager.isModelInstalled = origDefaultIsModelInstalled;
     manager.checkDiskSpace = origCheck;
 
     passed++;

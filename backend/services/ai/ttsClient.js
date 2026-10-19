@@ -36,7 +36,8 @@ function computeSentenceHash(text, voice = 'af_heart', speed = 1.0) {
     .replace(/\s*\(Sources? \d+(?:\s*-\s*\d+)?(?:\s*,\s*\d+(?:\s*-\s*\d+)?)*\)/g, '')
     .trim()
     .replace(/\s+/g, ' ');
-  const normVoice = String(voice || 'af_heart').toLowerCase().trim();
+  const rawVoice = String(voice || 'af_heart').toLowerCase().trim();
+  const normVoice = VOICE_WHITELIST.includes(rawVoice) ? rawVoice : 'af_heart';
   const normSpeed = Number(speed !== undefined && speed !== null ? speed : 1.0).toFixed(2);
   const payload = `${normVoice}:${normSpeed}:${cleaned}`;
   return crypto.createHash('sha256').update(payload, 'utf8').digest('hex');
@@ -51,7 +52,8 @@ function computeSentenceHash(text, voice = 'af_heart', speed = 1.0) {
  * @returns {{ dir: string, filePath: string }}
  */
 function resolveAudioPath(hash, voice = 'af_heart') {
-  const normVoice = String(voice || 'af_heart').toLowerCase().trim();
+  const rawVoice = String(voice || 'af_heart').toLowerCase().trim();
+  const normVoice = VOICE_WHITELIST.includes(rawVoice) ? rawVoice : 'af_heart';
   const prefix = hash.slice(0, 2);
   const dir = path.join(TTS_CACHE_DIR, normVoice, prefix);
   const filePath = path.join(dir, `${hash}.wav`);

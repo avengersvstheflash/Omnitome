@@ -205,7 +205,8 @@ class ResourceManager {
     if (Array.isArray(model.markerFiles) && model.markerFiles.length > 0) {
       for (const marker of model.markerFiles) {
         const markerPath = path.join(targetDir, marker);
-        if (!fs.existsSync(markerPath)) {
+        const flatMarkerPath = path.join(targetDir, path.basename(marker));
+        if (!fs.existsSync(markerPath) && !fs.existsSync(flatMarkerPath)) {
           return false;
         }
       }
@@ -651,6 +652,13 @@ class ResourceManager {
         });
       } else if (model.format === 'zip') {
         const zip = new AdmZip(tmpFilePath);
+        for (const entry of zip.getEntries()) {
+          const resolved = path.resolve(stagingDir, entry.entryName);
+          const rel = path.relative(stagingDir, resolved);
+          if (rel.startsWith('..') || path.isAbsolute(rel)) {
+            throw new Error(`Zip slip path traversal detected in model archive: ${entry.entryName}`);
+          }
+        }
         zip.extractAllTo(stagingDir, true);
       } else {
         throw new Error(`Unsupported model archive format: ${model.format}`);
@@ -658,14 +666,17 @@ class ResourceManager {
 
       let unpackSource = stagingDir;
       if (Array.isArray(model.markerFiles) && model.markerFiles.length > 0) {
-        const rootHasAll = model.markerFiles.every((m) => fs.existsSync(path.join(stagingDir, m)));
+        const checkMarkerExists = (dir, marker) =>
+          fs.existsSync(path.join(dir, marker)) || fs.existsSync(path.join(dir, path.basename(marker)));
+
+        const rootHasAll = model.markerFiles.every((m) => checkMarkerExists(stagingDir, m));
         if (!rootHasAll) {
           const entries = await fs.promises.readdir(stagingDir);
           for (const entry of entries) {
             const candidate = path.join(stagingDir, entry);
             const stat = await fs.promises.stat(candidate);
             if (stat.isDirectory()) {
-              const subHasAll = model.markerFiles.every((m) => fs.existsSync(path.join(candidate, m)));
+              const subHasAll = model.markerFiles.every((m) => checkMarkerExists(candidate, m));
               if (subHasAll) {
                 unpackSource = candidate;
                 break;
@@ -675,7 +686,7 @@ class ResourceManager {
         }
 
         for (const marker of model.markerFiles) {
-          if (!fs.existsSync(path.join(unpackSource, marker))) {
+          if (!checkMarkerExists(unpackSource, marker)) {
             throw new Error(`Verification failed: missing expected marker file '${marker}' after extraction`);
           }
         }

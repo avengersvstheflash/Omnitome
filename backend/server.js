@@ -48,7 +48,24 @@ if (resourceManager.areAllInstalled()) {
 getDatabase();
 
 // Middleware
-app.use(cors());
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+  /^https?:\/\/\[::1\](:\d+)?$/,
+  /^tauri:\/\/localhost$/,
+  /^https?:\/\/tauri\.localhost$/,
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests without Origin header (local CLI, node test suites, app desktop direct)
+    if (!origin) return callback(null, true);
+    const isAllowed = ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
+    if (isAllowed) return callback(null, true);
+    return callback(null, false);
+  },
+  credentials: true,
+}));
 
 // Security: disable request body logging for sensitive settings routes
 app.use('/api/settings', (req, res, next) => {

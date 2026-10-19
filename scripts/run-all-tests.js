@@ -6,13 +6,16 @@
  * Stops immediately on the first failure and exits with code 1.
  * Exits code 0 with "ALL <n> SUITES PASS" if all pass.
  *
- * Dependency-free - uses only node:child_process and node:path.
+ * Automatically verifies and starts local Python sidecar if offline,
+ * ensuring seamless execution across developer environments.
  */
 
 'use strict';
 
-const { spawnSync } = require('node:child_process');
+const { spawnSync, spawn } = require('node:child_process');
 const path = require('node:path');
+const fs = require('node:fs');
+const http = require('node:http');
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -80,6 +83,7 @@ const SUITES = [
   'f79b_append_source_test.js',
   'f85_kokoro_tts_sidecar_test.js',
   's13_resource_manager_test.js',
+  'final_polish_verification_test.js',
 ];
 
 const NETWORK_SUITES = [
@@ -97,110 +101,185 @@ function checkOnline() {
   return check.status === 0;
 }
 
-let passed = 0;
-let skipped = 0;
-
-for (const name of SUITES) {
-  const testPath = path.join(ROOT, 'backend', 'tests', name);
-
-  process.stdout.write(`\n=== ${name} ===\n`);
-
-  const result = spawnSync(process.execPath, [testPath], {
-    stdio: 'inherit',
-    cwd: ROOT,
-    timeout: TIMEOUT_MS,
-    killSignal: 'SIGTERM',
+function checkSidecarRunning(port = 8765) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://127.0.0.1:${port}/v1/health`, (res) => {
+      resolve(res.statusCode === 200);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(1200, () => {
+      req.destroy();
+      resolve(false);
+    });
   });
-
-  const timedOut = result.error && result.error.code === 'ETIMEDOUT';
-
-  if (timedOut) {
-    process.stderr.write(`\nFAILED: ${name} - timed out after ${TIMEOUT_MS / 1000}s\n`);
-    process.exit(1);
-  }
-
-  if (result.error) {
-    process.stderr.write(`\nFAILED: ${name} - spawn error: ${result.error.message}\n`);
-    process.exit(1);
-  }
-
-  if (result.status !== 0) {
-    process.stderr.write(`\nFAILED: ${name} - exited with code ${result.status}\n`);
-    process.exit(1);
-  }
-
-  passed += 1;
 }
 
-const isOnline = checkOnline();
-
-for (const name of NETWORK_SUITES) {
-  process.stdout.write(`\n=== ${name} ===\n`);
-
-  if (!isOnline) {
-    process.stdout.write(`SKIPPED: ${name} - network required (offline)\n`);
-    skipped += 1;
-    continue;
+async function ensureSidecar() {
+  const isRunning = await checkSidecarRunning();
+  if (isRunning) {
+    return null;
   }
 
-  const testPath = path.join(ROOT, 'backend', 'tests', name);
+  const venvPythonWin = path.join(ROOT, 'sidecars', 'python', '.venv', 'Scripts', 'python.exe');
+  const venvPythonPosix = path.join(ROOT, 'sidecars', 'python', '.venv', 'bin', 'python');
+  const pythonBin = fs.existsSync(venvPythonWin) ? venvPythonWin : (fs.existsSync(venvPythonPosix) ? venvPythonPosix : 'python');
 
-  const result = spawnSync(process.execPath, [testPath], {
-    stdio: 'inherit',
+  const mainScript = path.join(ROOT, 'sidecars', 'python', 'main.py');
+  if (!fs.existsSync(mainScript)) {
+    return null;
+  }
+
+  process.stdout.write('[Test Runner] Python sidecar not detected on 127.0.0.1:8765. Launching background instance...\n');
+  const sidecarChild = spawn(pythonBin, [mainScript, '--port', '8765'], {
     cwd: ROOT,
-    timeout: TIMEOUT_MS,
-    killSignal: 'SIGTERM',
+    stdio: 'ignore',
   });
 
-  const timedOut = result.error && result.error.code === 'ETIMEDOUT';
+  const cleanup = () => {
+    try {
+      if (sidecarChild && !sidecarChild.killed) {
+        sidecarChild.kill('SIGTERM');
+      }
+    } catch (_) {}
+  };
 
-  if (timedOut) {
-    process.stderr.write(`\nFAILED: ${name} - timed out after ${TIMEOUT_MS / 1000}s\n`);
-    process.exit(1);
+  process.on('exit', cleanup);
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+
+  const start = Date.now();
+  while (Date.now() - start < 30000) {
+    await new Promise((r) => setTimeout(r, 600));
+    if (await checkSidecarRunning()) {
+      process.stdout.write('[Test Runner] Python sidecar successfully started on port 8765.\n');
+      return sidecarChild;
+    }
   }
 
-  if (result.error) {
-    process.stderr.write(`\nFAILED: ${name} - spawn error: ${result.error.message}\n`);
-    process.exit(1);
-  }
-
-  if (result.status !== 0) {
-    process.stderr.write(`\nFAILED: ${name} - exited with code ${result.status}\n`);
-    process.exit(1);
-  }
-
-  passed += 1;
+  process.stderr.write('[Test Runner] Warning: Python sidecar did not signal ready within 30s; proceeding with test execution.\n');
+  return sidecarChild;
 }
 
-process.stdout.write(`\n=== run-corpus-tests.js ===\n`);
-const corpusScript = path.join(ROOT, 'scripts', 'run-corpus-tests.js');
-const corpusResult = spawnSync(process.execPath, [corpusScript], {
-  stdio: 'inherit',
-  cwd: ROOT,
-  timeout: TIMEOUT_MS,
-  killSignal: 'SIGTERM',
+async function main() {
+  const spawnedSidecar = await ensureSidecar();
+
+  let passed = 0;
+  let skipped = 0;
+
+  try {
+    for (const name of SUITES) {
+      const testPath = path.join(ROOT, 'backend', 'tests', name);
+
+      process.stdout.write(`\n=== ${name} ===\n`);
+
+      const result = spawnSync(process.execPath, [testPath], {
+        stdio: 'inherit',
+        cwd: ROOT,
+        timeout: TIMEOUT_MS,
+        killSignal: 'SIGTERM',
+      });
+
+      const timedOut = result.error && result.error.code === 'ETIMEDOUT';
+
+      if (timedOut) {
+        process.stderr.write(`\nFAILED: ${name} - timed out after ${TIMEOUT_MS / 1000}s\n`);
+        process.exit(1);
+      }
+
+      if (result.error) {
+        process.stderr.write(`\nFAILED: ${name} - spawn error: ${result.error.message}\n`);
+        process.exit(1);
+      }
+
+      if (result.status !== 0) {
+        process.stderr.write(`\nFAILED: ${name} - exited with code ${result.status}\n`);
+        process.exit(1);
+      }
+
+      passed += 1;
+    }
+
+    const isOnline = checkOnline();
+
+    for (const name of NETWORK_SUITES) {
+      process.stdout.write(`\n=== ${name} ===\n`);
+
+      if (!isOnline) {
+        process.stdout.write(`SKIPPED: ${name} - network required (offline)\n`);
+        skipped += 1;
+        continue;
+      }
+
+      const testPath = path.join(ROOT, 'backend', 'tests', name);
+
+      const result = spawnSync(process.execPath, [testPath], {
+        stdio: 'inherit',
+        cwd: ROOT,
+        timeout: TIMEOUT_MS,
+        killSignal: 'SIGTERM',
+      });
+
+      const timedOut = result.error && result.error.code === 'ETIMEDOUT';
+
+      if (timedOut) {
+        process.stderr.write(`\nFAILED: ${name} - timed out after ${TIMEOUT_MS / 1000}s\n`);
+        process.exit(1);
+      }
+
+      if (result.error) {
+        process.stderr.write(`\nFAILED: ${name} - spawn error: ${result.error.message}\n`);
+        process.exit(1);
+      }
+
+      if (result.status !== 0) {
+        process.stderr.write(`\nFAILED: ${name} - exited with code ${result.status}\n`);
+        process.exit(1);
+      }
+
+      passed += 1;
+    }
+
+    process.stdout.write(`\n=== run-corpus-tests.js ===\n`);
+    const corpusScript = path.join(ROOT, 'scripts', 'run-corpus-tests.js');
+    const corpusResult = spawnSync(process.execPath, [corpusScript], {
+      stdio: 'inherit',
+      cwd: ROOT,
+      timeout: TIMEOUT_MS,
+      killSignal: 'SIGTERM',
+    });
+
+    const corpusTimedOut = corpusResult.error && corpusResult.error.code === 'ETIMEDOUT';
+    if (corpusTimedOut) {
+      process.stderr.write(`\nFAILED: CORPUS GATE - timed out after ${TIMEOUT_MS / 1000}s\n`);
+      process.exit(1);
+    }
+
+    if (corpusResult.error) {
+      process.stderr.write(`\nFAILED: CORPUS GATE - spawn error: ${corpusResult.error.message}\n`);
+      process.exit(1);
+    }
+
+    if (corpusResult.status !== 0) {
+      process.stderr.write(`\nFAILED: CORPUS GATE - exited with code ${corpusResult.status}\n`);
+      process.exit(corpusResult.status || 1);
+    }
+
+    if (skipped > 0) {
+      process.stdout.write(`\nALL ${passed} UNIT SUITES (${skipped} skipped: network required) + 1 CORPUS GATE PASS\n`);
+    } else {
+      process.stdout.write(`\nALL ${passed} UNIT SUITES + 1 CORPUS GATE PASS\n`);
+    }
+    process.exit(0);
+  } finally {
+    if (spawnedSidecar && !spawnedSidecar.killed) {
+      try {
+        spawnedSidecar.kill('SIGTERM');
+      } catch (_) {}
+    }
+  }
+}
+
+main().catch((err) => {
+  process.stderr.write(`\nFATAL TEST RUNNER ERROR: ${err.message}\n`);
+  process.exit(1);
 });
-
-const corpusTimedOut = corpusResult.error && corpusResult.error.code === 'ETIMEDOUT';
-if (corpusTimedOut) {
-  process.stderr.write(`\nFAILED: CORPUS GATE - timed out after ${TIMEOUT_MS / 1000}s\n`);
-  process.exit(1);
-}
-
-if (corpusResult.error) {
-  process.stderr.write(`\nFAILED: CORPUS GATE - spawn error: ${corpusResult.error.message}\n`);
-  process.exit(1);
-}
-
-if (corpusResult.status !== 0) {
-  process.stderr.write(`\nFAILED: CORPUS GATE - exited with code ${corpusResult.status}\n`);
-  process.exit(corpusResult.status || 1);
-}
-
-if (skipped > 0) {
-  process.stdout.write(`\nALL ${passed} UNIT SUITES (${skipped} skipped: network required) + 1 CORPUS GATE PASS\n`);
-} else {
-  process.stdout.write(`\nALL ${passed} UNIT SUITES + 1 CORPUS GATE PASS\n`);
-}
-process.exit(0);
-
