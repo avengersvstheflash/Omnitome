@@ -36,7 +36,78 @@ class DocumentStructureEngine {
     this.CHAPTER_EXPLICIT_REGEX = /^(?:chapter|part|unit|module|book|volume)\s+([0-9]+|[ivxlcdm]+|[a-z]+)(?:\s*[:.—–-]\s*(.*))?$/i;
     this.STANDALONE_NUMBERED_CHAPTER_REGEX = /^(\d+)\s+([A-Z][A-Za-z0-9\s—–-]{2,80})$/;
     this.SECTION_NUMBERED_REGEX = /^([A-Z]|\d+)(?:\.([0-9]+))+(?:\.([0-9]+))*(?:\.([0-9]+))*\s*(.*)$/;
-    this.TOC_LINE_REGEX = /(?:\s*\.{2,}\s*|\s{2,}|\t+)(?:\d+|[ivxlcdm]+)\s*$/i;
+    this.TOC_LINE_REGEX = /(?:(?:\s*(?:\.{2,}|…+)\s*|\s{2,}|\t+)(?:\d+|[ivx]{1,6})|^(?:(?:chapter|part|unit|book|volume|module)\s+\d+[:.]?\s*.+?|\d{1,3}\s+[A-Z][A-Za-z0-9\s—–-]{2,80})\s+(?:\d{1,4}))\s*$/i;
+  }
+
+  /**
+   * Deterministically checks if text content resembles a Table of Contents (TOC) page or block.
+   * Detects explicit headers, dot leaders, or a high density of lines ending in page numbers with structural keywords.
+   * @param {string} text
+   * @returns {boolean}
+   */
+  isTocContent(text) {
+    if (!text || typeof text !== 'string') return false;
+    const clean = text.trim();
+    if (!clean) return false;
+
+    // Never classify an Index or back-matter as TOC
+    const firstLine = clean.split('\n')[0].replace(/^#+\s*/, '').trim();
+    if (this.INDEX_REGEX.test(firstLine) || /^(?:index|subject\s*index|author\s*index)\b/i.test(firstLine)) {
+      return false;
+    }
+    // Index entries have commas preceding numbers: e.g. "Term, 42"
+    const indexEntryCount = (clean.match(/^[A-Za-z\s\-]+,\s*\d+/gm) || []).length;
+    if (indexEntryCount >= 2) {
+      return false;
+    }
+
+    // Standalone explicit TOC heading line (e.g. "Table of Contents", "Contents", "Brief Contents")
+    if (/(?:^|\n)\s*(?:#+\s*)?(?:table\s+of\s+contents|brief\s+contents|contents|detailed\s+contents)\s*$/im.test(clean)) {
+      return true;
+    }
+
+    const lines = clean.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+    if (lines.length < 2) return false;
+
+    let proseCount = 0;
+    let dotLeaderLines = 0;
+    let structuralTocLines = 0;
+    let multiSpaceNumberLines = 0;
+    let numberEndingLines = 0;
+
+    for (const line of lines) {
+      if (/,\s*\d+\s*$/.test(line)) continue; // skip index citations
+
+      if (line.split(/\s+/).length >= 8 && /[.?!]$/.test(line)) {
+        proseCount++;
+      }
+
+      if (/(?:\.{2,}|…+)\s*(?:\d+|[ivx]{1,6})\s*$/i.test(line)) {
+        dotLeaderLines++;
+      } else if (
+        /^(?:(?:chapter|part|section|unit|module|book|volume|appendix)\s+\d+[:.]?\s*.+?|\d{1,3}\s+[A-Z][A-Za-z0-9\s—–-]{2,80})\s+(?:\d{1,4})\s*$/i.test(line)
+      ) {
+        structuralTocLines++;
+      } else if (/^[A-Za-z0-9\s:,'"—–\-]+(?:\s{2,}|\t+)(\d+|[ivx]{1,6})\s*$/i.test(line)) {
+        multiSpaceNumberLines++;
+      } else if (line.split(/\s+/).length <= 15 && /(?:\s{2,}|\t+)(\d+|[ivx]{1,6})\s*$/i.test(line)) {
+        numberEndingLines++;
+      }
+    }
+
+    if (dotLeaderLines >= 2) return true;
+    if (structuralTocLines >= 2) return true;
+    if (dotLeaderLines + structuralTocLines >= 2) return true;
+
+    // Body pages with narrative prose sentences are not TOC pages
+    if (proseCount >= 2) return false;
+
+    const totalTocEntries = dotLeaderLines + structuralTocLines + multiSpaceNumberLines + numberEndingLines;
+    if (totalTocEntries >= 3 && (totalTocEntries / lines.length) >= 0.4) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -45,13 +116,30 @@ class DocumentStructureEngine {
   buildStructureTree({ format = 'text', rawText = '', blocks = [], pages = [], metadata = {} }) {
     let workingBlocks = Array.isArray(blocks) && blocks.length > 0 ? [...blocks] : [];
     let workingText = rawText || '';
+    const totalPages = pages.length || (workingBlocks[workingBlocks.length - 1]?.sourcePage || 1);
+    const maxFrontMatterPage = Math.max(30, Math.floor(totalPages * 0.25));
 
     // Identify TOC pages upfront so blocks on TOC pages are never treated as body chapter openers
     const tocPages = new Set();
-    const searchPages = pages.slice(0, Math.min(pages.length, 30));
-    for (const page of searchPages) {
-      if (/(?:^|\n)\s*(?:table\s+of\s+contents|brief\s+contents|contents)\b/im.test(page.text || '')) {
-        tocPages.add(page.num);
+    const pageTextMap = new Map();
+    if (pages.length > 0) {
+      const searchPages = pages.slice(0, Math.min(pages.length, maxFrontMatterPage));
+      for (const page of searchPages) {
+        pageTextMap.set(page.num, page.text || '');
+      }
+    } else if (workingBlocks.length > 0) {
+      for (const b of workingBlocks) {
+        const pNum = b.sourcePage || b.page || b.pageNum || 1;
+        if (pNum <= maxFrontMatterPage) {
+          const prev = pageTextMap.get(pNum) || '';
+          pageTextMap.set(pNum, prev ? `${prev}\n${b.text || ''}` : (b.text || ''));
+        }
+      }
+    }
+
+    for (const [pNum, text] of pageTextMap.entries()) {
+      if (this.isTocContent(text)) {
+        tocPages.add(pNum);
       }
     }
 
@@ -62,10 +150,16 @@ class DocumentStructureEngine {
       } else if (workingText) {
         workingBlocks = this.blocksFromText(workingText, format);
       }
-    } else if (tocPages.size > 0) {
+    } else {
       workingBlocks.forEach((b) => {
-        if (b.sourcePage && tocPages.has(b.sourcePage)) {
+        const pNum = b.sourcePage || b.page || b.pageNum || 1;
+        if (
+          tocPages.has(pNum) ||
+          (pNum <= maxFrontMatterPage && (this.isTocContent(b.text || '') || this.TOC_LINE_REGEX.test(b.text || '')))
+        ) {
           b.isTocPage = true;
+          b.structuralRole = 'front_matter';
+          b.section = 'TOC';
         }
       });
     }
@@ -539,6 +633,9 @@ class DocumentStructureEngine {
     if (block && block.chapterHint && block.chapterHint.number && block.chapterHint.title) {
       const { number, title } = block.chapterHint;
       if (Number.isFinite(number) && number >= 1 && number <= 100 && title && title.length >= 3) {
+        if (/(?:(?:\.{2,}|…+|\s{2,}|\t+)(?:\d+|[ivx]{1,6})|\s+\d{2,4})\s*$/i.test(title)) {
+          return null;
+        }
         return {
           number,
           title: `Chapter ${number}: ${title}`,
@@ -635,7 +732,7 @@ class DocumentStructureEngine {
       if (!text) continue;
 
       // Never treat blocks from TOC pages or TOC-like lines as body chapter candidates
-      if (block.isTocPage || (block.sourcePage && tocPages.has(block.sourcePage)) || this.TOC_LINE_REGEX.test(text)) {
+      if (block.isTocPage || (block.sourcePage && tocPages.has(block.sourcePage)) || this.TOC_LINE_REGEX.test(text) || this.isTocContent(text)) {
         continue;
       }
 

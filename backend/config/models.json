@@ -50,9 +50,10 @@
       "sizeBytes": 327212226,
       "sha256": null,
       "url": "https://pub-b48030b9edf8433588f07910f328da52.r2.dev/kokoro-v1_0.pth",
+      "configUrl": "https://pub-b48030b9edf8433588f07910f328da52.r2.dev/config.json",
       "targetSubdir": "kokoro",
       "format": "direct",
-      "markerFiles": ["kokoro-v1_0.pth"],
+      "markerFiles": ["kokoro-v1_0.pth", "config.json"],
       "required": true
     }
   ]

@@ -474,6 +474,14 @@ class PDFJSParser {
 
         // If next line is a distinct title heading (e.g. fontSize >= 14 and not a section number)
         if (nextLineFontSize >= 14 && !/^\d+\.\d+/.test(nextLineText)) {
+          // Guard against TOC entry with trailing page number
+          if (/(?:(?:\.{2,}|…+|\s{2,}|\t+)(?:\d+|[ivx]{1,6})|\s+\d{2,4})\s*$/i.test(nextLineText)) {
+            currentParagraph.push(lineText);
+            lastLineY = lineY;
+            i++;
+            continue;
+          }
+
           flushParagraph();
           const chNum = parseInt(chKeywordMatch[1], 10);
 
@@ -493,6 +501,13 @@ class PDFJSParser {
           }
 
           const fullTitle = titleParts.join(' ');
+          if (/(?:(?:\.{2,}|…+|\s{2,}|\t+)(?:\d+|[ivx]{1,6})|\s+\d{2,4})\s*$/i.test(fullTitle)) {
+            currentParagraph.push(lineText);
+            lastLineY = lineY;
+            i++;
+            continue;
+          }
+
           blocks.push({
             id: `blk-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             type: 'heading',
@@ -513,17 +528,26 @@ class PDFJSParser {
       // 2. Single-line explicit Chapter Opener: "Chapter 1: Title"
       const singleLineMatch = lineText.match(/^(?:Chapter|Part)\s+(\d{1,2})[:.—–-]\s*(.+)$/i);
       if (singleLineMatch && lineY > 300) {
+        const rawTitle = singleLineMatch[2].trim();
+        // Guard against TOC entry with trailing page number (e.g. "Chapter 11: The Moral Obligation to Be a Toy 75")
+        if (/(?:(?:\.{2,}|…+|\s{2,}|\t+)(?:\d+|[ivx]{1,6})|\s+\d{2,4})\s*$/i.test(rawTitle)) {
+          currentParagraph.push(lineText);
+          lastLineY = lineY;
+          i++;
+          continue;
+        }
+
         flushParagraph();
         const chNum = parseInt(singleLineMatch[1], 10);
         blocks.push({
           id: `blk-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           type: 'heading',
           level: 1,
-          text: `Chapter ${chNum}: ${singleLineMatch[2].trim()}`,
+          text: `Chapter ${chNum}: ${rawTitle}`,
           sourcePage: pageNum,
           chapterHint: {
             number: chNum,
-            title: singleLineMatch[2].trim(),
+            title: rawTitle,
           },
         });
         i++;

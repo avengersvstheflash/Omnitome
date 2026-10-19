@@ -195,7 +195,14 @@ class ResourceManager {
       const directFile = (model.markerFiles && model.markerFiles.length > 0)
         ? path.join(targetDir, model.markerFiles[0])
         : targetDir;
-      return fs.existsSync(directFile);
+      const isInstalled = fs.existsSync(directFile);
+      if (isInstalled && (model.configUrl || (Array.isArray(model.markerFiles) && model.markerFiles.includes('config.json')))) {
+        const targetConfigPath = path.join(targetDir, 'config.json');
+        if (!fs.existsSync(targetConfigPath)) {
+          this._tryCopyBundledConfig(targetConfigPath);
+        }
+      }
+      return isInstalled;
     }
 
     if (!fs.existsSync(targetDir)) {
@@ -632,6 +639,10 @@ class ResourceManager {
         await fs.promises.copyFile(tmpFilePath, destFile);
         await fs.promises.unlink(tmpFilePath);
       });
+
+      if (model.configUrl || (Array.isArray(model.markerFiles) && model.markerFiles.includes('config.json'))) {
+        await this._ensureDirectModelConfig(model, destinationDir);
+      }
       return;
     }
 
@@ -714,6 +725,49 @@ class ResourceManager {
           fs.rmSync(tmpFilePath, { force: true });
         }
       } catch (_) {}
+    }
+  }
+
+  _tryCopyBundledConfig(targetConfigPath) {
+    try {
+      if (fs.existsSync(targetConfigPath)) return true;
+      const candidateLocalPaths = [
+        path.join(__dirname, '..', 'config', 'kokoro-config.json'),
+        path.join(__dirname, '..', '..', 'sidecars', 'python', 'models', 'kokoro', 'config.json'),
+        path.join(__dirname, '..', '..', 'resources', 'models', 'kokoro', 'config.json'),
+        path.join(process.cwd(), 'sidecars', 'python', 'models', 'kokoro', 'config.json'),
+      ];
+      for (const candidate of candidateLocalPaths) {
+        if (fs.existsSync(candidate)) {
+          fs.mkdirSync(path.dirname(targetConfigPath), { recursive: true });
+          fs.copyFileSync(candidate, targetConfigPath);
+          return true;
+        }
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  async _ensureDirectModelConfig(model, destinationDir) {
+    const targetConfigPath = path.join(destinationDir, 'config.json');
+    if (this._tryCopyBundledConfig(targetConfigPath)) {
+      return;
+    }
+
+    const configUrl = model.configUrl || 'https://pub-b48030b9edf8433588f07910f328da52.r2.dev/config.json';
+    try {
+      const response = await fetch(configUrl, {
+        signal: AbortSignal.timeout(10000),
+        headers: { 'User-Agent': 'Omnitome-ResourceManager/1.0' },
+      });
+      if (response.ok) {
+        const text = await response.text();
+        JSON.parse(text); // validate JSON structure
+        await fs.promises.mkdir(destinationDir, { recursive: true });
+        await fs.promises.writeFile(targetConfigPath, text, 'utf8');
+      }
+    } catch (err) {
+      console.warn(`[ResourceManager] Failed to download config.json from ${configUrl}:`, err.message);
     }
   }
 

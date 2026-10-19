@@ -147,6 +147,69 @@ class DocumentStructureAnalyzer {
   /**
    * Detects Table of Contents and parses chapter entries
    */
+  isTocPageText(text) {
+    if (!text || typeof text !== 'string') return false;
+    const clean = text.trim();
+    if (!clean) return false;
+
+    // Never classify an Index or back-matter as TOC
+    const firstLine = clean.split('\n')[0].replace(/^#+\s*/, '').trim();
+    if (/^(?:index|subject\s*index|author\s*index)\b/i.test(firstLine)) {
+      return false;
+    }
+    const indexEntryCount = (clean.match(/^[A-Za-z\s\-]+,\s*\d+/gm) || []).length;
+    if (indexEntryCount >= 2) {
+      return false;
+    }
+
+    if (/(?:^|\n)\s*(?:#+\s*)?(?:table\s+of\s+contents|brief\s+contents|contents|detailed\s+contents)\s*$/im.test(clean)) {
+      return true;
+    }
+
+    const lines = clean.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return false;
+
+    let proseCount = 0;
+    let dotLeaderLines = 0;
+    let structuralTocLines = 0;
+    let multiSpaceNumberLines = 0;
+    let numberEndingLines = 0;
+
+    for (const line of lines) {
+      if (/,\s*\d+\s*$/.test(line)) continue; // skip index citations
+
+      if (line.split(/\s+/).length >= 8 && /[.?!]$/.test(line)) {
+        proseCount++;
+      }
+
+      if (/(?:\.{2,}|…+)\s*(?:\d+|[ivx]{1,6})\s*$/i.test(line)) {
+        dotLeaderLines++;
+      } else if (
+        /^(?:(?:chapter|part|section|unit|module|book|volume|appendix)\s+\d+[:.]?\s*.+?|\d{1,3}\s+[A-Z][A-Za-z0-9\s—–-]{2,80})\s+(?:\d{1,4})\s*$/i.test(line)
+      ) {
+        structuralTocLines++;
+      } else if (/^[A-Za-z0-9\s:,'"—–\-]+(?:\s{2,}|\t+)(\d+|[ivx]{1,6})\s*$/i.test(line)) {
+        multiSpaceNumberLines++;
+      } else if (line.split(/\s+/).length <= 15 && /(?:\s{2,}|\t+)(\d+|[ivx]{1,6})\s*$/i.test(line)) {
+        numberEndingLines++;
+      }
+    }
+
+    if (dotLeaderLines >= 2) return true;
+    if (structuralTocLines >= 2) return true;
+    if (dotLeaderLines + structuralTocLines >= 2) return true;
+
+    // Body pages with narrative prose sentences are not TOC pages
+    if (proseCount >= 2) return false;
+
+    const totalTocEntries = dotLeaderLines + structuralTocLines + multiSpaceNumberLines + numberEndingLines;
+    if (totalTocEntries >= 3 && (totalTocEntries / lines.length) >= 0.4) {
+      return true;
+    }
+
+    return false;
+  }
+
   detectTableOfContents(earlyPages) {
     let hasToc = false;
     let tocStartPage = -1;
@@ -159,7 +222,8 @@ class DocumentStructureAnalyzer {
       const page = earlyPages[i];
       const lines = (page.text || '').split('\n').map(l => l.trim());
 
-      const foundTocHeading = lines.some(l => tocHeadingRegex.test(l));
+      const isTocDensity = this.isTocPageText(page.text || '');
+      const foundTocHeading = lines.some(l => tocHeadingRegex.test(l)) || isTocDensity;
       if (foundTocHeading) {
         hasToc = true;
         tocStartPage = page.num;
@@ -173,7 +237,7 @@ class DocumentStructureAnalyzer {
           const pageNumCount = pageLines.filter(l => /\d+\s*$/.test(l)).length;
 
           // TOC pages typically have many dotted leaders or page numbers at line ends
-          if (dotCount > 20 || pageNumCount >= 5 || j === i) {
+          if (dotCount > 20 || pageNumCount >= 5 || j === i || this.isTocPageText(checkPage.text || '')) {
             tocEndPage = checkPage.num;
             // Parse TOC entries
             for (const line of pageLines) {
@@ -207,7 +271,11 @@ class DocumentStructureAnalyzer {
     // Pattern: Chapter 1 Introduction ........... 1
     // Pattern: 1.1 What is Distributed Systems .. 5
     // Pattern: 1 Foundations .................. 10
-    const match = line.match(/^(?:Chapter\s+(\d+|[IVXLCDM]+)[:.]?\s+)?(.+?)(?:\.{2,}|\s{3,})(\d+)\s*$/i);
+    // Pattern: Chapter 11: The Moral Obligation to Be a Toy 75
+    let match = line.match(/^(?:Chapter\s+(\d+|[IVXLCDM]+)[:.]?\s+)?(.+?)(?:\.{2,}|\s{2,}|\t+)(\d+)\s*$/i);
+    if (!match) {
+      match = line.match(/^(?:(?:Chapter\s+)?(\d+|[IVXLCDM]+)[:.]?\s+)(.+?)\s+(\d+)\s*$/i);
+    }
     if (match) {
       const chNum = match[1] || null;
       const title = match[2].trim();
@@ -304,7 +372,13 @@ class DocumentStructureAnalyzer {
           continue;
         }
 
-        // 1. Explicit "Chapter X" pattern
+        if (
+          /(?:\s*(?:\.{2,}|…+)\s*|\s{2,}|\t+)(?:\d+|[ivx]{1,6})\s*$/i.test(line) ||
+          /^(?:(?:chapter|part|book|volume|unit|section)\s+\d+[:.]?\s*.+?|\d{1,3}\s+[A-Z][A-Za-z0-9\s—–-]{2,80})\s+(?:\d{1,4})\s*$/i.test(line)
+        ) {
+          continue;
+        }
+
         const chMatch = line.match(chapterHeaderRegex);
         if (chMatch) {
           const chNum = chMatch[1];

@@ -75,14 +75,54 @@ def load_engine():
 
     try:
         import torch
-        from kokoro import KPipeline
+        from kokoro import KPipeline, KModel
     except ImportError as e:
         raise ModelNotInstalledError(f"Kokoro library not installed: {e}")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[TTS] Loading Kokoro pipeline from {model_path} (device={device})...")
     try:
-        _engine = KPipeline(lang_code='a', model=model_path, device=device)
+        model_dir = os.path.dirname(model_path)
+        config_path = os.path.join(model_dir, 'config.json')
+
+        if not os.path.exists(config_path):
+            candidate_fallback_paths = [
+                os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'kokoro', 'config.json')),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'backend', 'config', 'kokoro-config.json')),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'resources', 'models', 'kokoro', 'config.json')),
+            ]
+            for candidate in candidate_fallback_paths:
+                if os.path.exists(candidate):
+                    try:
+                        import shutil
+                        os.makedirs(model_dir, exist_ok=True)
+                        shutil.copyfile(candidate, config_path)
+                    except Exception:
+                        config_path = candidate
+                    break
+
+        if os.path.exists(config_path):
+            print(f"[TTS] Found local Kokoro config at {config_path}")
+            try:
+                kmodel = KModel(repo_id='hexgrad/Kokoro-82M', config=config_path, model=model_path).to(device).eval()
+                _engine = KPipeline(lang_code='a', repo_id='hexgrad/Kokoro-82M', model=kmodel, device=device)
+            except TypeError:
+                try:
+                    kmodel = KModel(config=config_path, model=model_path).to(device).eval()
+                    _engine = KPipeline(lang_code='a', model=kmodel, device=device)
+                except TypeError:
+                    _engine = KPipeline(lang_code='a', model=model_path, config=config_path, device=device)
+        else:
+            if os.environ.get("HF_HUB_OFFLINE") == "1":
+                raise ModelNotInstalledError(
+                    f"Kokoro config.json was not found in {model_dir} and HF_HUB_OFFLINE=1 prevents downloading it from HuggingFace."
+                )
+            try:
+                kmodel = KModel(repo_id='hexgrad/Kokoro-82M', model=model_path).to(device).eval()
+                _engine = KPipeline(lang_code='a', repo_id='hexgrad/Kokoro-82M', model=kmodel, device=device)
+            except Exception:
+                _engine = KPipeline(lang_code='a', model=model_path, device=device)
+
         print("[TTS] Kokoro pipeline loaded successfully.")
         return _engine
     except Exception as e:

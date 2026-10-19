@@ -75,30 +75,84 @@ function classifyHeuristically(block, context = {}) {
   const firstLine = text.split('\n')[0].trim();
   const cleanHeading = firstLine.replace(/^#+\s*/, '').trim();
 
-  // 1. TOC: Dot leaders + page numbers + high density OR explicit TOC heading
-  const hasDotLeadersWithPages = /(?:\.{2,}|…+)\s*(?:\d+|[ivxlcdm]+)\b/i.test(text);
-  const tocLineCount = (text.match(/(?:\.{2,}|\s{3,}|\t+)(?:\d+|[ivxlcdm]+)\s*$/gim) || []).length;
-  const isExplicitTocHeading = /^(?:table of contents|contents|brief contents|toc)$/i.test(cleanHeading);
-  if (hasDotLeadersWithPages || tocLineCount >= 2 || (isExplicitTocHeading && (headingLevel > 0 || tocLineCount >= 1 || cleanHeading.length < 30))) {
-    return { section: 'TOC', confidence: 0.9 };
+  // 1. INDEX: "Index" heading + alphabetical entries or index line pattern
+  const isIndexHeading = /^(?:index|subject\s+index|author\s+index)$/i.test(cleanHeading) ||
+    (headingLevel > 0 && /^index\b/i.test(cleanHeading));
+  const hasIndexEntries = /\b[A-Za-z\s]+,\s*\d+(?:\s*,\s*\d+)*\b/.test(text) ||
+    /^[A-Z]\b[\s\S]*?[a-zA-Z]+,\s*\d+/m.test(text);
+  if (isIndexHeading && (hasIndexEntries || headingLevel > 0)) {
+    return { section: 'INDEX', confidence: 0.9 };
   }
 
-  // 2. COPYRIGHT: Explicit copyright notice, ISBN, rights declaration near start or in copyright stream
+  // 2. TOC: Dot leaders + page numbers + repeating structural words / high density OR explicit TOC heading
+  const isCodeOrTable = Boolean(block && (block.type === 'code' || block.type === 'table'));
+  const rawLines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  let dotLeaderCount = 0;
+  let structuralTocLinesCount = 0;
+  let multiSpaceNumberLinesCount = 0;
+  let numberEndingLinesCount = 0;
+  let proseCount = 0;
+
+  for (const line of rawLines) {
+    if (/,\s*\d+\s*$/.test(line)) continue; // skip index citations
+
+    if (line.split(/\s+/).length >= 8 && /[.?!]$/.test(line)) {
+      proseCount++;
+    }
+
+    if (/(?:\.{2,}|…+)\s*(?:\d+|[ivx]{1,6})\s*$/i.test(line)) {
+      dotLeaderCount++;
+    } else if (
+      /^(?:(?:chapter|part|section|unit|module|book|volume|appendix)\s+\d+[:.]?\s*.+?|\d{1,3}\s+[A-Z][A-Za-z0-9\s—–-]{2,80})\s+(?:\d{1,4})\s*$/i.test(line)
+    ) {
+      structuralTocLinesCount++;
+    } else if (/^[A-Za-z0-9\s:,'"—–\-]+(?:\s{2,}|\t+)(\d+|[ivx]{1,6})\s*$/i.test(line)) {
+      multiSpaceNumberLinesCount++;
+    } else if (line.split(/\s+/).length <= 15 && /(?:\s{2,}|\t+)(\d+|[ivx]{1,6})\s*$/i.test(line)) {
+      numberEndingLinesCount++;
+    }
+  }
+
+  const hasDotLeadersWithPages = dotLeaderCount > 0 || /(?:\.{2,}|…+)\s*(?:\d+|[ivx]{1,6})\b/i.test(text);
+  const tocLineCount = dotLeaderCount + structuralTocLinesCount + multiSpaceNumberLinesCount + numberEndingLinesCount;
+  const isExplicitTocHeading = /^(?:table of contents|contents|brief contents|detailed contents|toc)$/i.test(cleanHeading);
+
+  // High density of lines ending in numbers + repeating structural words (TOC page / block heuristic)
+  const isTOCDensityMatch = (
+    structuralTocLinesCount >= 2 ||
+    dotLeaderCount >= 2 ||
+    (dotLeaderCount + structuralTocLinesCount >= 2) ||
+    (proseCount < 2 && tocLineCount >= 3 && (tocLineCount / rawLines.length) >= 0.4)
+  );
+
+  // Single-line block that is a TOC entry (e.g. "Chapter 11: The Moral Obligation to Be a Toy 75" or "11 The Moral Obligation to Be a Toy 75")
+  const isSingleLineToc = (
+    rawLines.length === 1 && (
+      /(?:\s*(?:\.{2,}|…+)\s*|\s{2,}|\t+)(?:\d+|[ivx]{1,6})\s*$/i.test(text) ||
+      /^(?:(?:chapter|part|unit|book|volume|module)\s+\d+[:.]?\s*.+?|\d{1,3}\s+[A-Z][A-Za-z0-9\s—–-]{2,80})\s+(?:\d{1,4})\s*$/i.test(text)
+    )
+  );
+
+  if (
+    !isCodeOrTable && (
+      hasDotLeadersWithPages ||
+      isTOCDensityMatch ||
+      isSingleLineToc ||
+      context.isTocPage ||
+      block.isTocPage ||
+      (isExplicitTocHeading && (headingLevel > 0 || tocLineCount >= 1 || cleanHeading.length < 30))
+    )
+  ) {
+    return { section: 'TOC', confidence: 0.92 };
+  }
+
+  // 3. COPYRIGHT: Explicit copyright notice, ISBN, rights declaration near start or in copyright stream
   const isExplicitCopyrightHeading = /^(?:copyright|copyright notice|rights and permissions)$/i.test(cleanHeading);
   const copyrightPattern = /\b(?:all rights reserved|isbn(?:-1[03])?:?|(?:copyright|©|\(c\))\s*(?:[12]\d{3}|by\b|all\b)|printed in (?:the )?[a-z]+)\b/i;
   const isCopyrightBlock = isExplicitCopyrightHeading || copyrightPattern.test(text) ||
     ((!context.priorSection || context.priorSection === 'COPYRIGHT' || context.isFirstBlock) && /\b(?:copyright|©|\(c\))\b/i.test(text));
   if (isCopyrightBlock) {
     return { section: 'COPYRIGHT', confidence: 0.85 };
-  }
-
-  // 3. INDEX: "Index" heading + alphabetical entries or index line pattern
-  const isIndexHeading = /^(?:index|subject index|author index)$/i.test(cleanHeading) ||
-    (headingLevel > 0 && /^index\b/i.test(cleanHeading));
-  const hasIndexEntries = /\b[A-Za-z\s]+,\s*\d+(?:\s*,\s*\d+)*\b/.test(text) ||
-    /^[A-Z]\b[\s\S]*?[a-zA-Z]+,\s*\d+/m.test(text);
-  if (isIndexHeading && (hasIndexEntries || headingLevel > 0)) {
-    return { section: 'INDEX', confidence: 0.9 };
   }
 
   // 4. PREFACE / FOREWORD as heading
@@ -134,6 +188,13 @@ function classifyHeuristically(block, context = {}) {
 
   // 6. Explicit body chapter/section structural headings (e.g. Chapter 1, Section 2, Part 1)
   if (headingLevel > 0 && /^(?:chapter|part|section|scene|act|canto|volume|book|\d+[\.\:\s])/i.test(cleanHeading)) {
+    // If heading line ends in a page number, it is a TOC entry line, not a genuine chapter heading
+    if (
+      /(?:\s*(?:\.{2,}|…+)\s*|\s{2,}|\t+)(?:\d+|[ivx]{1,6})\s*$/i.test(cleanHeading) ||
+      /^(?:(?:chapter|part|unit|book|volume|module)\s+\d+[:.]?\s*.+?|\d{1,3}\s+[A-Z][A-Za-z0-9\s—–-]{2,80})\s+(?:\d{1,4})\s*$/i.test(cleanHeading)
+    ) {
+      return { section: 'TOC', confidence: 0.9 };
+    }
     return { section: 'BODY', confidence: 0.85 };
   }
 
@@ -191,8 +252,18 @@ function classifyHeuristically(block, context = {}) {
     }
 
     if (prior === 'TOC') {
-      if (headingLevel === 0 && (tocLineCount >= 1 || hasDotLeadersWithPages || wordCount < 40)) {
-        return { section: 'TOC', confidence: 0.85 };
+      if (
+        isSingleLineToc ||
+        isTOCDensityMatch ||
+        tocLineCount >= 1 ||
+        hasDotLeadersWithPages ||
+        (headingLevel === 0 && wordCount < 50 && proseCount === 0) ||
+        (headingLevel > 0 && (
+          /(?:\s*(?:\.{2,}|…+)\s*|\s{2,}|\t+)(?:\d+|[ivx]{1,6})\s*$/i.test(cleanHeading) ||
+          /^(?:(?:chapter|part|unit|book|volume|module)\s+\d+[:.]?\s*.+?|\d{1,3}\s+[A-Z][A-Za-z0-9\s—–-]{2,80})\s+(?:\d{1,4})\s*$/i.test(cleanHeading)
+        ))
+      ) {
+        return { section: 'TOC', confidence: 0.88 };
       }
     }
 
