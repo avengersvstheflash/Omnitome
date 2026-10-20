@@ -62,7 +62,7 @@ def should_exclude_data_file(src, dst=''):
     return False
 
 # Collect data files from installed packages
-for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 'sentence_transformers', 'thinc', 'language_tags']:
+for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 'sentence_transformers', 'thinc', 'language_tags', 'espeakng_loader']:
     try:
         pkg_datas = collect_data_files(pkg)
         for item in pkg_datas:
@@ -75,10 +75,13 @@ for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 
     except Exception as e:
         print(f"[sidecar.spec] Warning: collect_data_files failed for {pkg}: {e}")
 
-datas = [d for d in datas if not should_exclude_data_file(d[0], d[1])]
+datas = [
+    d for d in datas
+    if not should_exclude_data_file(d[0], d[1] if isinstance(d, (list, tuple)) and len(d) > 1 else '')
+]
 
 # Collect package dist-info metadata (required for packages using importlib.metadata.version)
-for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers', 'torch', 'paddleocr', 'kokoro', 'misaki', 'tokenizers', 'safetensors', 'filelock', 'numpy', 'scipy', 'pydantic', 'fastapi', 'thinc', 'language_tags']:
+for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers', 'torch', 'paddleocr', 'kokoro', 'misaki', 'tokenizers', 'safetensors', 'filelock', 'numpy', 'scipy', 'pydantic', 'fastapi', 'thinc', 'language_tags', 'espeakng_loader']:
     try:
         datas += copy_metadata(pkg)
     except Exception as e:
@@ -86,7 +89,7 @@ for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers',
 
 # Collect dynamic libraries (DLLs)
 binaries = []
-for pkg in ['torch', 'paddle']:
+for pkg in ['torch', 'paddle', 'espeakng_loader']:
     try:
         binaries += collect_dynamic_libs(pkg)
     except Exception as e:

@@ -19,6 +19,8 @@ import { StageChecklist } from './StageChecklist';
 import { formatRelativeTime } from '../../lib/relativeTime';
 import { toast } from '../../store/useToastStore';
 import { apiClient } from '../../api/client';
+import { queryClient } from '../../api/queryClient';
+import type { ImportTask } from '../../types/domain';
 
 export function QueueManager() {
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ export function QueueManager() {
     activeTask,
     queuedTasks,
     historyTasks,
+    allTasks,
     etaSeconds,
     elapsedSeconds,
     cancelTask,
@@ -36,21 +39,65 @@ export function QueueManager() {
     fetchQueue,
   } = useImportQueueStore();
 
-  const handleOpenBook = async (bookId: string) => {
+  const handleOpenBook = async (bookId: string, taskArg?: ImportTask) => {
+    const task =
+      taskArg ||
+      historyTasks.find((t) => t.bookId === bookId) ||
+      allTasks.find((t) => t.bookId === bookId);
+
+    const statusUpper = task?.status ? String(task.status).toUpperCase() : null;
+    const isCompletedOrFailed = statusUpper === 'COMPLETED' || statusUpper === 'FAILED';
+
+    const now = Date.now();
+    const taskTime = task?.completedAt || task?.startedAt || task?.createdAt;
+    const parsedTime = taskTime ? new Date(taskTime).getTime() : NaN;
+    const isFresh = !Number.isNaN(parsedTime)
+      ? now - parsedTime < 60_000
+      : Boolean(task && statusUpper === 'COMPLETED');
+
     try {
-      const res = await apiClient<{ id?: string }>(`/api/books/${bookId}`);
-      if (!res || !res.id) {
+      void queryClient.invalidateQueries({ queryKey: ['books'] });
+      void queryClient.invalidateQueries({ queryKey: ['book', bookId] });
+
+      const res = await apiClient<{ id?: string; book?: { id?: string } }>(`/api/books/${bookId}`);
+      if (res && (res.id || res.book?.id)) {
+        navigate(`/book/${bookId}`);
+        return;
+      }
+
+      if (isFresh) {
+        void queryClient.refetchQueries({ queryKey: ['books'], type: 'all' });
+        navigate(`/book/${bookId}`);
+        return;
+      }
+
+      if (isCompletedOrFailed) {
         toast.error('This book has been deleted.');
         void fetchQueue();
         return;
       }
+
       navigate(`/book/${bookId}`);
     } catch (err: any) {
-      if (err?.status === 404 || err?.message?.includes('not found') || err?.message?.includes('404')) {
-        toast.error('This book has been deleted.');
-        void fetchQueue();
-        return;
+      const isNotFound =
+        err?.status === 404 ||
+        err?.message?.includes('not found') ||
+        err?.message?.includes('404');
+
+      if (isNotFound) {
+        if (isFresh) {
+          void queryClient.refetchQueries({ queryKey: ['books'], type: 'all' });
+          navigate(`/book/${bookId}`);
+          return;
+        }
+
+        if (isCompletedOrFailed) {
+          toast.error('This book has been deleted.');
+          void fetchQueue();
+          return;
+        }
       }
+
       navigate(`/book/${bookId}`);
     }
   };
@@ -301,7 +348,7 @@ export function QueueManager() {
                     {isCompleted && task.bookId && (
                       <button
                         type="button"
-                        onClick={() => void handleOpenBook(task.bookId!)}
+                        onClick={() => void handleOpenBook(task.bookId!, task)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-caption border border-line bg-card hover:bg-subtle text-ink font-medium transition-colors"
                       >
                         <BookOpen className="w-3.5 h-3.5 text-brand" />

@@ -207,17 +207,23 @@ export default function ResearchViewerRoute() {
   const queryClient = useQueryClient();
   const [isAttachModalOpen, setIsAttachModalOpen] = React.useState(false);
   const [showScrollTop, setShowScrollTop] = React.useState(false);
+  const mainPanelRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const top = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      setShowScrollTop(top > 300);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+  const handleScroll = useCallback(() => {
+    const mainTop = mainPanelRef.current?.scrollTop || 0;
+    const windowTop = window.scrollY || document.documentElement.scrollTop || 0;
+    setShowScrollTop(mainTop > 300 || windowTop > 300);
   }, []);
 
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
   const scrollToTop = () => {
+    if (mainPanelRef.current) {
+      mainPanelRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -259,6 +265,12 @@ export default function ResearchViewerRoute() {
       setActiveChapterId(chapters[0].id);
     }
   }, [chapters, activeChapterId, highlightParam]);
+
+  useEffect(() => {
+    if (!highlightParam && mainPanelRef.current) {
+      mainPanelRef.current.scrollTop = 0;
+    }
+  }, [activeChapterId, highlightParam]);
 
   // 5.8.0h.1: resolve chunk IDs → canonical block IDs.
   useEffect(() => {
@@ -457,10 +469,13 @@ export default function ResearchViewerRoute() {
         )}
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="flex gap-8">
-          <aside className="w-56 shrink-0 hidden md:block">
-            <div className="sticky top-16 space-y-4">
+      <div className="max-w-5xl mx-auto px-4 py-4">
+        <div
+          className="flex gap-8 h-[calc(100vh-var(--header-height,10rem))]"
+          style={{ '--header-height': '10rem' } as React.CSSProperties}
+        >
+          <aside className="w-56 shrink-0 hidden md:block overflow-y-auto pr-2">
+            <div className="space-y-4">
               <div className="space-y-1">
                 <h1 className="text-base font-semibold text-ink leading-snug line-clamp-4">
                   {book.title}
@@ -557,7 +572,11 @@ export default function ResearchViewerRoute() {
             </div>
           </aside>
 
-          <main className="flex-1 min-w-0">
+          <main
+            ref={mainPanelRef}
+            onScroll={handleScroll}
+            className="flex-1 min-w-0 overflow-y-auto pr-4"
+          >
             <div className="md:hidden mb-6 pb-4 border-b border-line space-y-1">
               <h1 className="text-lg font-semibold text-ink leading-snug">{book.title}</h1>
               {book.author && <p className="text-sm text-ink-muted">{book.author}</p>}
