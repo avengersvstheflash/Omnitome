@@ -82,16 +82,29 @@ class ImportQueueRepository {
 
   getQueue() {
     const all = this.getAll(150);
-    const activeTasks = all.filter((t) => t.status === 'initializing' || t.status === 'processing');
+    const db = getDatabase();
+    const existingBookRows = db.prepare('SELECT id FROM books').all();
+    const existingBookIds = new Set(existingBookRows.map((r) => r.id));
+
+    // Filter out completed/failed jobs whose book_id no longer exists in the books table
+    const validAll = all.filter((t) => {
+      const isFinished = ['completed', 'failed', 'cancelled', 'interrupted'].includes(t.status);
+      if (isFinished && t.book_id && !existingBookIds.has(t.book_id)) {
+        return false;
+      }
+      return true;
+    });
+
+    const activeTasks = validAll.filter((t) => t.status === 'initializing' || t.status === 'processing');
     const active = activeTasks[0] || null;
-    const queued = all.filter((t) => t.status === 'queued').sort((a, b) => a.queue_order - b.queue_order);
-    const history = all.filter((t) => ['completed', 'failed', 'cancelled', 'interrupted'].includes(t.status));
+    const queued = validAll.filter((t) => t.status === 'queued').sort((a, b) => a.queue_order - b.queue_order);
+    const history = validAll.filter((t) => ['completed', 'failed', 'cancelled', 'interrupted'].includes(t.status));
 
     return {
       active,
       queued,
       history,
-      totalCount: all.length,
+      totalCount: validAll.length,
       pendingCount: queued.length + activeTasks.length,
     };
   }

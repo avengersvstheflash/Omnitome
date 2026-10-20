@@ -199,7 +199,24 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
         const res = await apiClient<QueueApiResponse>('/api/import/queue');
         const active = res.active ? normalizeImportTask(res.active) : null;
         const queued = (res.queued || []).map(normalizeImportTask);
-        const history = (res.history || []).map(normalizeImportTask);
+        const rawHistory = (res.history || []).map(normalizeImportTask);
+        const booksCache = queryClient.getQueryData<any>(['books']);
+        const cachedBookList = Array.isArray(booksCache)
+          ? booksCache
+          : Array.isArray(booksCache?.books)
+          ? booksCache.books
+          : null;
+        const knownBookIds = cachedBookList ? new Set(cachedBookList.map((b: any) => b.id)) : null;
+
+        const history = rawHistory.filter((t) => {
+          if (['completed', 'failed', 'cancelled', 'interrupted'].includes(t.status)) {
+            const bId = t.bookId || (t as any).book_id;
+            if (bId && knownBookIds && !knownBookIds.has(bId)) {
+              return false;
+            }
+          }
+          return true;
+        });
 
         const allTasks = [...(active ? [active] : []), ...queued, ...history];
         const pendingCount = queued.length + (active ? 1 : 0);

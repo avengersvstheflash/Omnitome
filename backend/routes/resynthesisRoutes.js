@@ -66,7 +66,7 @@ router.post('/:dossierId', async (req, res, next) => {
           now
         );
 
-        // Seed initial smart_chapter
+        // Seed initial pending smart_chapter
         const newSmartId = `smart-${newBookId}-ch-${ch.number}`;
         db.prepare(`
           INSERT INTO smart_chapters (id, book_id, sequence, title, status, planned_word_count, created_at, updated_at)
@@ -76,7 +76,7 @@ router.post('/:dossierId', async (req, res, next) => {
           newBookId,
           ch.number,
           ch.title,
-          'generated',
+          'pending',
           ch.word_count || 1000,
           now,
           now

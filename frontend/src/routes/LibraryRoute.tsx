@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Search, AlertCircle, RotateCw, CheckSquare, Plus } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { BookOpen, Search, AlertCircle, RotateCw, CheckSquare, Plus, Trash2 } from 'lucide-react';
 import { useBooks } from '../hooks/useBooks';
 import { BookGrid } from '../components/library/BookGrid';
 import { FilterChips, FilterOption } from '../components/library/FilterChips';
@@ -9,6 +10,8 @@ import { EmptyState } from '../components/shared/EmptyState';
 import { useLibraryStore } from '../store/useLibraryStore';
 import { ExpandableTagPanel } from '../components/library/ExpandableTagPanel';
 import { getStoredFilters, persistFilters } from '../lib/libraryFilters';
+import { apiClient } from '../api/client';
+import { toast } from '../store/useToastStore';
 
 export const LibraryRoute: React.FC = () => {
   const navigate = useNavigate();
@@ -35,6 +38,32 @@ export const LibraryRoute: React.FC = () => {
     toggleBookSelection,
     clearSelection,
   } = useLibraryStore();
+
+  const queryClient = useQueryClient();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleBatchDelete = async () => {
+    if (selectedBookIds.length === 0 || isDeleting) return;
+    const count = selectedBookIds.length;
+    setIsDeleting(true);
+    try {
+      await apiClient('/api/books/batch-delete', {
+        method: 'POST',
+        body: JSON.stringify({ bookIds: selectedBookIds }),
+      });
+      toast.success(`Deleted ${count} ${count === 1 ? 'book' : 'books'}.`);
+      clearSelection();
+      setSelectionMode(false);
+      await queryClient.invalidateQueries({ queryKey: ['books'] });
+      await queryClient.invalidateQueries({ queryKey: ['sources'] });
+      await queryClient.invalidateQueries({ queryKey: ['dossiers'] });
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete selected books.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const isRestoredRef = useRef(false);
 
@@ -241,8 +270,18 @@ export const LibraryRoute: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => void handleBatchDelete()}
+              disabled={isDeleting}
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded bg-err text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>{isDeleting ? 'Deleting…' : 'Delete Selected'}</span>
+            </button>
+            <button
+              type="button"
               onClick={clearSelection}
-              className="px-2.5 py-1 text-xs font-medium rounded text-ink-muted hover:text-ink hover:bg-subtle"
+              disabled={isDeleting}
+              className="px-2.5 py-1 text-xs font-medium rounded text-ink-muted hover:text-ink hover:bg-subtle disabled:opacity-50"
             >
               Deselect all
             </button>

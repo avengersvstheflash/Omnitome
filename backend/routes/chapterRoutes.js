@@ -8,7 +8,18 @@ const router = express.Router();
 // GET /api/chapters/:id - get single chapter
 router.get('/:id', (req, res, next) => {
   try {
-    const chapter = bookService.getChapter(req.params.id);
+    let chapter = null;
+    try {
+      chapter = bookService.getChapter(req.params.id);
+    } catch (e) {
+      if (e.message && e.message.includes('not found')) {
+        return res.status(404).json({ error: `Chapter with ID '${req.params.id}' was not found.` });
+      }
+      throw e;
+    }
+    if (!chapter) {
+      return res.status(404).json({ error: `Chapter with ID '${req.params.id}' was not found.` });
+    }
     const representations = chapterRepository.getRepresentations(chapter.id);
     if (representations.length === 0) {
       const editorial = chapterRepository.getEditorialRepresentationsForSourceChapter(chapter.id);

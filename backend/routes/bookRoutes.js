@@ -46,6 +46,39 @@ router.post('/dossiers', (req, res, next) => {
   }
 });
 
+// POST /api/books/batch-delete - batch delete multiple books
+router.post('/batch-delete', (req, res, next) => {
+  try {
+    const bookIds = Array.isArray(req.body?.bookIds)
+      ? req.body.bookIds
+      : Array.isArray(req.body?.ids)
+      ? req.body.ids
+      : [];
+    if (!bookIds || bookIds.length === 0) {
+      return res.status(400).json({ error: 'No book IDs provided for batch deletion.' });
+    }
+    const bookRepository = require('../repositories/bookRepository');
+    const deletedIds = [];
+    for (const id of bookIds) {
+      try {
+        const deleted = bookRepository.delete(id);
+        if (deleted) {
+          deletedIds.push(id);
+        }
+      } catch (err) {
+        console.warn(`[bookRoutes] Failed to delete book ${id} during batch delete:`, err.message);
+      }
+    }
+    res.json({
+      success: true,
+      deletedCount: deletedIds.length,
+      deletedIds,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/books/dossiers/:id/content - add pasted/document content to an existing dossier
 router.post('/dossiers/:id/content', async (req, res, next) => {
   try {
@@ -63,7 +96,7 @@ router.post('/:dossierId/append-source', upload.single('file'), async (req, res,
     const db = getDatabase();
     const dossier = db.prepare('SELECT * FROM books WHERE id = ?').get(dossierId);
     const lifecycle = bookLifecycleRepository.getByBookId(dossierId);
-    const isResearch = (dossier && dossier.content_type === 'research') ||
+    const isResearch = (dossier && (dossier.content_type === 'research' || dossier.source_format === 'dossier' || (dossier.id && dossier.id.startsWith('book-dossier-')))) ||
                        (lifecycle && lifecycle.in_research === 1);
 
     if (!dossier || !isResearch) {
@@ -261,7 +294,18 @@ router.get('/:id/resume-target', (req, res, next) => {
 // GET /api/books/:id - get book by ID
 router.get('/:id', (req, res, next) => {
   try {
-    const book = bookService.getBook(req.params.id);
+    let book = null;
+    try {
+      book = bookService.getBook(req.params.id);
+    } catch (e) {
+      if (e.message && e.message.includes('not found')) {
+        return res.status(404).json({ error: `Book with ID '${req.params.id}' was not found.` });
+      }
+      throw e;
+    }
+    if (!book) {
+      return res.status(404).json({ error: `Book with ID '${req.params.id}' was not found.` });
+    }
     const config = require('../config');
     let parsedMeta = {};
     try {

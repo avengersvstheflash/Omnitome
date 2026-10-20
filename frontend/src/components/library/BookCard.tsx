@@ -210,6 +210,11 @@ export const BookCard: React.FC<BookCardProps> = ({
         <div className="relative z-10 flex items-center justify-between pl-2">
           <BookOpen className="w-4 h-4 opacity-80" aria-hidden="true" />
           <div className="flex items-center gap-1.5">
+            {(book.chapterCount ?? 0) === 0 && (
+              <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-accent/80 text-white backdrop-blur-sm shadow-sm">
+                {(book.wordCount && book.wordCount > 0) ? 'Source Only' : 'Empty'}
+              </span>
+            )}
             <span
               className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded book-cover-badge ${getCategoryBadgeClass(
                 book.contentType

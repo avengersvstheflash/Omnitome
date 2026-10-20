@@ -12,6 +12,7 @@ import {
 import { useImportQueueStore } from '../../store/useImportQueueStore';
 import { StageChecklist } from './StageChecklist';
 import { ImportTask } from '../../types/domain';
+import { formatRelativeTime } from '../../lib/relativeTime';
 
 export function PersistentImportWidget() {
   const location = useLocation();
@@ -261,14 +262,24 @@ export function PersistentImportWidget() {
               Queued ({queuedTasks.length})
             </div>
             <ol className="space-y-2 text-caption">
-              {queuedTasks.map((t, idx) => (
-                <li key={t.id} className="flex items-start gap-2 text-ink-muted min-w-0">
-                  <span className="font-mono text-micro text-ink-muted shrink-0 pt-0.5">
-                    {idx + 1}.
-                  </span>
-                  <span className="truncate text-ink">{t.sourceTitle}</span>
-                </li>
-              ))}
+              {queuedTasks.map((t, idx) => {
+                const relTime = t.createdAt ? formatRelativeTime(t.createdAt) : null;
+                return (
+                  <li key={t.id} className="flex items-start justify-between gap-2 text-ink-muted min-w-0">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <span className="font-mono text-micro text-ink-muted shrink-0 pt-0.5">
+                        {idx + 1}.
+                      </span>
+                      <span className="truncate text-ink">{t.sourceTitle}</span>
+                    </div>
+                    {relTime && (
+                      <span className="text-[11px] font-mono text-ink-muted shrink-0 pt-0.5">
+                        {relTime}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ol>
           </div>
         )}

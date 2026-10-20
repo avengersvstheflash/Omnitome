@@ -102,6 +102,8 @@ export function DeleteBookConfirmContent({
       // Invalidate relevant caches
       await queryClient.invalidateQueries({ queryKey: ['books'] });
       await queryClient.invalidateQueries({ queryKey: ['sources'] });
+      await queryClient.invalidateQueries({ queryKey: ['dossiers'] });
+      await queryClient.invalidateQueries({ queryKey: ['import-queue'] });
       await queryClient.invalidateQueries({ queryKey: ['book', bookId] });
       await queryClient.invalidateQueries({ queryKey: ['book-lifecycle', bookId] });
       await queryClient.invalidateQueries({ queryKey: ['llm-usage-summary'] });

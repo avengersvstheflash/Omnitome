@@ -1,13 +1,17 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles, ArrowUp, Trash2, Plus } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBook } from '../hooks/useBook';
 import { useChapters, useChapter } from '../hooks/useChapters';
 import { useLifecycle } from '../hooks/useLifecycle';
 import { useResynthesizeDossier } from '../hooks/useResynthesis';
+import { useModal } from '../store/useModalStore';
+import { AttachSourceModal } from '../components/modals/AttachSourceModal';
 import { CanonicalBlock } from '../components/reader/CanonicalBlock';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { apiClient } from '../api/client';
+import { toast } from '../store/useToastStore';
 import type { Chapter, CanonicalBlock as CanonicalBlockType } from '../types/domain';
 
 // ---------------------------------------------------------------------------
@@ -191,13 +195,32 @@ export default function ResearchViewerRoute() {
     book?.contentType === 'research' ||
     (book as any)?.content_type === 'research' ||
     book?.sourceFormat === 'dossier' ||
-    book?.sourceSite === 'Multi-Source Dossier'
+    book?.sourceSite === 'Multi-Source Dossier' ||
+    bookId?.startsWith('book-dossier-')
   );
 
   const { data: lifecycleData } = useLifecycle(bookId || null);
   const resynthesisMutation = useResynthesizeDossier(bookId);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const [newBookId, setNewBookId] = React.useState<string | null>(null);
+  const { open } = useModal();
+  const queryClient = useQueryClient();
+  const [isAttachModalOpen, setIsAttachModalOpen] = React.useState(false);
+  const [showScrollTop, setShowScrollTop] = React.useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const top = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      setShowScrollTop(top > 300);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const canSynthesize = Boolean(
     (book?.contentType === 'research' || (book as any)?.content_type === 'research') &&
@@ -209,12 +232,19 @@ export default function ResearchViewerRoute() {
   const handleSynthesize = async () => {
     try {
       const res = await resynthesisMutation.mutateAsync();
-      setToastMessage('Synthesis queued — you can leave this page');
+      toast.success('Full synthesis queued');
+      setToastMessage('Full synthesis queued');
+      await queryClient.invalidateQueries({ queryKey: ['import-queue'] });
+      await queryClient.invalidateQueries({ queryKey: ['books'] });
+      await queryClient.invalidateQueries({ queryKey: ['sources'] });
+      await queryClient.invalidateQueries({ queryKey: ['dossiers'] });
       if (res?.bookId) {
         setNewBookId(res.bookId);
       }
-    } catch (err) {
-      setToastMessage(err instanceof Error ? err.message : 'Failed to queue synthesis');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to queue synthesis';
+      toast.error(msg);
+      setToastMessage(msg);
     }
   };
 
@@ -360,17 +390,46 @@ export default function ResearchViewerRoute() {
             <span>{returnTo.startsWith('/read') ? 'Return to Omni Reading' : 'Research'}</span>
           </button>
 
-          {canSynthesize && (
-            <button
-              type="button"
-              onClick={handleSynthesize}
-              disabled={resynthesisMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded bg-brand text-white hover:bg-brand/90 transition-colors shadow-sm disabled:opacity-50"
-            >
-              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>{resynthesisMutation.isPending ? 'Queuing…' : 'Synthesize Omni Reading'}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {isDossier && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsAttachModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-line bg-card hover:bg-subtle text-ink transition-colors shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Edit/Append Source</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    open('deleteBook', {
+                      bookId: book.id,
+                      bookTitle: book.title,
+                      chapterCount,
+                    })
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-err/30 text-err bg-err/5 hover:bg-err/10 transition-colors shadow-sm"
+                >
+                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Delete Dossier</span>
+                </button>
+              </>
+            )}
+
+            {canSynthesize && (
+              <button
+                type="button"
+                onClick={handleSynthesize}
+                disabled={resynthesisMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded bg-brand text-white hover:bg-brand/90 transition-colors shadow-sm disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{resynthesisMutation.isPending ? 'Queuing…' : 'Synthesize Omni Reading'}</span>
+              </button>
+            )}
+          </div>
         </div>
         {toastMessage && (
           <div className="bg-brand/10 border-t border-brand/20 px-4 py-1.5 text-xs text-brand font-medium flex items-center justify-between max-w-5xl mx-auto">
@@ -611,6 +670,29 @@ export default function ResearchViewerRoute() {
           </main>
         </div>
       </div>
+
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+          className="fixed bottom-6 right-6 z-40 p-2.5 rounded-full bg-surface border border-line shadow-md hover:bg-subtle text-ink-muted hover:text-ink transition-all animate-fade-in"
+        >
+          <ArrowUp className="w-5 h-5" aria-hidden="true" />
+        </button>
+      )}
+
+      {isAttachModalOpen && (
+        <AttachSourceModal
+          open={isAttachModalOpen}
+          onClose={() => setIsAttachModalOpen(false)}
+          dossierId={book.id}
+          onSuccessToast={(msg) => {
+            toast.success(msg);
+            setToastMessage(msg);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -508,6 +508,7 @@ class ImportQueueService {
           },
         });
 
+        importQueueRepository.updateStage(nextTask.id, 'ingest', 'done');
         importQueueRepository.updateStage(nextTask.id, 'semantic_index', 'done');
         importQueueRepository.updateStage(nextTask.id, 'classify', 'skipped');
         importQueueRepository.updateStage(nextTask.id, 'outline', 'skipped');
@@ -655,6 +656,8 @@ class ImportQueueService {
         const meta = nextTask.source_meta || {};
         bookId = meta.bookId || nextTask.book_id;
 
+        importQueueRepository.updateStage(nextTask.id, 'ingest', 'done');
+
         importQueueRepository.update(nextTask.id, {
           stage: 'synthesis',
           stage_label: 'Synthesizing Omni chapters and restoring progress…',
@@ -666,6 +669,8 @@ class ImportQueueService {
           throw new Error('Task cancelled by user');
         }
 
+        await bookService.runPipelineForBook(bookId, nextTask.id);
+
         const editorialService = require('../synthesis/editorialService');
         try {
           editorialService.reconcileReadingProgress(bookId);
@@ -674,7 +679,7 @@ class ImportQueueService {
         importQueueRepository.update(nextTask.id, {
           stage: 'ready',
           stage_label: 'Omni reading synthesized successfully',
-          progress: 90,
+          progress: 95,
           book_id: bookId,
         });
       }

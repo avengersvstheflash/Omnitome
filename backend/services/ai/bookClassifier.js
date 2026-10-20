@@ -238,9 +238,12 @@ OUTPUT:`;
 
       // Update books.content_type with the classified contentType UNLESS
       // fell_back: true AND current value is not 'novel' (don't downgrade good data with a heuristic guess)
+      // Never overwrite 'research' content_type (e.g. for research dossiers)
       let targetContentType = book.content_type;
-      if (!fellBack || book.content_type === 'novel') {
-        targetContentType = classificationResult.contentType;
+      if (book.content_type !== 'research' && (!book.id || !book.id.startsWith('book-dossier-'))) {
+        if (!fellBack || book.content_type === 'novel') {
+          targetContentType = classificationResult.contentType;
+        }
       }
 
       db.prepare(

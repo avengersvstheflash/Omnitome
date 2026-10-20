@@ -25,6 +25,7 @@ import { ReaderView } from '../components/reader/ReaderView';
 import { ChapterNav } from '../components/reader/ChapterNav';
 import { ScrollProgress } from '../components/reader/ScrollProgress';
 import { EmptyState } from '../components/shared/EmptyState';
+import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { useScrollDirection } from '../hooks/useScrollDirection';
 import { Chapter, ChapterRepresentation, CanonicalBlock } from '../types/domain';
 
@@ -150,7 +151,7 @@ function SmartChapterStatus({
   );
 }
 
-export default function ReaderRoute() {
+function ReaderContent() {
   const { bookId = '', chapterId = '' } = useParams<{
     bookId: string;
     chapterId: string;
@@ -405,6 +406,26 @@ export default function ReaderRoute() {
     };
   }, [refetchSmartList, refetchSmartChapter, refetchEditorial]);
 
+  const is404 =
+    (!isLoading && !smartChapter) ||
+    (error as any)?.status === 404 ||
+    error?.message?.includes('404') ||
+    error?.message?.toLowerCase().includes('not found');
+
+  if (!isLoading && is404) {
+    return (
+      <EmptyState
+        icon={BookOpen}
+        title="Chapter Not Found"
+        body="This chapter couldn't be found or may have been deleted."
+        action={{
+          label: 'Back to Library',
+          onClick: () => navigate('/'),
+        }}
+      />
+    );
+  }
+
   if (isError) {
     return (
       <div className="rounded-md border border-err/30 bg-err/10 p-6 text-center max-w-lg mx-auto my-12">
@@ -435,8 +456,8 @@ export default function ReaderRoute() {
         title="No Omni chapters available"
         body="This book has no Omni chapters generated yet."
         action={{
-          label: 'Back to Book Details',
-          onClick: () => navigate(`/book/${bookId}`),
+          label: 'Back to Library',
+          onClick: () => navigate('/'),
         }}
       />
     );
@@ -596,5 +617,13 @@ export default function ReaderRoute() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ReaderRoute() {
+  return (
+    <ErrorBoundary>
+      <ReaderContent />
+    </ErrorBoundary>
   );
 }

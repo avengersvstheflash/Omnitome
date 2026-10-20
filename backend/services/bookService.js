@@ -283,7 +283,7 @@ class BookService {
     }
     const id = `book-dossier-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const now = new Date().toISOString();
-    return this.createBook({
+    const book = this.createBook({
       id,
       title: title.trim(),
       author: author ? author.trim() : 'Research Dossier',
@@ -304,6 +304,13 @@ class BookService {
         createdAt: now,
       },
     });
+
+    try {
+      const bookLifecycleService = require('./lifecycle/bookLifecycleService');
+      bookLifecycleService.ensureLifecycle(book.id, { in_research: 1, in_library: 0 });
+    } catch (_) {}
+
+    return book;
   }
 
   async addContentToDossier(dossierId, { title, author, text, description, fileBuffer, originalFilename, url }) {
@@ -862,6 +869,28 @@ class BookService {
    */
   resetDevelopmentData() {
     return resetAndSeedDatabase();
+  }
+
+  async runPostIngestPipeline(book, options = {}) {
+    return _runPostIngestPipeline(book, options);
+  }
+
+  async runPipelineForBook(bookId, taskId) {
+    const book = bookRepository.getById(bookId);
+    if (!book) return;
+    const chapterEntities = chapterRepository.getByBookId(bookId) || [];
+    const totalWords = chapterEntities.reduce((acc, c) => acc + (c.word_count || 0), 0);
+    const { qualifiesForOutline, qualifiesForSynopsis } = classifyPipelineStages(
+      chapterEntities.length,
+      totalWords
+    );
+    await _runPostIngestPipeline(book, {
+      taskId,
+      chapterEntities,
+      totalWords,
+      qualifiesForOutline: chapterEntities.length > 0,
+      qualifiesForSynopsis: chapterEntities.length > 0,
+    });
   }
 }
 

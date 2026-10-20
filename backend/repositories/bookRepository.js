@@ -10,9 +10,12 @@ class BookRepository {
     const lifecycleClause = libraryOnly && hasLifecycle
       ? 'AND (lc.book_id IS NULL OR lc.in_library = 1)'
       : '';
-    const lifecycleJoin = libraryOnly && hasLifecycle
+    const lifecycleJoin = hasLifecycle
       ? 'LEFT JOIN book_lifecycle lc ON lc.book_id = b.id'
       : '';
+    const smartClause = hasLifecycle
+      ? 'AND (EXISTS (SELECT 1 FROM smart_chapters sc WHERE sc.book_id = b.id) OR (lc.in_library = 1))'
+      : 'AND EXISTS (SELECT 1 FROM smart_chapters sc WHERE sc.book_id = b.id)';
 
     const books = db.prepare(`
       SELECT b.*, 
@@ -22,9 +25,7 @@ class BookRepository {
       FROM books b
       ${lifecycleJoin}
       WHERE b.status != 'failed'
-        AND EXISTS (
-          SELECT 1 FROM smart_chapters sc WHERE sc.book_id = b.id
-        )
+        ${smartClause}
         ${lifecycleClause}
       ORDER BY b.updated_at DESC
     `).all();
@@ -202,21 +203,77 @@ class BookRepository {
   delete(id) {
     const db = getDatabase();
     const deleteTransaction = db.transaction((bookId) => {
-      db.prepare('DELETE FROM semantic_chunks WHERE book_id = ?').run(bookId);
-      db.prepare('DELETE FROM book_supporting_materials WHERE book_id = ?').run(bookId);
-      db.prepare('DELETE FROM smart_chapters WHERE book_id = ?').run(bookId);
-      db.prepare(`
-        DELETE FROM chapter_representations 
-        WHERE book_id = ? OR chapter_id IN (SELECT id FROM chapters WHERE book_id = ?)
-      `).run(bookId, bookId);
+      try {
+        db.prepare(`
+          DELETE FROM paragraph_attributions
+          WHERE smart_chapter_id IN (SELECT id FROM smart_chapters WHERE book_id = ?)
+        `).run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM book_supporting_materials WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM semantic_chunks WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM smart_chapters WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare(`
+          DELETE FROM chapter_representations 
+          WHERE book_id = ? OR chapter_id IN (SELECT id FROM chapters WHERE book_id = ?)
+        `).run(bookId, bookId);
+      } catch {}
 
       try {
         const synthesisService = require('../services/synthesis/synthesisService');
         synthesisService.invalidateOutdatedRepresentations();
       } catch {}
 
-      db.prepare('DELETE FROM processing_jobs WHERE book_id = ?').run(bookId);
-      db.prepare('DELETE FROM chapters WHERE book_id = ?').run(bookId);
+      try {
+        db.prepare('DELETE FROM book_representations WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM editorial_outlines WHERE book_id = ? OR collection_id = ?').run(bookId, bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM processing_jobs WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM chapters WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM chapter_name_history WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM synopsis_history WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM dossier_append_log WHERE book_id = ? OR dossier_id = ?').run(bookId, bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM llm_usage WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM book_lifecycle WHERE book_id = ?').run(bookId);
+      } catch {}
+
+      try {
+        db.prepare('DELETE FROM import_queue WHERE book_id = ?').run(bookId);
+      } catch {}
+
       const result = db.prepare('DELETE FROM books WHERE id = ?').run(bookId);
       return result.changes > 0;
     });

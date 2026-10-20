@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import { useImportQueueStore } from '../../store/useImportQueueStore';
 import { StageChecklist } from './StageChecklist';
+import { formatRelativeTime } from '../../lib/relativeTime';
+import { toast } from '../../store/useToastStore';
+import { apiClient } from '../../api/client';
 
 export function QueueManager() {
   const navigate = useNavigate();
@@ -30,7 +33,27 @@ export function QueueManager() {
     reorderTasks,
     removeTask,
     clearCompleted,
+    fetchQueue,
   } = useImportQueueStore();
+
+  const handleOpenBook = async (bookId: string) => {
+    try {
+      const res = await apiClient<{ id?: string }>(`/api/books/${bookId}`);
+      if (!res || !res.id) {
+        toast.error('This book has been deleted.');
+        void fetchQueue();
+        return;
+      }
+      navigate(`/book/${bookId}`);
+    } catch (err: any) {
+      if (err?.status === 404 || err?.message?.includes('not found') || err?.message?.includes('404')) {
+        toast.error('This book has been deleted.');
+        void fetchQueue();
+        return;
+      }
+      navigate(`/book/${bookId}`);
+    }
+  };
 
   const handleMoveUp = (index: number) => {
     if (index <= 0) return;
@@ -183,7 +206,7 @@ export function QueueManager() {
                     </div>
                     <p className="text-caption text-ink-muted truncate">
                       {task.sourceMeta?.dossierTitle ? `Destination: ${task.sourceMeta.dossierTitle} · ` : ''}
-                      Waiting in queue
+                      Waiting in queue{task.createdAt && formatRelativeTime(task.createdAt) ? ` · Queued ${formatRelativeTime(task.createdAt)}` : ''}
                     </p>
                   </div>
                 </div>
@@ -244,6 +267,9 @@ export function QueueManager() {
               const isCompleted = task.status === 'completed';
               const isFailed = task.status === 'failed';
               const isCancelled = task.status === 'cancelled';
+              const timeRaw = task.completedAt || task.startedAt || task.createdAt;
+              const rel = formatRelativeTime(timeRaw);
+              const timeLabel = rel ? (rel === 'just now' ? 'Just now' : `Imported ${rel}`) : null;
 
               return (
                 <div key={task.id} className="p-3.5 flex items-center justify-between gap-3">
@@ -263,10 +289,10 @@ export function QueueManager() {
                       </p>
                       <p className="text-caption text-ink-muted truncate">
                         {isCompleted
-                          ? 'Book ready'
+                          ? (timeLabel ? `Book ready · ${timeLabel}` : 'Book ready')
                           : isFailed
-                          ? task.error || 'Failed'
-                          : 'Cancelled'}
+                          ? `${task.error || 'Failed'}${timeLabel ? ` · ${timeLabel}` : ''}`
+                          : `Cancelled${timeLabel ? ` · ${timeLabel}` : ''}`}
                       </p>
                     </div>
                   </div>
@@ -275,7 +301,7 @@ export function QueueManager() {
                     {isCompleted && task.bookId && (
                       <button
                         type="button"
-                        onClick={() => navigate(`/book/${task.bookId}`)}
+                        onClick={() => void handleOpenBook(task.bookId!)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-caption border border-line bg-card hover:bg-subtle text-ink font-medium transition-colors"
                       >
                         <BookOpen className="w-3.5 h-3.5 text-brand" />
