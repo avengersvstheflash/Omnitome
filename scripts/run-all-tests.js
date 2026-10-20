@@ -84,6 +84,7 @@ const SUITES = [
   'f85_kokoro_tts_sidecar_test.js',
   's13_resource_manager_test.js',
   'final_polish_verification_test.js',
+  'tts_and_library_fix_test.js',
 ];
 
 const NETWORK_SUITES = [

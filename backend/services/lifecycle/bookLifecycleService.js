@@ -15,10 +15,22 @@ class BookLifecycleService {
   ensureLifecycle(bookId, defaults = {}) {
     if (!bookId) throw new Error('bookId is required for ensureLifecycle');
 
-    const existing = bookLifecycleRepository.getByBookId(bookId);
-    if (existing) return existing;
-
     const db = getDatabase();
+    const existing = bookLifecycleRepository.getByBookId(bookId);
+    if (existing) {
+      if (existing.in_library === 0 && !existing.deleted_at) {
+        const hasSmartChapters = db.prepare("SELECT 1 FROM smart_chapters WHERE book_id = ? LIMIT 1").get(bookId);
+        if (hasSmartChapters) {
+          return bookLifecycleRepository.update(bookId, {
+            in_library: 1,
+            lifecycle_state: existing.in_research ? 'active' : 'library_only',
+            synthesis_count: Math.max(existing.synthesis_count || 0, 1),
+          });
+        }
+      }
+      return existing;
+    }
+
     const book = db.prepare('SELECT id, title, description, content_type, created_at, updated_at FROM books WHERE id = ?').get(bookId);
 
     const hasSmart = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='smart_chapters'").get();
@@ -33,7 +45,7 @@ class BookLifecycleService {
 
     const inLibrary = defaults.in_library !== undefined
       ? (defaults.in_library ? 1 : 0)
-      : (smartCount > 0 ? 1 : 0);
+      : (smartCount > 0 || (book && book.content_type !== 'research') ? 1 : 0);
 
     const inResearch = defaults.in_research !== undefined
       ? (defaults.in_research ? 1 : 0)

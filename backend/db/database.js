@@ -345,6 +345,21 @@ function backfillBookLifecycles(db) {
   });
 
   runBackfillBatch(books);
+
+  // Reconcile any existing rows that have generated smart chapters and were not deleted
+  try {
+    db.prepare(`
+      UPDATE book_lifecycle
+      SET in_library = 1,
+          lifecycle_state = CASE WHEN in_research = 1 THEN 'active' ELSE 'library_only' END,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE in_library = 0
+        AND deleted_at IS NULL
+        AND EXISTS (
+          SELECT 1 FROM smart_chapters sc WHERE sc.book_id = book_lifecycle.book_id
+        )
+    `).run();
+  } catch (_) {}
 }
 
 function initSchema(db) {

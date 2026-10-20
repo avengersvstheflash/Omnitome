@@ -136,6 +136,7 @@ async function synthesizeSentence({ text, voice = 'af_heart', speed = 1.0, timeo
       try {
         errJson = await res.json();
       } catch (_) {}
+      console.error(`[ttsClient] Sidecar returned HTTP ${res.status}:`, errJson);
       const err = new Error(errJson.message || `Sidecar TTS returned HTTP ${res.status}`);
       err.code = errJson.code || (res.status === 404 ? 'MODEL_NOT_INSTALLED' : 'TTS_SYNTHESIS_FAILED');
       err.status = res.status;

@@ -15,6 +15,7 @@ from .synthesize import (
     synthesize_sentence,
     estimate_duration_ms,
     is_model_installed,
+    _resolve_voice_path,
     VOICE_WHITELIST,
     ModelNotInstalledError,
     UnsupportedLanguageError,
@@ -29,6 +30,9 @@ class SynthesizeRequest(BaseModel):
     voice: Optional[str] = "af_heart"
     speed: Optional[float] = 1.0
     format: Optional[str] = "wav"
+
+    class Config:
+        extra = "ignore"
 
 
 @router.post("/v1/tts/synthesize")
@@ -89,22 +93,46 @@ def synthesize_endpoint(payload: SynthesizeRequest):
             },
         )
     except ValueError as e:
+        msg = str(e)
+        if "cannot find the requested files" in msg or "offline mode is enabled" in msg or "EntryNotFound" in type(e).__name__:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "status": "error",
+                    "code": "MODEL_NOT_INSTALLED",
+                    "message": msg,
+                    "model": "tts",
+                },
+            )
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
                 "status": "error",
                 "code": "INVALID_INPUT",
-                "message": str(e),
+                "message": msg,
                 "model": "tts",
             },
         )
     except Exception as e:
+        import sys
+        print(f"[TTS Error] synthesize_endpoint unhandled exception: {type(e).__name__}: {e}", file=sys.stderr)
+        msg = str(e)
+        if "cannot find the requested files" in msg or "offline mode is enabled" in msg:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={
+                    "status": "error",
+                    "code": "MODEL_NOT_INSTALLED",
+                    "message": msg,
+                    "model": "tts",
+                },
+            )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "status": "error",
                 "code": "SYNTHESIS_FAILED",
-                "message": str(e),
+                "message": msg,
                 "model": "tts",
             },
         )
@@ -117,10 +145,12 @@ def status_endpoint():
     """
     state = lifecycle_manager.get_state("tts") or "UNLOADED"
     installed = is_model_installed()
+    available_voices = [v for v in VOICE_WHITELIST if _resolve_voice_path(v) is not None]
     return {
         "ready": state == "LOADED",
         "modelState": state,
         "installed": installed,
         "voices": VOICE_WHITELIST,
+        "availableVoices": available_voices,
     }
 

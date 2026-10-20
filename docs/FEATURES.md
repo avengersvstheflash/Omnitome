@@ -21,6 +21,7 @@ Omnitome maintains an architectural split between immutable source material and 
 - **Clickable Sentence Citations:** Every claim in an Omni reading links directly to its origin paragraph in the Research dossier.
 - **Bi-directional Navigation:** Clicking a citation in Omni view instantly jumps the Research view to the corresponding passage, highlighting the exact supporting text.
 - **Source Detached State:** If a heavy source file is purged to conserve disk space, the lightweight Omni reading remains fully intact with an explicit *"Source detached"* status badge.
+- **Self-Healing Lifecycle Reconciliation:** Books completing synthesis automatically sync `in_library = 1` and `lifecycle_state = 'active'`, guaranteeing that imported works with generated smart chapters immediately appear in the Library catalog without manual intervention.
 
 ---
 
@@ -66,8 +67,9 @@ Omnitome processes long-form texts into structured, highly readable reading unit
 
 Omnitome includes an offline neural audio narration system designed for deep, long-form listening:
 
-- **100% Offline Synthesis:** Powered by Kokoro-82M running locally via PyTorch FP16 CUDA (with transparent CPU fallback). No audio data leaves your machine.
-- **Curated Neural Voices:** Four expressive, balanced voices:
+- **100% Offline Synthesis:** Powered by Kokoro-82M running locally via PyTorch FP16 CUDA (with transparent CPU fallback). Fully verified in offline isolation (`HF_HUB_OFFLINE=1`) with a custom local voice loader (`_resolve_voice_path`) that resolves voice weights directly without Hugging Face Hub dependencies.
+- **Citation-Only Sentence Resilience:** Generates a synthetic 250ms silence WAV buffer when encountering citation-only sentences (e.g. `[p12]`), preventing audio pipeline stalls without throwing client-side playback exceptions.
+- **Curated Neural Voices:** Four expressive, balanced voices preloaded and verified at boot:
   - `af_heart`: Warm, gentle American female voice.
   - `am_adam`: Grounded, authoritative American male voice.
   - `bf_alice`: Crisp, articulate British female voice.

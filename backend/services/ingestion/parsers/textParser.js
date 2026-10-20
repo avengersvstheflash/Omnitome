@@ -268,6 +268,29 @@ function hasShiftJisLeadBytes(buffer) {
 }
 
 /**
+ * Calculates the density of unicode replacement characters (U+FFFD)
+ * without allocating huge arrays via regex matching, with optional early exit.
+ *
+ * @param {string} str
+ * @param {number|null} [maxThreshold=null]
+ * @returns {number}
+ */
+function getReplacementDensity(str, maxThreshold = null) {
+  if (!str) return 0;
+  let count = 0;
+  const len = str.length;
+  for (let i = 0; i < len; i++) {
+    if (str.charCodeAt(i) === 0xFFFD) {
+      count++;
+      if (maxThreshold !== null && count > 50 && (count / (i + 1)) >= maxThreshold) {
+        return count / (i + 1);
+      }
+    }
+  }
+  return count / Math.max(1, len);
+}
+
+/**
  * Decodes a buffer into a string using deterministic BOM sniffing,
  * UTF-8 validation by replacement character density, statistical detection (jschardet),
  * and a content-aware fallback chain.
@@ -346,8 +369,7 @@ function decodeTextBuffer(buffer, options = {}) {
 
   // 3. Try UTF-8 and validate by U+FFFD density (< 0.1%)
   const utf8Decoded = buf.toString('utf8');
-  const utf8Replacements = (utf8Decoded.match(/\uFFFD/g) || []).length;
-  const utf8Density = utf8Replacements / Math.max(1, utf8Decoded.length);
+  const utf8Density = getReplacementDensity(utf8Decoded, 0.001);
   if (utf8Density < 0.001) {
     console.log(`[TextParser] Encoding detected: utf-8 (density ${utf8Density.toFixed(4)}) for ${originalFilename || ''}`);
     return utf8Decoded;
@@ -412,8 +434,7 @@ function decodeTextBuffer(buffer, options = {}) {
   for (const encoding of candidates) {
     try {
       const decoded = iconv.decode(buf, encoding);
-      const replacements = (decoded.match(/\uFFFD/g) || []).length;
-      const density = replacements / Math.max(1, decoded.length);
+      const density = getReplacementDensity(decoded, 0.01);
       if (density < 0.01) {
         console.log(`[TextParser] Encoding detected: ${encoding} (density ${density.toFixed(4)}) for ${originalFilename || ''}`);
         return decoded;

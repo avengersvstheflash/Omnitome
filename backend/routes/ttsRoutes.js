@@ -38,6 +38,7 @@ router.post('/synthesize', async (req, res, next) => {
     });
   } catch (err) {
     const status = err.status || 500;
+    console.error(`[ttsRoutes] Synthesis error (HTTP ${status}):`, err.message || err);
     return res.status(status).json({
       error: err.message || 'TTS synthesis failed',
       code: err.code || 'TTS_SYNTHESIS_FAILED',

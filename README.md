@@ -12,7 +12,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0" /></a>
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform" />
   <img src="https://img.shields.io/badge/Status-Feature%20Freeze%20v1.0-blue" alt="Status" />
-  <img src="https://img.shields.io/badge/Tests-59%20Suites%20%2B%20Corpus%20Gate-3fb950" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-60%20Suites%20%2B%2017%20Rust%20%2B%20Corpus-3fb950" alt="Tests" />
   <img src="https://img.shields.io/badge/Tauri-v2-FFC131?logo=tauri&logoColor=black" alt="Tauri v2" />
   <img src="https://img.shields.io/badge/Node.js-22%20LTS-339933?logo=node.js&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python" />
@@ -107,7 +107,7 @@ Omnitome is engineered as a coordinated multi-process desktop application:
 | **S11 — Tauri Scaffold** | ✅ Complete | Native desktop shell, app icon |
 | **S12 — Supervisor** | ✅ Complete | PyInstaller freeze, dynamic ports, process tree cleanup |
 | **S13 — Resources** | ✅ Complete | Neural setup UX, streaming downloads, hash locking |
-| **S14 — Installer** | 🚧 In Progress | NSIS dual-installer pipeline |
+| **S14 — Installer** | 🚧 Near Complete (98%) | NSIS installer, 7z sidecar extraction, animated splash screen & dynamic path resolution |
 | **S15 — Release** | 📋 Planned | Code signing, distribution |
 
 👉 *Track strategic milestones and deep architectural context in [docs/ROADMAP_2026-09.md](./docs/ROADMAP_2026-09.md).*

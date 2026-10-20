@@ -168,6 +168,22 @@ async function _runPostIngestPipeline(book, options = {}) {
           if (result) {
             console.log(`[Import] Auto-synthesized ${result.synthesizedCount}/3 chapters for ${book.id}`);
           }
+          try {
+            const bookLifecycleRepository = require('../repositories/bookLifecycleRepository');
+            const existingLc = bookLifecycleRepository.getByBookId(book.id);
+            if (existingLc && !existingLc.deleted_at) {
+              bookLifecycleRepository.update(book.id, {
+                in_library: 1,
+                lifecycle_state: existingLc.in_research ? 'active' : 'library_only',
+                synthesis_count: Math.max(existingLc.synthesis_count || 0, 1),
+              });
+            } else if (!existingLc) {
+              const bookLifecycleService = require('./lifecycle/bookLifecycleService');
+              bookLifecycleService.ensureLifecycle(book.id, { in_library: 1 });
+            }
+          } catch (lcErr) {
+            console.warn(`[Import] Lifecycle update notice for ${book.id}:`, lcErr.message);
+          }
         } catch (err) {
           console.warn(`[Import] Synthesis failed: ${err.message}`);
           jobRepository.fail(synthesisJob.id, err);
@@ -197,6 +213,23 @@ async function _runPostIngestPipeline(book, options = {}) {
       _persistStage(taskId, 'attribution', 'failed');
       bookRepository.update(book.id, { attribution_completed_at: new Date().toISOString() });
     }
+
+    // Ensure lifecycle reflects in_library = 1 if smart chapters exist
+    try {
+      const bookLifecycleRepository = require('../repositories/bookLifecycleRepository');
+      const db = getDatabase();
+      const smartRow = db.prepare("SELECT 1 FROM smart_chapters WHERE book_id = ? LIMIT 1").get(book.id);
+      if (smartRow) {
+        const curLc = bookLifecycleRepository.getByBookId(book.id);
+        if (curLc && !curLc.deleted_at && curLc.in_library !== 1) {
+          bookLifecycleRepository.update(book.id, {
+            in_library: 1,
+            lifecycle_state: curLc.in_research ? 'active' : 'library_only',
+            synthesis_count: Math.max(curLc.synthesis_count || 0, 1),
+          });
+        }
+      }
+    } catch (_) {}
   } catch (err) {
     console.error(`[Import] Post-ingest pipeline failed for ${book.id}:`, err.message);
     throw err;

@@ -693,6 +693,28 @@ class ImportQueueService {
         completed_at: s.completed_at || new Date().toISOString(),
       }));
 
+      // Ensure lifecycle reflects in_library = 1 if smart chapters exist
+      if (bookId) {
+        try {
+          const bookLifecycleRepository = require('../../repositories/bookLifecycleRepository');
+          const db = require('../../db/database').getDatabase();
+          const hasSmart = db.prepare("SELECT 1 FROM smart_chapters WHERE book_id = ? LIMIT 1").get(bookId);
+          if (hasSmart) {
+            const curLc = bookLifecycleRepository.getByBookId(bookId);
+            if (curLc && !curLc.deleted_at && curLc.in_library !== 1) {
+              bookLifecycleRepository.update(bookId, {
+                in_library: 1,
+                lifecycle_state: curLc.in_research ? 'active' : 'library_only',
+                synthesis_count: Math.max(curLc.synthesis_count || 0, 1),
+              });
+            } else if (!curLc) {
+              const bookLifecycleService = require('../lifecycle/bookLifecycleService');
+              bookLifecycleService.ensureLifecycle(bookId, { in_library: 1 });
+            }
+          }
+        } catch (_) {}
+      }
+
       // Mark Complete
       importQueueRepository.update(nextTask.id, {
         status: 'completed',

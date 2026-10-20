@@ -51,7 +51,16 @@ export const LibraryRoute: React.FC = () => {
       setSelectedTags(stored.selectedTags);
     }
     isRestoredRef.current = true;
-  }, []);
+    refetch();
+
+    const handleBooksChanged = () => {
+      refetch();
+    };
+    window.addEventListener('omnitome:books-changed', handleBooksChanged);
+    return () => {
+      window.removeEventListener('omnitome:books-changed', handleBooksChanged);
+    };
+  }, [refetch]);
 
   // Persist filter changes across tab navigation
   useEffect(() => {

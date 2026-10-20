@@ -426,12 +426,23 @@ timeline
   - **Regression Gate:** **All 59 unit test suites + 1 corpus gate passed clean.**
 - **Commits:** `93499aa`, `fa71cc6`, `fef19c2`, `0f47062`, `6ec9086`, `021196c`, `e277afc`, `73bb7ca`, `8881344`.
 
+#### 🗓️ 2026-10-19 / 2026-10-20 — Series 4 (S14 Packaging, Kokoro Offline & Library Self-Healing)
+- **Progress:** `[████████████████████]` 99%
+- **Milestones:**
+  - **S14 7z NSIS Architecture & Dynamic Path Resolution:** Overcame the 2GB NSIS limit by LZMA-compressing the 4.6GB sidecar into a 1.36GB `sidecar.7z` archive (1.66 GB final installer). Implemented background extraction to `%LOCALAPPDATA%\Omnitome\sidecar\` via `sevenz-rust` in Rust supervisor with read-only attribute handling. Rewrote path resolution using `std::env::current_exe()` parent directory and added `strip_windows_verbatim` to fix Node v22 `EISDIR: lstat 'C:'` crashes.
+  - **Animated Splash Screen & Supervisor Threading:** Built pure CSS 3D flipping book splash screen (`splashscreen.html`) with 3-phase text cycling; moved supervisor to background thread (`std::thread::spawn`) to maintain 60fps UI responsiveness during extraction.
+  - **Sidecar Dependencies & Model Hosting:** Shipped `transformers.models.metaclip_2`, `thinc` data files, and `language_tags` JSON in `sidecar.spec`. Updated model distribution to Cloudflare R2 zero-egress hosting and fixed embedding 503 errors.
+  - **Kokoro Offline Voice Resolver & Citation Silence:** Fixed `OfflineModeIsEnabled` crash with `_resolve_voice_path` and custom voice loader using `torch.load(..., weights_only=True)`. Eliminated 400 Bad Request on citation-only sentences with 250ms silence WAV fallback.
+  - **Library Ingestion & Lifecycle Self-Healing:** Reconciled `in_library = 1` and `lifecycle_state = 'active'` upon smart chapter generation and queue completion; added automatic DB backfill for existing books; wired dynamic UI refresh (`refetchOnMount: 'always'`, `'omnitome:books-changed'` event).
+  - **Regression Gate:** **All 60 regression suites + 1 network suite + 1 corpus gate passed clean (Node). All 17 Cargo unit tests passed clean (Rust). Frontend builds clean with zero errors.**
+- **Commits:** `97cbcf1`, `a5f95c4`, `fddd360`, `9813d4b`, `340fec3`, `80286b5`, `058da19`, `ed586fc`, `68d86c1`, `0584480`, `7ae3ad7`, `f5c5557`, `a6423c0`, `6405fa3`, `7ebb600`.
+
 ---
 
 ## 🧪 Benchmark & Verification Suite Execution
 
 ```bash
-# Run all 59 regression suites + the 10-fixture corpus gate:
+# Run all 60 regression suites + the 10-fixture corpus gate:
 npm test
 # (Equivalent to: node scripts/run-all-tests.js)
 

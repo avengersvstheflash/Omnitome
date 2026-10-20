@@ -215,6 +215,15 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
         // Auto undis-miss if new items appear in queue
         const shouldUnDismiss = pendingCount > 0 && get().isDismissed;
 
+        const prevPending = get().pendingCount;
+        const prevCompletedCount = (get().historyTasks || []).filter((t) => t.status === 'completed').length;
+        const curCompletedCount = history.filter((t) => t.status === 'completed').length;
+        if (curCompletedCount > prevCompletedCount || (prevPending > 0 && pendingCount === 0)) {
+          try {
+            window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
+          } catch {}
+        }
+
         set({
           activeTask: active,
           queuedTasks: queued,

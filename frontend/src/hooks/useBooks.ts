@@ -13,6 +13,7 @@ export function useBooks() {
       const res = await apiClient<BooksApiResponse>('/api/books');
       return (res.books || []).map(normalizeBook);
     },
+    refetchOnMount: 'always',
   });
 
   return {

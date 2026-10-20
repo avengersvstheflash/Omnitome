@@ -52,6 +52,79 @@ class InputTooLongError(Exception):
 _engine = None
 
 
+def _resolve_voice_path(voice_name: str) -> Optional[str]:
+    """
+    Finds the absolute path to a Kokoro voice file (.pt) across local locations,
+    preventing any unexpected calls to Hugging Face Hub in offline mode.
+    """
+    if not voice_name or not isinstance(voice_name, str):
+        return None
+
+    clean_voice = voice_name.strip()
+    if clean_voice.lower().endswith('.pt'):
+        clean_voice = clean_voice[:-3]
+    clean_voice = os.path.basename(clean_voice).lower().strip()
+    filename = f"{clean_voice}.pt"
+
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    candidate_dirs = [
+        # 1. Kokoro model directory / voices
+        os.path.join(MODEL_DIR, "voices"),
+        MODEL_DIR,
+    ]
+    if local_app_data:
+        candidate_dirs.append(os.path.join(local_app_data, "Omnitome", "models", "kokoro", "voices"))
+        candidate_dirs.append(os.path.join(local_app_data, "Omnitome", "models", "kokoro"))
+
+    candidate_dirs.extend([
+        # 2. Local AppData Omnitome via expanduser
+        os.path.expanduser(r"~\AppData\Local\Omnitome\models\kokoro\voices"),
+        os.path.expanduser(r"~\AppData\Local\Omnitome\models\kokoro"),
+        # 3. Project / repo paths
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "kokoro", "voices")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models", "kokoro")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "resources", "models", "kokoro", "voices")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "resources", "models", "kokoro")),
+    ])
+
+    for c_dir in candidate_dirs:
+        candidate_file = os.path.join(c_dir, filename)
+        if os.path.isfile(candidate_file):
+            return candidate_file
+
+    # 4. Search in HuggingFace cache snapshots (offline local cache)
+    hf_homes = [
+        os.environ.get("HF_HOME"),
+        os.path.expanduser("~/.cache/huggingface"),
+        os.path.expanduser(r"~\AppData\Local\huggingface"),
+    ]
+    for hf_home in hf_homes:
+        if not hf_home or not os.path.isdir(hf_home):
+            continue
+        snapshots_dir = os.path.join(hf_home, "hub", "models--hexgrad--Kokoro-82M", "snapshots")
+        if os.path.isdir(snapshots_dir):
+            try:
+                for snap in os.listdir(snapshots_dir):
+                    v_file = os.path.join(snapshots_dir, snap, "voices", filename)
+                    if os.path.isfile(v_file):
+                        # Copy to MODEL_DIR/voices so subsequent lookups are local and immediate
+                        try:
+                            target_dir = os.path.join(MODEL_DIR, "voices")
+                            os.makedirs(target_dir, exist_ok=True)
+                            target_file = os.path.join(target_dir, filename)
+                            if not os.path.exists(target_file):
+                                import shutil
+                                shutil.copyfile(v_file, target_file)
+                                return target_file
+                        except Exception:
+                            pass
+                        return v_file
+            except Exception:
+                pass
+
+    return None
+
+
 def get_model_path() -> str:
     return os.path.join(MODEL_DIR, 'kokoro-v1_0.pth')
 
@@ -122,6 +195,39 @@ def load_engine():
                 _engine = KPipeline(lang_code='a', repo_id='hexgrad/Kokoro-82M', model=kmodel, device=device)
             except Exception:
                 _engine = KPipeline(lang_code='a', model=model_path, device=device)
+
+        # Attach offline voice resolver to pipeline so it never invokes hf_hub_download
+        def _custom_load_single_voice(voice: str):
+            if hasattr(_engine, 'voices') and voice in _engine.voices:
+                return _engine.voices[voice]
+            clean_name = str(voice or '').strip().lower()
+            if clean_name.endswith('.pt'):
+                clean_name = clean_name[:-3]
+            clean_name = os.path.basename(clean_name).strip().lower()
+            if hasattr(_engine, 'voices') and clean_name in _engine.voices:
+                return _engine.voices[clean_name]
+
+            v_path = _resolve_voice_path(clean_name)
+            if v_path and os.path.isfile(v_path):
+                import torch
+                pack = torch.load(v_path, weights_only=True)
+                if hasattr(_engine, 'voices'):
+                    _engine.voices[voice] = pack
+                    _engine.voices[clean_name] = pack
+                return pack
+
+            raise ModelNotInstalledError(
+                f"Kokoro voice '{clean_name}' not found locally. Please ensure voice weights are installed in {os.path.join(MODEL_DIR, 'voices')}."
+            )
+
+        _engine.load_single_voice = _custom_load_single_voice
+
+        # Pre-load all whitelisted voices if available
+        for v in VOICE_WHITELIST:
+            try:
+                _custom_load_single_voice(v)
+            except Exception as e:
+                print(f"[TTS] Pre-loading voice {v} notice: {e}")
 
         print("[TTS] Kokoro pipeline loaded successfully.")
         return _engine
@@ -200,7 +306,17 @@ def synthesize_sentence(text: str, voice: str = 'af_heart', speed: float = 1.0) 
 
     cleaned = sanitize_text(text)
     if not cleaned:
-        raise ValueError("Text cannot be empty after sanitization")
+        # Generate 250ms silence WAV so citation-only sentences do not crash playback
+        sample_rate = 24000
+        silence_samples = int(sample_rate * 0.25)
+        raw_pcm_bytes = b"\x00\x00" * silence_samples
+        buf = io.BytesIO()
+        with wave.open(buf, 'wb') as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(raw_pcm_bytes)
+        return buf.getvalue()
 
     if len(cleaned) > 1000:
         raise InputTooLongError(
