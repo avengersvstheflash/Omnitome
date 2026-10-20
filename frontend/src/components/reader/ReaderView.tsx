@@ -11,56 +11,17 @@ import { CanonicalBlock, extractSentencesFromBlock } from './CanonicalBlock';
 import { SmartEmptyState } from './SmartEmptyState';
 import { useProvenance } from '../../hooks/useProvenance';
 import { ProvenancePreview } from './ProvenancePreview';
-import { useTtsPlayer } from '../../hooks/useTtsPlayer';
+import {
+  useTtsPlayer,
+  getPendingAdvance,
+  setPendingAdvance,
+  clearPendingAdvance,
+  matchesTargetChapter,
+} from '../../hooks/useTtsPlayer';
 import { useSmartChapters } from '../../hooks/useSmartChapters';
+import { useChapters } from '../../hooks/useChapters';
 import { AudioPlayerBar } from './AudioPlayerBar';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-
-interface PendingAutoAdvance {
-  bookId: string;
-  targetChapterId: string;
-  timestamp: number;
-}
-
-const PENDING_ADVANCE_KEY = 'omnitome:reader:pending-auto-advance';
-let modulePendingAdvance: PendingAutoAdvance | null = null;
-
-function getPendingAdvance(): PendingAutoAdvance | null {
-  if (modulePendingAdvance) return modulePendingAdvance;
-  try {
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      const raw = sessionStorage.getItem(PENDING_ADVANCE_KEY);
-      if (raw) {
-        return JSON.parse(raw);
-      }
-    }
-  } catch {
-    // Ignore storage parse errors
-  }
-  return null;
-}
-
-function setPendingAdvance(token: PendingAutoAdvance) {
-  modulePendingAdvance = token;
-  try {
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      sessionStorage.setItem(PENDING_ADVANCE_KEY, JSON.stringify(token));
-    }
-  } catch {
-    // Ignore storage write errors
-  }
-}
-
-function clearPendingAdvance() {
-  modulePendingAdvance = null;
-  try {
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      sessionStorage.removeItem(PENDING_ADVANCE_KEY);
-    }
-  } catch {
-    // Ignore storage remove errors
-  }
-}
 
 export interface ReaderViewProps {
   chapter: Chapter;
@@ -111,6 +72,16 @@ export function ReaderView({
   const wordCount = chapter.wordCount ?? 0;
   const minutes = Math.max(1, Math.round(wordCount / 200));
   const blocks = chapter.canonicalBlocks ?? chapter.canonical_blocks ?? [];
+  const originalBlocks: CanonicalBlockType[] = useMemo(() => {
+    if (blocks.length > 0) return blocks;
+    if (chapter.content && chapter.content.trim().length > 0) {
+      return chapter.content
+        .split(/\n\s*\n/)
+        .filter(Boolean)
+        .map((p) => ({ type: 'paragraph', text: p.trim() }));
+    }
+    return [];
+  }, [blocks, chapter.content]);
 
   const smartBlocks = mode === 'smart' ? getSmartBlocks(representation) : [];
   const meta = representation ? parseRepresentationMetadata(representation) : {};
@@ -118,50 +89,60 @@ export function ReaderView({
   const smartWordCount = repText.trim() ? repText.trim().split(/\s+/).length : 0;
   const smartMinutes = Math.max(1, Math.round(smartWordCount / 200));
 
-  // Compute sentence array & offsets for TTS
-  const activeBlocks = mode === 'smart' ? smartBlocks : blocks;
+  // Compute sentence array & offsets for TTS (including chapter title as sentence 0)
+  const activeBlocks = mode === 'smart' ? smartBlocks : originalBlocks;
+  const rawTitle = chapter?.title || '';
+  const titleSentence = rawTitle
+    .replace(/^#+\s*/, '')
+    .replace(/[*_`]/g, '')
+    .trim();
 
   const blockSentenceOffsets = useMemo(() => {
     const offsets: number[] = [];
-    let cur = 0;
+    let cur = titleSentence ? 1 : 0;
     for (const blk of activeBlocks) {
       offsets.push(cur);
       cur += extractSentencesFromBlock(blk).length;
     }
     return offsets;
-  }, [activeBlocks]);
+  }, [activeBlocks, titleSentence]);
 
   const allSentences = useMemo(() => {
     const all: string[] = [];
+    if (titleSentence) {
+      all.push(titleSentence);
+    }
     for (const blk of activeBlocks) {
       all.push(...extractSentencesFromBlock(blk));
     }
     return all;
-  }, [activeBlocks]);
+  }, [activeBlocks, titleSentence]);
 
   const bookId = chapter.bookId || representation?.book_id || '';
   const chapterId = chapter.id;
-  // Composite ID ensures player resets when toggling between smart and original modes
-  const ttsChapterKey = `${chapterId}:${mode}`;
-  const player = useTtsPlayer(allSentences, bookId, ttsChapterKey);
 
   const navigate = useNavigate();
   const { chapters: smartChapters } = useSmartChapters(bookId);
-  const chapters = useMemo(
-    () =>
-      (smartChapters || [])
+  const { chapters: originalChapters } = useChapters(bookId);
+  const chapters = useMemo(() => {
+    if (mode === 'smart') {
+      const generated = (smartChapters || [])
         .filter((c) => c.status === 'generated')
-        .sort((a, b) => a.sequence - b.sequence),
-    [smartChapters]
-  );
+        .sort((a, b) => a.sequence - b.sequence);
+      if (generated.length > 0) return generated;
+    }
+    return (originalChapters || []).sort((a, b) => a.number - b.number);
+  }, [mode, smartChapters, originalChapters]);
 
   const handleChapterComplete = useCallback(() => {
     const currentChapterIndex = chapters.findIndex((c) => c.id === chapterId);
+    if (currentChapterIndex === -1) {
+      return;
+    }
     const nextChapter = chapters[currentChapterIndex + 1];
     if (!nextChapter) {
       // Book end — stop playback, do NOT navigate
       clearPendingAdvance();
-      player.stop();
       return;
     }
 
@@ -171,11 +152,16 @@ export function ReaderView({
       timestamp: Date.now(),
     });
     navigate(`/read/${bookId}/${nextChapter.id}`);
-  }, [chapters, chapterId, bookId, navigate, player]);
+  }, [chapters, chapterId, bookId, navigate]);
 
+  // Composite ID ensures player resets when toggling between smart and original modes
+  const ttsChapterKey = `${chapterId}:${mode}`;
+  const player = useTtsPlayer(allSentences, bookId, ttsChapterKey, {
+    onChapterComplete: handleChapterComplete,
+  });
   player.onChapterComplete = handleChapterComplete;
 
-  // Detect when sentences array is ready for the new chapter
+  // Auto-advance handler for transitioning across chapters with StrictMode and React Query race protection
   useEffect(() => {
     const token = getPendingAdvance();
     if (!token) return;
@@ -185,25 +171,56 @@ export function ReaderView({
       return;
     }
 
-    if (token.bookId !== bookId || token.targetChapterId !== chapterId) {
+    if (token.bookId !== bookId) {
       clearPendingAdvance();
       return;
     }
 
-    if (!player.autoAdvance) {
-      clearPendingAdvance();
+    // Still transitioning to target chapter — do NOT clear token prematurely
+    if (!matchesTargetChapter(token.targetChapterId, chapterId)) {
       return;
     }
 
-    if (allSentences.length === 0) {
-      clearPendingAdvance();
-      player.stop();
+    // Wait until sentences are ready for this chapter before resuming.
+    // Ensure body content is loaded, not just the prepended title sentence!
+    const minSentences = titleSentence ? 2 : 1;
+    const hasEnoughSentences = allSentences.length >= minSentences;
+
+    // If body text is still loading (allSentences only contains title), wait for next render.
+    // However, if after a brief delay (400ms) only 1 sentence exists (genuinely 1-sentence chapter),
+    // still proceed so the reader doesn't hang.
+    if (!hasEnoughSentences) {
+      if (allSentences.length > 0) {
+        const fallbackTimer = setTimeout(() => {
+          if (!player.isPlaying) {
+            player.setAutoAdvance(true);
+            player.resumeAtSentence0();
+          }
+        }, 400);
+        return () => clearTimeout(fallbackTimer);
+      }
       return;
     }
 
-    clearPendingAdvance();
+    if (player.isPlaying) {
+      return;
+    }
+
+    player.setAutoAdvance(true);
     player.resumeAtSentence0();
-  }, [chapterId, allSentences.length, bookId, player]);
+  }, [
+    chapterId,
+    allSentences.length,
+    bookId,
+    titleSentence,
+    player.isPlaying,
+    player.resumeAtSentence0,
+    player.setAutoAdvance,
+  ]);
+
+  const isTitleActive = Boolean(
+    titleSentence && player.activeSentenceIndex === 0 && player.isPlaying
+  );
 
   const [isBarVisible, setIsBarVisible] = useState(true);
   useEffect(() => {
@@ -354,7 +371,32 @@ export function ReaderView({
             SOURCE · IMMUTABLE
           </div>
 
-          <h1 className="display">{chapter.title}</h1>
+          <h1
+            className={`display transition-colors rounded ${isTitleActive ? 'tts-active' : ''} ${
+              titleSentence ? 'cursor-pointer' : ''
+            }`}
+            data-sentence-index={titleSentence ? 0 : undefined}
+            tabIndex={titleSentence ? 0 : undefined}
+            role={titleSentence ? 'button' : undefined}
+            aria-label={titleSentence ? `Chapter title: ${chapter.title}` : undefined}
+            onClick={() => {
+              if (titleSentence) {
+                setIsBarVisible(true);
+                setUserIsScrolling(false);
+                player.seekToSentence(0);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (titleSentence && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                setIsBarVisible(true);
+                setUserIsScrolling(false);
+                player.seekToSentence(0);
+              }
+            }}
+          >
+            {chapter.title}
+          </h1>
 
           <p className="text-caption text-muted m-0">
             {wordCount} words · ~{minutes} min
@@ -456,7 +498,32 @@ export function ReaderView({
             </p>
           )}
 
-          <h1 className="display">{chapter.title}</h1>
+          <h1
+            className={`display transition-colors rounded ${isTitleActive ? 'tts-active' : ''} ${
+              titleSentence ? 'cursor-pointer' : ''
+            }`}
+            data-sentence-index={titleSentence ? 0 : undefined}
+            tabIndex={titleSentence ? 0 : undefined}
+            role={titleSentence ? 'button' : undefined}
+            aria-label={titleSentence ? `Chapter title: ${chapter.title}` : undefined}
+            onClick={() => {
+              if (titleSentence) {
+                setIsBarVisible(true);
+                setUserIsScrolling(false);
+                player.seekToSentence(0);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (titleSentence && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                setIsBarVisible(true);
+                setUserIsScrolling(false);
+                player.seekToSentence(0);
+              }
+            }}
+          >
+            {chapter.title}
+          </h1>
 
           <p className="text-caption text-muted m-0">
             {smartWordCount} words · ~{smartMinutes} min

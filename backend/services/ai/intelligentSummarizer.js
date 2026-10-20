@@ -101,23 +101,38 @@ class IntelligentSummarizer {
       if (!ch1Chunk && allChunks.length > 0) {
         ch1Chunk = allChunks.find(c => this.extractOpeningProse(c) !== '(None provided)') || allChunks[0];
       }
+      if (!ch1Chunk || this.extractOpeningProse(ch1Chunk) === '(None provided)') {
+        if (bodyChapters.length > 0) {
+          ch1Chunk = bodyChapters[0];
+        } else if (chapters.length > 0) {
+          ch1Chunk = chapters[0];
+        }
+      }
       
       let lastChChunk = null;
       if (bodyChapters.length > 1) {
         const lastCh = bodyChapters[bodyChapters.length - 1];
         const lastChChunks = allChunks.filter(c => c.chapterId === lastCh.id);
-        lastChChunk = lastChChunks.find(c => this.extractOpeningProse(c) !== '(None provided)') || lastChChunks[0] || null;
-      } else if (bodyChapters.length === 1) {
-        // For single-chapter works, sample lastChChunk from the final chunk of that chapter/book with prose
+        lastChChunk = lastChChunks.find(c => this.extractOpeningProse(c) !== '(None provided)') || lastChChunks[0] || lastCh;
+      } else if (bodyChapters.length === 1 || chapters.length === 1) {
+        // For single-chapter works, sample lastChChunk from the final chunk with prose, or fall back to ch1Chunk/single chapter
         const candidateChunks = allChunks.filter(c => !ch1Chunk || c.id !== ch1Chunk.id);
         lastChChunk = [...candidateChunks].reverse().find(c => this.extractOpeningProse(c) !== '(None provided)')
           || candidateChunks[candidateChunks.length - 1]
           || null;
+        if (!lastChChunk || this.extractOpeningProse(lastChChunk) === '(None provided)') {
+          lastChChunk = ch1Chunk || (bodyChapters[0] || chapters[0] || null);
+        }
       } else if (allChunks.length > 1) {
         const candidateChunks = allChunks.filter(c => !ch1Chunk || c.id !== ch1Chunk.id);
         lastChChunk = [...candidateChunks].reverse().find(c => this.extractOpeningProse(c) !== '(None provided)')
           || candidateChunks[candidateChunks.length - 1]
           || null;
+        if (!lastChChunk || this.extractOpeningProse(lastChChunk) === '(None provided)') {
+          lastChChunk = ch1Chunk;
+        }
+      } else {
+        lastChChunk = ch1Chunk;
       }
       
       const selectedChunks = [
@@ -190,12 +205,32 @@ class IntelligentSummarizer {
       let ch1FirstPara = extractOpeningProse(ch1Chunk, 250);
       let lastChFirstPara = extractOpeningProse(lastChChunk, 250);
 
+      // If chapter opening prose is still '(None provided)', sample from bodyChapters / chapters
+      if ((!ch1FirstPara || ch1FirstPara === '(None provided)') && bodyChapters.length > 0) {
+        ch1FirstPara = extractOpeningProse(bodyChapters[0], 250);
+      }
+      if ((!ch1FirstPara || ch1FirstPara === '(None provided)') && chapters.length > 0) {
+        ch1FirstPara = extractOpeningProse(chapters[0], 250);
+      }
+
       // If opening prose from raw chunks is sparse or missing, but Omni chapters exist, reuse them!
       if ((!ch1FirstPara || ch1FirstPara === '(None provided)') && generatedSmartChapters.length > 0) {
         ch1FirstPara = extractOpeningProse(generatedSmartChapters[0], 250);
       }
-      if ((!lastChFirstPara || lastChFirstPara === '(None provided)') && generatedSmartChapters.length > 1) {
-        lastChFirstPara = extractOpeningProse(generatedSmartChapters[generatedSmartChapters.length - 1], 250);
+
+      // If a book only has 1 chapter, sampler must correctly pull the first few paragraphs of that single chapter for BOTH inputs
+      const isSingleChapter = (bodyChapters.length === 1 || chapters.length === 1 || (bodyChapters.length === 0 && chapters.length <= 1));
+      if (isSingleChapter) {
+        if (!lastChFirstPara || lastChFirstPara === '(None provided)') {
+          lastChFirstPara = ch1FirstPara;
+        }
+      } else {
+        if ((!lastChFirstPara || lastChFirstPara === '(None provided)') && bodyChapters.length > 1) {
+          lastChFirstPara = extractOpeningProse(bodyChapters[bodyChapters.length - 1], 250);
+        }
+        if ((!lastChFirstPara || lastChFirstPara === '(None provided)') && generatedSmartChapters.length > 1) {
+          lastChFirstPara = extractOpeningProse(generatedSmartChapters[generatedSmartChapters.length - 1], 250);
+        }
       }
 
       const usableWords = countWords(
@@ -937,6 +972,89 @@ OUTPUT:`;
     return acc.trimEnd() + '...';
   }
 
+  _extractTextFromBlock(block) {
+    if (!block) return '';
+    if (typeof block === 'string') return block;
+
+    switch (block.type) {
+      case 'paragraph':
+      case 'heading':
+      case 'quote':
+      case 'code':
+        return block.text || block.content || block.raw || '';
+      case 'callout': {
+        const title = block.title ? block.title + '\n' : '';
+        const body = block.text || block.content || '';
+        return title + body;
+      }
+      case 'list': {
+        if (Array.isArray(block.items)) {
+          return block.items
+            .map(item => {
+              if (typeof item === 'string') return item;
+              return this._extractTextFromBlock(item);
+            })
+            .filter(Boolean)
+            .join('\n');
+        }
+        return block.text || block.content || '';
+      }
+      case 'table': {
+        const parts = [];
+        if (block.caption) parts.push(block.caption);
+        if (Array.isArray(block.headers)) parts.push(block.headers.join(' | '));
+        if (Array.isArray(block.rows)) {
+          for (const row of block.rows) {
+            if (Array.isArray(row)) parts.push(row.join(' | '));
+            else if (typeof row === 'string') parts.push(row);
+          }
+        }
+        return parts.join('\n');
+      }
+      default:
+        return block.text || block.content || block.raw || block.body || '';
+    }
+  }
+
+  _getCanonicalBlocks(item) {
+    if (!item) return null;
+    if (Array.isArray(item)) return item;
+    if (Array.isArray(item.canonicalBlocks)) return item.canonicalBlocks;
+    if (Array.isArray(item.canonical_blocks)) return item.canonical_blocks;
+    if (Array.isArray(item.blocks)) return item.blocks;
+    if (Array.isArray(item.canonical_content)) return item.canonical_content;
+    if (Array.isArray(item.canonicalBlock)) return item.canonicalBlock;
+    if (item.canonicalBlock && typeof item.canonicalBlock === 'object') return [item.canonicalBlock];
+
+    if (typeof item.canonical_content === 'string') {
+      const trimmed = item.canonical_content.trim();
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed;
+          if (parsed && typeof parsed === 'object') return [parsed];
+        } catch (_) {}
+      }
+    }
+
+    if (typeof item.canonical_blocks === 'string') {
+      const trimmed = item.canonical_blocks.trim();
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed;
+          if (parsed && typeof parsed === 'object') return [parsed];
+        } catch (_) {}
+      }
+    }
+
+    if (item.type && (item.text !== undefined || item.content !== undefined || item.items !== undefined)) {
+      return [item];
+    }
+
+    return null;
+  }
+
   extractOpeningProse(chunkOrChunks, maxWords = 250) {
     if (!chunkOrChunks) return '(None provided)';
     const chunks = Array.isArray(chunkOrChunks) ? chunkOrChunks : [chunkOrChunks];
@@ -945,27 +1063,115 @@ OUTPUT:`;
 
     for (const chunk of chunks) {
       if (!chunk) continue;
-      const rawText = chunk.textContent || chunk.content || '';
-      if (!rawText || typeof rawText !== 'string') continue;
 
-      const paras = rawText.split(/\r?\n\s*\r?\n/).map(p => p.trim()).filter(Boolean);
-      for (const para of paras) {
-        const cleaned = para
-          .replace(/\[Section:[^\]]*\]/gi, '')
-          .replace(/\[Source\b[^\]]*\]/gi, '')
-          .trim();
-        if (!cleaned) continue;
+      // 1. Try canonical blocks on chunk / chapter object
+      const blocks = this._getCanonicalBlocks(chunk);
+      if (blocks && blocks.length > 0) {
+        for (const block of blocks) {
+          const blockText = this._extractTextFromBlock(block);
+          if (!blockText) continue;
 
-        const w = countWords(cleaned);
-        if (w === 0) continue;
+          const paras = blockText.split(/\r?\n\s*\r?\n/).map(p => p.trim()).filter(Boolean);
+          for (const para of paras) {
+            const cleaned = para
+              .replace(/\[Section:[^\]]*\]/gi, '')
+              .replace(/\[Source\b[^\]]*\]/gi, '')
+              .trim();
+            if (!cleaned) continue;
 
-        collected.push(cleaned);
-        accumulatedWords += w;
+            const w = countWords(cleaned);
+            if (w === 0) continue;
 
-        if (accumulatedWords >= maxWords) {
-          break;
+            collected.push(cleaned);
+            accumulatedWords += w;
+
+            if (accumulatedWords >= maxWords) {
+              break;
+            }
+          }
+          if (accumulatedWords >= maxWords) {
+            break;
+          }
         }
       }
+
+      if (accumulatedWords >= maxWords) {
+        break;
+      }
+
+      // 2. Try raw text (string or property) ONLY if canonical blocks were not found
+      if (!blocks || blocks.length === 0) {
+      let rawText = '';
+      if (typeof chunk === 'string') {
+        rawText = chunk;
+      } else if (typeof chunk === 'object') {
+        rawText = chunk.textContent || chunk.content || chunk.text || '';
+      }
+
+      if (rawText && typeof rawText === 'string') {
+        const trimmed = rawText.trim();
+        let parsedBlocks = null;
+        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type) {
+              parsedBlocks = parsed;
+            } else if (parsed && typeof parsed === 'object' && parsed.type) {
+              parsedBlocks = [parsed];
+            }
+          } catch (_) {}
+        }
+
+        if (parsedBlocks && parsedBlocks.length > 0) {
+          for (const block of parsedBlocks) {
+            const blockText = this._extractTextFromBlock(block);
+            if (!blockText) continue;
+
+            const paras = blockText.split(/\r?\n\s*\r?\n/).map(p => p.trim()).filter(Boolean);
+            for (const para of paras) {
+              const cleaned = para
+                .replace(/\[Section:[^\]]*\]/gi, '')
+                .replace(/\[Source\b[^\]]*\]/gi, '')
+                .trim();
+              if (!cleaned) continue;
+
+              const w = countWords(cleaned);
+              if (w === 0) continue;
+
+              collected.push(cleaned);
+              accumulatedWords += w;
+
+              if (accumulatedWords >= maxWords) {
+                break;
+              }
+            }
+            if (accumulatedWords >= maxWords) {
+              break;
+            }
+          }
+        } else {
+          const paras = rawText.split(/\r?\n\s*\r?\n/).map(p => p.trim()).filter(Boolean);
+          for (const para of paras) {
+            const cleaned = para
+              .replace(/\[Section:[^\]]*\]/gi, '')
+              .replace(/\[Source\b[^\]]*\]/gi, '')
+              .trim();
+            if (!cleaned) continue;
+
+            const w = countWords(cleaned);
+            if (w === 0) continue;
+
+            collected.push(cleaned);
+            accumulatedWords += w;
+
+            if (accumulatedWords >= maxWords) {
+              break;
+            }
+          }
+        }
+      }
+    }
+
       if (accumulatedWords >= maxWords) {
         break;
       }

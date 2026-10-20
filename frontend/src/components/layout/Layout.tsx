@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { Nav } from './Nav';
 import { useThemeStore } from '../../store/useThemeStore';
 import { PersistentImportWidget } from '../import/PersistentImportWidget';
+import { ToastRegion } from '../shared/ToastRegion';
 
 export interface LayoutProps {
   mode?: 'app' | 'reader';
@@ -43,6 +44,9 @@ export const Layout: React.FC<LayoutProps> = ({ mode = 'app', children }) => {
 
       {/* Persistent Ingestion Pipeline Widget */}
       <PersistentImportWidget />
+
+      {/* Global Toast Region */}
+      <ToastRegion />
     </div>
   );
 };

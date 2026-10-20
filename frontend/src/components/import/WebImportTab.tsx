@@ -13,6 +13,7 @@ import {
 import { Modal } from '../shared/Modal';
 import { apiClient } from '../../api/client';
 import { useImportQueueStore } from '../../store/useImportQueueStore';
+import { toast } from '../../store/useToastStore';
 import { Book } from '../../types/domain';
 
 interface SearchResult {
@@ -179,7 +180,9 @@ export function WebImportTab({ onSuccess }: WebImportTabProps) {
         sourceFormat: 'web',
       });
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Failed to enqueue web source.';
       console.error('Enqueue error:', err);
+      toast.error(errMsg);
     } finally {
       setEnqueuingId(null);
     }
@@ -212,7 +215,9 @@ export function WebImportTab({ onSuccess }: WebImportTabProps) {
         sourceFormat: 'web',
       });
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Failed to enqueue batch web sources.';
       console.error('Batch enqueue error:', err);
+      toast.error(errMsg);
     }
   };
 
@@ -231,7 +236,9 @@ export function WebImportTab({ onSuccess }: WebImportTabProps) {
       setUrlPreview(res.preview);
       setCustomTitle(res.preview.metadata?.title || '');
     } catch (err) {
-      setUrlError(err instanceof Error ? err.message : 'Failed to inspect web URL.');
+      const errMsg = err instanceof Error ? err.message : 'Failed to inspect web URL.';
+      setUrlError(errMsg);
+      toast.error(errMsg);
     } finally {
       setInspectingUrl(false);
     }
@@ -261,7 +268,9 @@ export function WebImportTab({ onSuccess }: WebImportTabProps) {
         sourceFormat: 'web',
       });
     } catch (err) {
-      setUrlError(err instanceof Error ? err.message : 'Failed to enqueue web import.');
+      const errMsg = err instanceof Error ? err.message : 'Failed to enqueue web import.';
+      setUrlError(errMsg);
+      toast.error(errMsg);
     }
   };
 

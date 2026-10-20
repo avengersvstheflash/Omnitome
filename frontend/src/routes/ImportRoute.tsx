@@ -17,6 +17,7 @@ import { QueueManager } from '../components/import/QueueManager';
 import { WebImportTab } from '../components/import/WebImportTab';
 import { PasteImportTab } from '../components/import/PasteImportTab';
 import { useImportQueueStore } from '../store/useImportQueueStore';
+import { toast } from '../store/useToastStore';
 import { Book } from '../types/domain';
 
 type TabKey = 'file' | 'web' | 'paste' | 'queue';
@@ -92,22 +93,23 @@ export function ImportRoute() {
     try {
       const tasks = await enqueueFiles(files);
       queryClient.invalidateQueries({ queryKey: ['books'] });
-      setUploadSuccessMessage(
-        tasks.length === 1
-          ? `"${tasks[0].sourceTitle}" enqueued for sequential processing.`
-          : `${tasks.length} files added to the import queue.`
-      );
-      // Auto clear message after 4s
-      setTimeout(() => setUploadSuccessMessage(null), 4000);
+      const firstTitle = tasks[0]?.sourceTitle || files[0]?.name || 'Document';
+      const msg = tasks.length === 1
+        ? `Import started in background: ${firstTitle}`
+        : `Import started in background: ${tasks.length} files added to queue`;
+      toast.success(msg);
+      setTab('queue');
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Failed to enqueue files.');
+      const errMessage = err instanceof Error ? err.message : 'Failed to enqueue files.';
+      setUploadError(errMessage);
+      toast.error(errMessage);
     }
   };
 
   const handleImportSuccess = (book: Book) => {
     queryClient.invalidateQueries({ queryKey: ['books'] });
-    setUploadSuccessMessage(`Successfully enqueued "${book.title}". Omnitome is processing it in the background.`);
-    setTimeout(() => setUploadSuccessMessage(null), 5000);
+    toast.success(`Import started in background: ${book.title}`);
+    setTab('queue');
   };
 
   return (

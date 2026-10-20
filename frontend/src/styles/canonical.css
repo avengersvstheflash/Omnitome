@@ -208,11 +208,22 @@ article.prose.prose-reader :where(h1, h2, h3, h4, h5, h6) {
    Left accent stripe now uses inset box-shadow: GPU-composited, zero reflow, zero layout impact.
    background-color replaces the linear-gradient shorthand (no per-frame repaint). */
 .sentence-span.segment-highlighted,
-.sentence-span.tts-active {
+.sentence-span.tts-active,
+h1.display.tts-active {
   background-color: rgb(var(--accent) / 0.10);
   box-shadow: inset 3px 0 0 rgb(var(--accent) / 0.4);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+}
+
+h1.display {
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+h1.display.tts-active {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border-radius: 4px;
 }
 
 /* Phase 5.3b Research Viewer paper prose and block highlight */

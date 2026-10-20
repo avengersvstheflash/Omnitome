@@ -134,6 +134,9 @@ export function useGenerateOutline(bookId: string) {
       queryClient.invalidateQueries({ queryKey: ['editorial', bookId] });
       queryClient.invalidateQueries({ queryKey: ['smart-chapters', 'book', bookId] });
       queryClient.invalidateQueries({ queryKey: ['smart-chapters'] });
+      try {
+        window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
+      } catch {}
     },
   });
 }
@@ -160,6 +163,9 @@ export function useSynthesizeNext(bookId: string) {
       queryClient.invalidateQueries({ queryKey: ['smart-chapters'] });
       queryClient.invalidateQueries({ queryKey: ['chapter'] });
       queryClient.invalidateQueries({ queryKey: ['editorial-progress', bookId] });
+      try {
+        window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
+      } catch {}
     },
   });
 }

@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './api/queryClient';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { ModalHost } from './components/shared/ModalHost';
@@ -15,15 +16,6 @@ import { useEffect, useState } from 'react';
 import { ThemeDecor } from './components/decor/ThemeDecor';
 import { useResourceStore } from './store/useResourceStore';
 import { FirstRunScreen } from './components/resources/FirstRunScreen';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
 
 export default function App() {
   const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
@@ -88,6 +80,30 @@ export default function App() {
     console.log('[App] Calling fetchStatus()...');
     fetchStatus();
   }, [fetchStatus, isTauri, nodePort]);
+
+  useEffect(() => {
+    const handleBooksChanged = () => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['book'] });
+      queryClient.invalidateQueries({ queryKey: ['chapters'] });
+      queryClient.invalidateQueries({ queryKey: ['chapter'] });
+      queryClient.invalidateQueries({ queryKey: ['smart-chapters'] });
+      queryClient.invalidateQueries({ queryKey: ['editorial'] });
+      queryClient.invalidateQueries({ queryKey: ['editorial-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['book-lifecycle'] });
+      queryClient.invalidateQueries({ queryKey: ['sources'] });
+      queryClient.invalidateQueries({ queryKey: ['book-synopsis'] });
+      queryClient.invalidateQueries({ queryKey: ['book-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['semantic-status'] });
+      queryClient.invalidateQueries({ queryKey: ['resume-target'] });
+      queryClient.invalidateQueries({ queryKey: ['dossiers'] });
+      queryClient.invalidateQueries({ queryKey: ['import-queue'] });
+    };
+    window.addEventListener('omnitome:books-changed', handleBooksChanged);
+    return () => {
+      window.removeEventListener('omnitome:books-changed', handleBooksChanged);
+    };
+  }, []);
 
   if (isTauri && !nodePort) {
     if (hasTimeout) {

@@ -33,6 +33,9 @@ export function useResynthesizeDossier(dossierId?: string | null) {
       queryClient.invalidateQueries({ queryKey: ['sources'] });
       queryClient.invalidateQueries({ queryKey: ['book-lifecycle', dossierId] });
       queryClient.invalidateQueries({ queryKey: ['import-queue'] });
+      try {
+        window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
+      } catch {}
     },
   });
 }

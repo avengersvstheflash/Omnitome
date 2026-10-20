@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings } from './useSettings';
 import { apiUrl } from '../api/client';
 
@@ -69,6 +69,59 @@ function saveTtsPref(bookId: string, voice: string, speed: number, autoAdvance: 
   }
 }
 
+export interface PendingAutoAdvance {
+  bookId: string;
+  targetChapterId: string;
+  timestamp: number;
+}
+
+export const PENDING_ADVANCE_KEY = 'omnitome:reader:pending-auto-advance';
+let modulePendingAdvance: PendingAutoAdvance | null = null;
+
+export function getPendingAdvance(): PendingAutoAdvance | null {
+  if (modulePendingAdvance) return modulePendingAdvance;
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      const raw = sessionStorage.getItem(PENDING_ADVANCE_KEY);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+  return null;
+}
+
+export function setPendingAdvance(token: PendingAutoAdvance) {
+  modulePendingAdvance = token;
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      sessionStorage.setItem(PENDING_ADVANCE_KEY, JSON.stringify(token));
+    }
+  } catch {
+    // Ignore storage write errors
+  }
+}
+
+export function clearPendingAdvance() {
+  modulePendingAdvance = null;
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      sessionStorage.removeItem(PENDING_ADVANCE_KEY);
+    }
+  } catch {
+    // Ignore storage remove errors
+  }
+}
+
+export function matchesTargetChapter(targetChapterId: string, currentChapterKey: string): boolean {
+  if (targetChapterId === currentChapterKey) return true;
+  const rawTarget = targetChapterId.includes(':') ? targetChapterId.split(':')[0] : targetChapterId;
+  const rawCurrent = currentChapterKey.includes(':') ? currentChapterKey.split(':')[0] : currentChapterKey;
+  return rawTarget === rawCurrent;
+}
+
 export interface UseTtsPlayerOptions {
   onChapterComplete?: () => void;
 }
@@ -84,14 +137,22 @@ export function useTtsPlayer(
   const defaultSpeed = settings?.tts?.defaultSpeed ?? 1.0;
   const autoScroll = settings?.tts?.autoScroll ?? true;
 
-  const pref = loadTtsPref(bookId, defaultVoice, defaultSpeed);
+  const pendingToken = getPendingAdvance();
+  const isPendingTarget = Boolean(
+    pendingToken &&
+    pendingToken.bookId === bookId &&
+    matchesTargetChapter(pendingToken.targetChapterId, chapterId) &&
+    Date.now() - pendingToken.timestamp < 15000
+  );
+
+  const pref = loadTtsPref(bookId, defaultVoice, defaultSpeed, isPendingTarget);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isWarming, setIsWarming] = useState<boolean>(false);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number | null>(null);
   const [currentDurationMs, setCurrentDurationMs] = useState<number>(0);
   const [speed, setSpeedState] = useState<number>(pref.speed);
   const [voice, setVoiceState] = useState<string>(pref.voice);
-  const [autoAdvance, setAutoAdvanceState] = useState<boolean>(pref.autoAdvance);
+  const [autoAdvance, setAutoAdvanceState] = useState<boolean>(isPendingTarget || pref.autoAdvance);
   const [error, setError] = useState<string | null>(null);
 
   const warmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,9 +188,7 @@ export function useTtsPlayer(
   const isWaitingForChapterRef = useRef<boolean>(false);
 
   const onChapterCompleteRef = useRef<(() => void) | undefined>(options?.onChapterComplete);
-  useEffect(() => {
-    onChapterCompleteRef.current = options?.onChapterComplete;
-  }, [options?.onChapterComplete]);
+  onChapterCompleteRef.current = options?.onChapterComplete;
 
   const sentencesRef = useRef<string[]>(sentences);
   sentencesRef.current = sentences;
@@ -255,10 +314,23 @@ export function useTtsPlayer(
     activeIndexRef.current = null;
     setError(null);
 
-    const p = loadTtsPref(bookId, defaultVoice, defaultSpeed);
+    const token = getPendingAdvance();
+    const isTarget = Boolean(
+      token &&
+      token.bookId === bookId &&
+      matchesTargetChapter(token.targetChapterId, chapterId) &&
+      Date.now() - token.timestamp < 15000
+    );
+
+    const p = loadTtsPref(bookId, defaultVoice, defaultSpeed, isTarget);
     setVoiceState(p.voice);
     setSpeedState(p.speed);
-    setAutoAdvanceState(p.autoAdvance);
+    if (isTarget || isWaitingForChapterRef.current) {
+      setAutoAdvanceState(true);
+      autoAdvanceRef.current = true;
+    } else {
+      setAutoAdvanceState(p.autoAdvance);
+    }
   }, [bookId, chapterId, stopInternal, revokeAllBlobs, clearWarmingTimer, defaultVoice, defaultSpeed]);
 
   // Fetch audio helper for a specific sentence index
@@ -445,6 +517,12 @@ export function useTtsPlayer(
 
         try {
           await targetDeck.play();
+          if (session === sessionRef.current) {
+            const token = getPendingAdvance();
+            if (token && matchesTargetChapter(token.targetChapterId, chapterIdRef.current)) {
+              clearPendingAdvance();
+            }
+          }
         } catch (playErr) {
           if (session !== sessionRef.current) return;
           console.error('[useTtsPlayer] Gapless play error:', playErr);
@@ -511,6 +589,12 @@ export function useTtsPlayer(
 
         try {
           await activeDeck.play();
+          if (session === sessionRef.current) {
+            const token = getPendingAdvance();
+            if (token && matchesTargetChapter(token.targetChapterId, chapterIdRef.current)) {
+              clearPendingAdvance();
+            }
+          }
         } catch (playErr: any) {
           if (session !== sessionRef.current) return;
           console.error('[useTtsPlayer] play error:', playErr);
@@ -627,6 +711,7 @@ export function useTtsPlayer(
 
   const pause = useCallback(() => {
     isWaitingForChapterRef.current = false;
+    clearPendingAdvance();
     sessionRef.current += 1;
     abortInFlight();
     clearWarmingTimer();
@@ -638,6 +723,7 @@ export function useTtsPlayer(
 
   const stop = useCallback(() => {
     isWaitingForChapterRef.current = false;
+    clearPendingAdvance();
     stopInternal();
     setActiveSentenceIndex(null);
     activeIndexRef.current = null;
@@ -679,11 +765,15 @@ export function useTtsPlayer(
   const setAutoAdvance = useCallback((enabled: boolean) => {
     setAutoAdvanceState(enabled);
     autoAdvanceRef.current = enabled;
+    if (!enabled) {
+      clearPendingAdvance();
+    }
     saveTtsPref(bookIdRef.current, voiceRef.current, speedRef.current, enabled);
   }, []);
 
   const seekToSentence = useCallback(
     (index: number) => {
+      clearPendingAdvance();
       const sents = sentencesRef.current;
       if (sents.length === 0) return;
       const target = Math.max(0, Math.min(index, sents.length - 1));
@@ -774,12 +864,48 @@ export function useTtsPlayer(
     [abortInFlight, revokeAllBlobs, triggerLookahead]
   );
 
-  const playerObj: TtsPlayer = {
+  const playerObj: TtsPlayer = useMemo(() => {
+    const obj: TtsPlayer = {
+      isPlaying,
+      isWarming,
+      autoScroll,
+      activeSentenceIndex,
+      totalSentences: sentences.length,
+      currentDurationMs,
+      speed,
+      voice,
+      autoAdvance,
+      setAutoAdvance,
+      resumeAtSentence0,
+      play,
+      pause,
+      stop,
+      seekToSentence,
+      stepForward,
+      stepBackward,
+      setSpeed,
+      setVoice,
+      error,
+    };
+
+    Object.defineProperty(obj, 'onChapterComplete', {
+      get() {
+        return onChapterCompleteRef.current;
+      },
+      set(fn: (() => void) | undefined) {
+        onChapterCompleteRef.current = fn;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    return obj;
+  }, [
     isPlaying,
     isWarming,
     autoScroll,
     activeSentenceIndex,
-    totalSentences: sentences.length,
+    sentences.length,
     currentDurationMs,
     speed,
     voice,
@@ -795,18 +921,7 @@ export function useTtsPlayer(
     setSpeed,
     setVoice,
     error,
-  };
-
-  Object.defineProperty(playerObj, 'onChapterComplete', {
-    get() {
-      return onChapterCompleteRef.current;
-    },
-    set(fn: (() => void) | undefined) {
-      onChapterCompleteRef.current = fn;
-    },
-    enumerable: true,
-    configurable: true,
-  });
+  ]);
 
   return playerObj;
 }

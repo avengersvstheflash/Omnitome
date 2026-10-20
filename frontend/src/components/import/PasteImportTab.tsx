@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { useImportQueueStore } from '../../store/useImportQueueStore';
+import { toast } from '../../store/useToastStore';
 import { Book, normalizeBook, RawBook } from '../../types/domain';
 
 interface PasteImportTabProps {
@@ -174,7 +175,9 @@ export function PasteImportTab({ onSuccess }: PasteImportTabProps) {
 
       onSuccess(provisionalBook);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to enqueue import. Please try again.');
+      const errMsg = err instanceof Error ? err.message : 'Failed to enqueue import. Please try again.';
+      setError(errMsg);
+      toast.error(errMsg);
       setSubmitting(false);
     }
   };

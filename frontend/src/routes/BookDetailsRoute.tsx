@@ -141,7 +141,7 @@ export default function BookDetailsRoute() {
     refetch: refetchSemantic,
   } = useSemanticStatus(bookId);
 
-  const { resumeTarget } = useResumeTarget(bookId);
+  const { resumeTarget, refetch: refetchResumeTarget } = useResumeTarget(bookId);
   const { data: lifecycleData } = useLifecycle(bookId);
 
   const queryClient = useQueryClient();
@@ -166,6 +166,21 @@ export default function BookDetailsRoute() {
       return () => clearTimeout(timer);
     }
   }, [synopsisToast]);
+
+  useEffect(() => {
+    const handleBooksChanged = () => {
+      refetchBook();
+      refetchChapters();
+      refetchSmartChapters();
+      refetchSynopsis();
+      refetchSemantic();
+      refetchResumeTarget();
+    };
+    window.addEventListener('omnitome:books-changed', handleBooksChanged);
+    return () => {
+      window.removeEventListener('omnitome:books-changed', handleBooksChanged);
+    };
+  }, [refetchBook, refetchChapters, refetchSmartChapters, refetchSynopsis, refetchSemantic, refetchResumeTarget]);
 
   const handleRegenerateSynopsis = async () => {
     if (!bookId || isRegeneratingSynopsis) return;

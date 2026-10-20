@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { apiClient, apiUrl } from '../api/client';
+import { queryClient } from '../api/queryClient';
 import { ImportTask, RawImportTask, normalizeImportTask } from '../types/domain';
 
 interface QueueApiResponse {
@@ -215,10 +216,34 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
         // Auto undis-miss if new items appear in queue
         const shouldUnDismiss = pendingCount > 0 && get().isDismissed;
 
+        const prevActive = get().activeTask;
         const prevPending = get().pendingCount;
+        const prevCompletedIds = new Set(
+          (get().historyTasks || []).filter((t) => t.status === 'completed').map((t) => t.id)
+        );
+        const hasNewlyCompletedTask = history.some(
+          (t) => t.status === 'completed' && !prevCompletedIds.has(t.id)
+        );
         const prevCompletedCount = (get().historyTasks || []).filter((t) => t.status === 'completed').length;
         const curCompletedCount = history.filter((t) => t.status === 'completed').length;
-        if (curCompletedCount > prevCompletedCount || (prevPending > 0 && pendingCount === 0)) {
+        const taskJustFinished =
+          hasNewlyCompletedTask ||
+          Boolean(prevActive && !active) ||
+          curCompletedCount > prevCompletedCount ||
+          (prevPending > 0 && pendingCount === 0);
+
+        if (taskJustFinished) {
+          queryClient.invalidateQueries({ queryKey: ['books'] });
+          queryClient.invalidateQueries({ queryKey: ['book'] });
+          queryClient.invalidateQueries({ queryKey: ['chapters'] });
+          queryClient.invalidateQueries({ queryKey: ['chapter'] });
+          queryClient.invalidateQueries({ queryKey: ['smart-chapters'] });
+          queryClient.invalidateQueries({ queryKey: ['editorial'] });
+          queryClient.invalidateQueries({ queryKey: ['editorial-progress'] });
+          queryClient.invalidateQueries({ queryKey: ['book-lifecycle'] });
+          queryClient.invalidateQueries({ queryKey: ['sources'] });
+          queryClient.invalidateQueries({ queryKey: ['book-synopsis'] });
+          queryClient.invalidateQueries({ queryKey: ['resume-target'] });
           try {
             window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
           } catch {}

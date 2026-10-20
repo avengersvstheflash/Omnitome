@@ -211,6 +211,9 @@ export function useResynthesizeSmartChapter(bookId?: string) {
       }
       queryClient.invalidateQueries({ queryKey: ['books'] });
       queryClient.invalidateQueries({ queryKey: ['book'] });
+      try {
+        window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
+      } catch {}
     },
   });
 }

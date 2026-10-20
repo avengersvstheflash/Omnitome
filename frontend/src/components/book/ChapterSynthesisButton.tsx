@@ -139,7 +139,11 @@ export const ChapterSynthesisButton: React.FC<ChapterSynthesisButtonProps> = ({
         const batchDone = res.synthesizedCount ?? batch;
         totalSynthesized += batchDone;
         // Invalidate progressive queries so chapter list updates mid-flight
-        queryClient.invalidateQueries({ queryKey: ['smart-chapters', bookId] });
+        queryClient.invalidateQueries({ queryKey: ['smart-chapters'] });
+        queryClient.invalidateQueries({ queryKey: ['chapters'] });
+        try {
+          window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
+        } catch {}
         if (typeof res.synthesizedCount === 'number' && res.synthesizedCount < batch) {
           // Reached end of un-synthesized chapters
           break;
@@ -154,12 +158,16 @@ export const ChapterSynthesisButton: React.FC<ChapterSynthesisButtonProps> = ({
     },
     onSuccess: (data, count) => {
       const done = data.synthesizedCount ?? count;
-      queryClient.invalidateQueries({ queryKey: ['smart-chapters', bookId] });
-      queryClient.invalidateQueries({ queryKey: ['smart-chapters', 'book', bookId] });
       queryClient.invalidateQueries({ queryKey: ['smart-chapters'] });
+      queryClient.invalidateQueries({ queryKey: ['chapters'] });
       queryClient.invalidateQueries({ queryKey: ['editorial', bookId] });
       queryClient.invalidateQueries({ queryKey: ['editorial-progress', bookId] });
       queryClient.invalidateQueries({ queryKey: ['book', bookId] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['book-synopsis'] });
+      try {
+        window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
+      } catch {}
 
       setToast(`${done} ${done === 1 ? 'chapter' : 'chapters'} ready`);
       onComplete?.();

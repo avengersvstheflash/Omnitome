@@ -324,6 +324,9 @@ export default function ReaderRoute() {
       refetchSmartChapter();
       refetchSmartList();
       refetchEditorial();
+      try {
+        window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
+      } catch {}
     }
   };
 
@@ -341,6 +344,9 @@ export default function ReaderRoute() {
       refetchSmartChapter();
       refetchSmartList();
       refetchEditorial();
+      try {
+        window.dispatchEvent(new CustomEvent('omnitome:books-changed'));
+      } catch {}
     }
   };
 
@@ -386,6 +392,18 @@ export default function ReaderRoute() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [smartChapters, chapterId, bookId]);
+
+  useEffect(() => {
+    const handleBooksChanged = () => {
+      refetchSmartList();
+      refetchSmartChapter();
+      refetchEditorial();
+    };
+    window.addEventListener('omnitome:books-changed', handleBooksChanged);
+    return () => {
+      window.removeEventListener('omnitome:books-changed', handleBooksChanged);
+    };
+  }, [refetchSmartList, refetchSmartChapter, refetchEditorial]);
 
   if (isError) {
     return (
@@ -528,6 +546,7 @@ export default function ReaderRoute() {
           />
         ) : (
           <ReaderView
+            key={`${chapterId}:smart`}
             chapter={chapterForReader}
             representation={repForReader}
             mode="smart"
