@@ -1,7 +1,8 @@
 import React, { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Palette, Settings, ArrowLeft, HelpCircle } from 'lucide-react';
+import { Palette, Settings, ArrowLeft, HelpCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { useThemeStore } from '../../store/useThemeStore';
+import { useFullscreen } from '../../hooks/useFullscreen';
 import { ThemeSigil } from './ThemeSigil';
 
 export interface HeaderProps {
@@ -21,6 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   const { theme, cycleTheme } = useThemeStore();
+  const { isFullscreen, toggleFullscreen } = useFullscreen();
 
   const handleBack = () => {
     if (onBack) {
@@ -107,8 +109,22 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Right: Actions (Theme cycle + Help + Settings) */}
+        {/* Right: Actions (Fullscreen + Theme cycle + Help + Settings) */}
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="p-2 rounded-md text-ink-muted hover:text-ink hover:bg-subtle transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            title={isFullscreen ? 'Exit Fullscreen (F11 or Esc)' : 'Enter Fullscreen (F11)'}
+            aria-label={isFullscreen ? 'Exit Fullscreen mode' : 'Enter Fullscreen mode'}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="w-4 h-4" aria-hidden="true" />
+            ) : (
+              <Maximize2 className="w-4 h-4" aria-hidden="true" />
+            )}
+          </button>
+
           <button
             type="button"
             onClick={cycleTheme}

@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   Clock,
   Sparkles,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import {
   useSmartChapters,
@@ -27,6 +29,7 @@ import { ScrollProgress } from '../components/reader/ScrollProgress';
 import { EmptyState } from '../components/shared/EmptyState';
 import { ErrorBoundary } from '../components/shared/ErrorBoundary';
 import { useScrollDirection } from '../hooks/useScrollDirection';
+import { useFullscreen } from '../hooks/useFullscreen';
 import { Chapter, ChapterRepresentation, CanonicalBlock } from '../types/domain';
 
 function ReaderSkeleton() {
@@ -190,6 +193,7 @@ function ReaderContent() {
 
   const { direction, isAtTop } = useScrollDirection();
   const navVisible = direction === 'up' || isAtTop;
+  const { isFullscreen, toggleFullscreen } = useFullscreen();
 
   const smartStatus = smartChapter?.status;
   const isGenerated = smartStatus === 'generated';
@@ -510,7 +514,7 @@ function ReaderContent() {
 
       {/* Main Reading Canvas */}
       <div className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-24">
-        {/* Top bar with Back Link and Mark as read */}
+        {/* Top bar with Back Link, Fullscreen Toggle, and Mark as read */}
         <div className="flex items-center justify-between py-2 mb-6 border-b border-line/60">
           <button
             type="button"
@@ -521,36 +525,58 @@ function ReaderContent() {
             <span>Book details</span>
           </button>
 
-          {isGenerated && smartChapter && (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={updateProgress.isPending}
-              title={smartChapter.readAt ? 'Click to mark unread' : 'Mark as read'}
-              onClick={() => {
-                if (smartChapter.readAt) {
-                  hasFiredReadRef.current = false;
-                  updateProgress.mutate({
-                    smartChapterId: smartChapter.id,
-                    status: 'unread',
-                  });
-                } else {
-                  hasFiredReadRef.current = true;
-                  updateProgress.mutate({
-                    smartChapterId: smartChapter.id,
-                    status: 'read',
-                    source: 'button',
-                  });
-                }
-              }}
-              className={
-                smartChapter.readAt
-                  ? 'inline-flex items-center gap-1 px-3 py-1 text-caption font-medium rounded-md bg-[rgb(var(--accent-3)/0.15)] text-[rgb(var(--accent-3))] border border-[rgb(var(--accent-3)/0.5)] shadow-[0_0_12px_rgb(var(--accent-3)/0.3)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer'
-                  : 'inline-flex items-center gap-1.5 px-3 py-1 text-caption font-medium rounded-md border border-[rgb(var(--line))] text-[rgb(var(--ink-muted))] hover:border-[rgb(var(--accent))] hover:text-[rgb(var(--accent))] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer'
-              }
+              onClick={toggleFullscreen}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium rounded-md border border-[rgb(var(--line))] text-[rgb(var(--ink-muted))] hover:border-[rgb(var(--accent))] hover:text-[rgb(var(--accent))] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+              title={isFullscreen ? 'Exit Fullscreen (F11 or Esc)' : 'Enter Fullscreen (F11)'}
+              aria-label={isFullscreen ? 'Exit Fullscreen mode' : 'Enter Fullscreen mode'}
             >
-              <span>{smartChapter.readAt ? '✓ Read' : 'Mark as read'}</span>
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span className="hidden sm:inline">Windowed</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span className="hidden sm:inline">Fullscreen</span>
+                </>
+              )}
             </button>
-          )}
+
+            {isGenerated && smartChapter && (
+              <button
+                type="button"
+                disabled={updateProgress.isPending}
+                title={smartChapter.readAt ? 'Click to mark unread' : 'Mark as read'}
+                onClick={() => {
+                  if (smartChapter.readAt) {
+                    hasFiredReadRef.current = false;
+                    updateProgress.mutate({
+                      smartChapterId: smartChapter.id,
+                      status: 'unread',
+                    });
+                  } else {
+                    hasFiredReadRef.current = true;
+                    updateProgress.mutate({
+                      smartChapterId: smartChapter.id,
+                      status: 'read',
+                      source: 'button',
+                    });
+                  }
+                }}
+                className={
+                  smartChapter.readAt
+                    ? 'inline-flex items-center gap-1 px-3 py-1 text-caption font-medium rounded-md bg-[rgb(var(--accent-3)/0.15)] text-[rgb(var(--accent-3))] border border-[rgb(var(--accent-3)/0.5)] shadow-[0_0_12px_rgb(var(--accent-3)/0.3)] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer'
+                    : 'inline-flex items-center gap-1.5 px-3 py-1 text-caption font-medium rounded-md border border-[rgb(var(--line))] text-[rgb(var(--ink-muted))] hover:border-[rgb(var(--accent))] hover:text-[rgb(var(--accent))] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer'
+                }
+              >
+                <span>{smartChapter.readAt ? '✓ Read' : 'Mark as read'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Content Area */}
