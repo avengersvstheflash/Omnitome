@@ -20,6 +20,7 @@
 - **License:** AGPL-3.0-only (Public) / MIT (Private V2)
 
 ### Recent Commit Trail
+- `b67c806` — feat(tts,library): offline Kokoro voice resolution, library lifecycle self-healing, and S14 doc sync
 - `7ebb600` — chore(tts): add bundled kokoro config fallback
 - `6405fa3` — fix(ingestion,tts): resolve Kokoro offline mode and PDF TOC leakage
 - `a6423c0` — fix(dev): resolve venv and backend paths when running from src-tauri

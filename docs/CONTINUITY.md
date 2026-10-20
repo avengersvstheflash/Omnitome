@@ -1,4 +1,4 @@
-# Smart Reader — Continuity
+# Omnitome — Continuity
 
 > **Purpose.** If the current strategic-partner chat (or its model) becomes
 > unavailable, any fresh capable model reading this file plus
@@ -9,101 +9,70 @@
 
 ## Where the project is right now
 
-**Repo:** https://github.com/avengersvstheflash/Smart-Reader
+**Repo:** https://github.com/avengersvstheflash/Omnitome
 **HEAD:** (check with `git log -1 --oneline`)
-**Test suite:** 13/13 green. Verify with `npm test`.
-**Vision:** compression engine, not summarizer. See `PRODUCT_VISION.md`.
+**Test suite:** 60/60 unit suites + 1 network suite + 1 corpus release gate (10 fixtures) + 17 Tauri Cargo tests green. Verify with `npm test` and `cargo test --manifest-path src-tauri/Cargo.toml`.
+**Vision:** Loss-bounded semantic compression engine (~7:1 ratio), not a summarizer. See `PRODUCT_VISION.md`.
 
 **Working now:**
-- Import PDF/EPUB/web (backend complete; frontend import route shipped)
-- BGE-M3 1024d local embeddings
-- Semantic chunking + indexing
-- Editorial outline generation
-- Smart Chapter compression (OpenRouter → DeepSeek V4 Flash,
-  reasoning disabled, 250–360 word target)
-- Synopsis from preface + TOC + strategic samples
-- Fallback honesty (marked + captioned)
-- Library → Book Details → Reader works via clicks
+- Universal multi-format ingestion (PDF layout-aware & OCR, EPUB, DOCX, RTF, Markdown, Web, plain text with statistical charset detection)
+- FastAPI Python sidecar (`127.0.0.1:8765`) running PyTorch FP16 CUDA acceleration for BGE-M3 (1024d) and BGE Reranker v2
+- Kokoro-82M offline neural voice narration (`POST /v1/tts/synthesize`) with dual-deck gapless playback, sentence highlighting, and podcast auto-advance
+- Loss-bounded progressive Smart Chapter compression with interactive sentence-level citations linking directly back to verbatim source paragraphs
+- Self-healing library lifecycle reconciliation guaranteeing imported books with synthesized smart chapters immediately populate the Library catalog
+- Tauri v2 native desktop shell (Rust supervisor, child process tree management, dynamic port allocation, 3D animated CSS splash screen, and 7z LZMA extraction to `%LOCALAPPDATA%\Omnitome\sidecar\`)
+- 5 custom visual themes (Omni, Sakura, Spring, Coffee, Cyberpunk), procedural SVG cover generation, and native KaTeX math typesetting
 
-**Known gaps (see `SESSION_HANDOFF.md` §8 for the full list):**
-- Phase 4.6: Web + Paste import tabs not shipped
-- Phase 4.7: Cinematic import experience not shipped
-- Phase 4.10: contentType defaults to 'novel', tags don't exist
-- Phase 4.11: no grounding density check
-- Phase 4.12: compressor terminology refactor (file/class names)
-- Phase 5: inline source tracker (the moat, still conceptual)
-- Phase 6: Tauri wrap not started
-- Builds 5/6/7: Audio / Discussion / Story not started
+**Current milestone & immediate focus:**
+- **S14 — Packaging & Desktop Distribution (98% Complete):**
+  - NSIS installer bundling via LZMA 7-Zip (`sidecar.7z`) avoiding 32-bit makensis 2GB limit
+  - Verbatim path prefix sanitization (`strip_windows_verbatim`) resolved for Node v22 `EISDIR: lstat 'C:'`
+  - Offline Kokoro voice loader (`_resolve_voice_path`) and citation-only silence fallback
+- **Next Action Items (see `SESSION_HANDOFF.md` §4):**
+  1. Build full NSIS installer artifact (`.\scripts\build-installers.ps1 -Type Lightweight`)
+  2. Test fresh-machine installation and 7z extraction flow on clean VM
+  3. Validate end-to-end import -> smart chapter synthesis -> offline Kokoro audio playback journey
 
 ## How we work
 
-**Standard:** confidence instead of shame. Every claim verified against
-raw output. No commits on dirty tree or red suite. One workstream per
-session. Docs before code. Antigravity write hazard: git diff after
-every "replace" task, verify at HEAD.
+**Standard:** Confidence through raw evidence. Every claim verified against
+actual CLI execution and stdout/stderr. No commits on dirty tree or failing tests.
+Strict blast radius: touch only modules directly required for the fix, maintaining
+backward compatibility with existing databases and fixtures.
 
-**Two working files:**
-- `docs/SESSION_HANDOFF.md` — current state, next phase, guardrails
-- `docs/PRODUCT_VISION.md` — north star (compression, two-representation
-  invariant)
+**Core working files:**
+- `docs/SESSION_HANDOFF.md` — current state, recent commit trail, standing invariants, next steps
+- `docs/PRODUCT_VISION.md` — north star (compression, two-representation invariant)
+- `docs/FEATURES.md` — complete feature catalog and operational details
+- `docs/BENCHMARKS.md` — empirical throughput and historical development milestones
 
 **Read these on orientation:**
-1. This file (you're reading it)
-2. `docs/SESSION_HANDOFF.md` — where we are, how we work, what's next
+1. This file (`docs/CONTINUITY.md`)
+2. `docs/SESSION_HANDOFF.md` — where we are, recent commits, standing invariants, next steps
 3. `docs/PRODUCT_VISION.md` — the north star
-4. `docs/CANONICAL_TEST_BOOK.md` — the test fixture
-5. `docs/BRIEFING_CORRECTIONS.md` — known factual drift from a prior
-   audit
+4. `docs/FEATURES.md` — system feature specifications
 
-**Then ask the human:** *"What's the current focus? SESSION_HANDOFF.md §4
-lists the next phase — should I fire that prompt?"*
+## Tools & Runtimes
 
-## The next three sessions (predicted)
-
-1. **Phase 4.13** (currently running) — synopsis + book summary prompt
-   rewrite. Compression-framed abstract at 200-300 words.
-
-2. **Phase 4.10** — auto-classification on import. contentType + tags +
-   reading level. One LLM call. Frontend chips + Library filters.
-
-3. **Phase 4.6** — Web + Paste import. Completes the three-source
-   digital library.
-
-After those three, the app is a real product for personal use. Phase 5
-(inline source tracker) is the next big lift.
-
-## Tools
-
-- **Antigravity** — executor (Gemini 3.8 Flash · Low/Medium/High or
-  Gemini 3.1 Pro · High). Session state persists across prompts.
-- **OpenRouter** — DeepSeek V4 Flash for compression. Reasoning must
-  be `{ enabled: false }` on all synthesis calls.
-- **BGE-M3** — local, INT8 q8, ~571 MB, warmup at server boot.
+- **Tauri v2 / Rust:** Native desktop container and child-process supervisor
+- **Node.js 22 LTS (Express 5):** Sole writer to SQLite (`better-sqlite3` in WAL mode) via F65 await barrier
+- **Python 3.10+ / FastAPI:** PyTorch FP16 CUDA sidecar with automated idle VRAM eviction
+- **Vite + React (TypeScript):** Desktop frontend with TanStack Query and Lucide icons
 
 ## Guardrails
 
-- Root `package.json`, `scripts/run-all-tests.js`, and `backend/`
-  structure are frozen for structure. Small edits inside existing
-  files are OK.
-- `npm test` stays 13/13 through every commit.
-- No commits on dirty tree or red suite.
+- `npm test` and `cargo test --manifest-path src-tauri/Cargo.toml` must stay 100% green through every commit.
+- Node.js orchestrator is the SOLE writer to SQLite (`better-sqlite3` in WAL mode). Sidecars and frontend interact exclusively via Node APIs.
 - Raw output over paraphrase in every report.
-- Never commit `.env` or API keys.
-- Backend frozen until specific phase work; frontend work is the current
-  active surface.
+- Never commit `.env`, API keys, or large binary model weights.
+- Offline-first resilience: local features must never depend on active network connections when local models are installed.
 
 ## If the chat is lost
 
 1. Open fresh chat with any capable model.
-2. Paste: *"Read docs/CONTINUITY.md, docs/SESSION_HANDOFF.md, and
-   docs/PRODUCT_VISION.md. Confirm orientation. Tell me what phase is
-   next and what to fire."*
+2. Paste: *"Read docs/CONTINUITY.md, docs/SESSION_HANDOFF.md, and docs/PRODUCT_VISION.md. Confirm orientation. Tell me what phase is next and what to fire."*
 3. The fresh model orients in one turn and is ready to work.
-
-That's the whole portability story. The repo is the source of truth.
-Chat is replaceable.
 
 ---
 
-*End of continuity doc. Update when HEAD changes to a new phase.*
-
+*End of continuity doc. Updated 2026-10-20.*

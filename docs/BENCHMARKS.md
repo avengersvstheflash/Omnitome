@@ -435,7 +435,7 @@ timeline
   - **Kokoro Offline Voice Resolver & Citation Silence:** Fixed `OfflineModeIsEnabled` crash with `_resolve_voice_path` and custom voice loader using `torch.load(..., weights_only=True)`. Eliminated 400 Bad Request on citation-only sentences with 250ms silence WAV fallback.
   - **Library Ingestion & Lifecycle Self-Healing:** Reconciled `in_library = 1` and `lifecycle_state = 'active'` upon smart chapter generation and queue completion; added automatic DB backfill for existing books; wired dynamic UI refresh (`refetchOnMount: 'always'`, `'omnitome:books-changed'` event).
   - **Regression Gate:** **All 60 regression suites + 1 network suite + 1 corpus gate passed clean (Node). All 17 Cargo unit tests passed clean (Rust). Frontend builds clean with zero errors.**
-- **Commits:** `97cbcf1`, `a5f95c4`, `fddd360`, `9813d4b`, `340fec3`, `80286b5`, `058da19`, `ed586fc`, `68d86c1`, `0584480`, `7ae3ad7`, `f5c5557`, `a6423c0`, `6405fa3`, `7ebb600`.
+- **Commits:** `97cbcf1`, `a5f95c4`, `fddd360`, `9813d4b`, `340fec3`, `80286b5`, `058da19`, `ed586fc`, `68d86c1`, `0584480`, `7ae3ad7`, `f5c5557`, `a6423c0`, `6405fa3`, `7ebb600`, `b67c806`.
 
 ---
 
