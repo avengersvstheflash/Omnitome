@@ -295,6 +295,24 @@ function ensureAudioContext(): AudioContext | null {
 }
 
 /**
+ * Return the shared unlocked AudioContext instance, lazily initialized if needed.
+ */
+export function getSharedAudioContext(): AudioContext | null {
+  return ensureAudioContext();
+}
+
+/**
+ * Synchronously or asynchronously resume the shared AudioContext if it is suspended.
+ */
+export function resumeAudioContext(): Promise<void> {
+  const ctx = ensureAudioContext();
+  if (ctx && ctx.state === 'suspended') {
+    return ctx.resume();
+  }
+  return Promise.resolve();
+}
+
+/**
  * Attach one-time user gesture listeners to resume a suspended `AudioContext`
  * on the first genuine pointer or keyboard interaction without emitting any startup sound.
  */
@@ -590,6 +608,11 @@ export function playUiSound(event: UiSoundEvent, options?: PlayUiSoundOptions): 
   let effectiveEvent = event;
   if (options?.toggleState !== undefined && event === 'reader.fullscreen.toggle') {
     effectiveEvent = options.toggleState ? 'ui.toggle.on' : 'ui.toggle.off';
+  }
+
+  // Suppress background operation and import chimes when Kokoro narration is actively speaking
+  if (isKokoroNarrationActive && (effectiveEvent.startsWith('operation.') || effectiveEvent.startsWith('import.'))) {
+    return;
   }
 
   const rawTheme = options?.theme ?? activeThemeResolver();

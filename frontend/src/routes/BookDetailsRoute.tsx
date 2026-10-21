@@ -19,7 +19,7 @@ import { useChapters } from '../hooks/useChapters';
 import { useSmartChapters, useResumeTarget, useResynthesizeSmartChapter } from '../hooks/useSmartChapters';
 import { useLifecycle } from '../hooks/useLifecycle';
 import { useModal } from '../store/useModalStore';
-import { useSoundEffects } from '../hooks/useSoundEffects';
+import { useSoundEffects, playUiSound } from '../hooks/useSoundEffects';
 import { toast } from '../store/useToastStore';
 import { getCoverTheme } from '../components/library/BookCard';
 import { ExpandableTagPanel } from '../components/library/ExpandableTagPanel';
@@ -209,6 +209,7 @@ function BookDetailsContent() {
   };
 
   const handleResynthesize = async (smartChapterId: string) => {
+    playUiSound('ui.button.primary');
     setResynthesizingId(smartChapterId);
     setResynthesizeToast(null);
     try {
@@ -579,7 +580,10 @@ function BookDetailsContent() {
                   ? `Continue reading from Chapter ${resumeTarget?.sequence}`
                   : 'Start reading from Chapter 1'
               }
-              onClick={() => navigate(`/read/${book.id}/${targetChapterId}`)}
+              onClick={() => {
+                playUiSound('ui.button.primary');
+                navigate(`/read/${book.id}/${targetChapterId}`);
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 text-ui-sm font-medium rounded-md bg-brand text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cyber-animated-button arcane-beam-button themed-button"
             >
               <ButtonDecor />

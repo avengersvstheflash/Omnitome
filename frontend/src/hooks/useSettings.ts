@@ -33,6 +33,8 @@ export interface Settings {
   importMaxSizeMB: number;
   parallelBookSynthesis?: boolean;
   tts?: TtsSettings;
+  openrouterApiKey?: string;
+  localBaseUrl?: string;
 }
 
 export interface UpdateSettingsPayload {

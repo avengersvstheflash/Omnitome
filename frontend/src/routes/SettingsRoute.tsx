@@ -117,17 +117,19 @@ export const SettingsRoute: React.FC = () => {
   };
 
   const isOnboardingQuery = searchParams.get('onboarding') === 'true';
-  const hasApiKey = Boolean(settings?.openrouter?.apiKey && settings.openrouter.apiKey.trim().length > 0);
-  const hasLocal = Boolean(settings?.local?.apiKey?.trim() || (settings?.local?.preset && settings.local.baseUrl && (settings.aiProvider === 'local' || settings.aiProvider === 'ollama')));
+  const openrouterKey = settings?.openrouterApiKey || settings?.openrouter?.apiKey || '';
+  const localBase = settings?.localBaseUrl || '';
   const hasSkipped = typeof window !== 'undefined' && (
+    localStorage.getItem('omnitome.onboarding.dismissed') === 'true' ||
     localStorage.getItem('omnitome_onboarding_skipped') === 'true' ||
     sessionStorage.getItem('omnitome_onboarding_skipped') === 'true'
   );
-  const isOnboarding = isOnboardingQuery || (!hasApiKey && !hasLocal && !hasSkipped);
+  const isOnboarding = isOnboardingQuery || (!openrouterKey.trim() && !localBase.trim() && !hasSkipped);
 
   const handleSkipOnboarding = () => {
     playClick();
     if (typeof window !== 'undefined') {
+      localStorage.setItem('omnitome.onboarding.dismissed', 'true');
       localStorage.setItem('omnitome_onboarding_skipped', 'true');
       sessionStorage.setItem('omnitome_onboarding_skipped', 'true');
     }
@@ -250,6 +252,7 @@ export const SettingsRoute: React.FC = () => {
       playSuccess();
       toast.success('Settings saved successfully');
       if (typeof window !== 'undefined') {
+        localStorage.setItem('omnitome.onboarding.dismissed', 'true');
         localStorage.setItem('omnitome_onboarding_skipped', 'true');
         sessionStorage.setItem('omnitome_onboarding_skipped', 'true');
       }

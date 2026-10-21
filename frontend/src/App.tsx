@@ -29,17 +29,15 @@ function OnboardingRedirect() {
     if (isLoading || !settings) return;
     if (location.pathname === '/settings') return;
 
-    const hasApiKey = Boolean(settings.openrouter?.apiKey && settings.openrouter.apiKey.trim().length > 0);
-    const hasLocal = Boolean(
-      settings.local?.apiKey?.trim() ||
-      (settings.local?.preset && settings.local.baseUrl && (settings.aiProvider === 'local' || settings.aiProvider === 'ollama'))
-    );
-    const hasSkipped = typeof window !== 'undefined' && (
+    const openrouterApiKey = settings.openrouterApiKey || settings.openrouter?.apiKey || '';
+    const localBaseUrl = settings.localBaseUrl || '';
+    const isDismissed = typeof window !== 'undefined' && (
+      localStorage.getItem('omnitome.onboarding.dismissed') === 'true' ||
       localStorage.getItem('omnitome_onboarding_skipped') === 'true' ||
       sessionStorage.getItem('omnitome_onboarding_skipped') === 'true'
     );
 
-    if (!hasApiKey && !hasLocal && !hasSkipped) {
+    if (!openrouterApiKey.trim() && !localBaseUrl.trim() && !isDismissed) {
       navigate('/settings?onboarding=true', { replace: true });
     }
   }, [settings, isLoading, location.pathname, navigate]);

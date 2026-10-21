@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { BookOpen, Compass, Upload, LucideIcon } from 'lucide-react';
+import { playUiSound } from '../../audio/soundPlayer';
 
 export interface NavItem {
   to: string;
@@ -47,6 +48,19 @@ export const Nav: React.FC<NavProps> = ({ items = DEFAULT_ITEMS }) => {
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={() => {
+                const l = item.label.toLowerCase();
+                const target = item.to.toLowerCase();
+                if (target === '/' || target === '/library' || l === 'library') {
+                  playUiSound('nav.primary.library');
+                } else if (target.startsWith('/research') || l === 'research') {
+                  playUiSound('nav.primary.research');
+                } else if (target.startsWith('/import') || l === 'import') {
+                  playUiSound('nav.primary.import');
+                } else {
+                  playUiSound('ui.button.primary');
+                }
+              }}
               className={({ isActive }) =>
                 `inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-ui-sm font-medium transition-colors select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   isActive

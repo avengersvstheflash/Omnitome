@@ -11,6 +11,7 @@ import { CanonicalBlock } from '../components/reader/CanonicalBlock';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { apiClient } from '../api/client';
 import { toast } from '../store/useToastStore';
+import { playUiSound } from '../audio/soundPlayer';
 import type { Chapter, CanonicalBlock as CanonicalBlockType } from '../types/domain';
 
 // ---------------------------------------------------------------------------
@@ -253,25 +254,26 @@ export default function ResearchViewerRoute() {
   };
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-  const [isDeletingDossier, setIsDeletingDossier] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const handleDeleteDossier = async () => {
+  const handleDelete = async () => {
     if (!book?.id) return;
-    setIsDeletingDossier(true);
+    setIsDeleting(true);
     try {
       await apiClient<{ success: boolean }>(`/api/books/${book.id}`, {
         method: 'DELETE',
         body: JSON.stringify({ operation: 'B' }),
       });
+      playUiSound('operation.destructive_confirmed');
       await queryClient.invalidateQueries({ queryKey: ['books'] });
       await queryClient.invalidateQueries({ queryKey: ['sources'] });
       await queryClient.invalidateQueries({ queryKey: ['dossiers'] });
       await queryClient.invalidateQueries({ queryKey: ['import-queue'] });
-      toast.success('Dossier deleted successfully');
+      toast.success(isDossier ? 'Dossier deleted successfully' : 'Source deleted successfully');
       navigate('/research');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete dossier');
-      setIsDeletingDossier(false);
+      toast.error(err?.message || (isDossier ? 'Failed to delete dossier' : 'Failed to delete source'));
+      setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
   };
@@ -413,7 +415,7 @@ export default function ResearchViewerRoute() {
   return (
     <div className="min-h-screen bg-surface text-ink">
       <div className="sticky top-0 z-10 bg-surface backdrop-blur-sm border-b border-line">
-        <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between gap-2">
+        <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between gap-2 flex-wrap">
           <button
             type="button"
             onClick={handleReturn}
@@ -424,27 +426,33 @@ export default function ResearchViewerRoute() {
             <span>{returnTo.startsWith('/read') ? 'Return to Omni Reading' : 'Research'}</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {isDossier && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setIsAttachModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-line bg-card hover:bg-subtle text-ink transition-colors shadow-sm"
-                >
-                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Edit/Append Source</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-err/30 text-err bg-err/5 hover:bg-err/10 transition-colors shadow-sm"
-                >
-                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Delete Dossier</span>
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => {
+                  playUiSound('ui.button.secondary');
+                  setIsAttachModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-line bg-card hover:bg-subtle text-ink transition-colors shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Edit/Append Source</span>
+              </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => {
+                playUiSound('ui.button.secondary');
+                setShowDeleteConfirm(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-err/40 text-err bg-err/10 hover:bg-err/20 transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-err"
+              title={isDossier ? 'Delete Dossier' : 'Delete Source'}
+            >
+              <Trash2 className="w-3.5 h-3.5 text-err" aria-hidden="true" />
+              <span>{isDossier ? 'Delete Dossier' : 'Delete Source'}</span>
+            </button>
 
             {canSynthesize && (
               <button
@@ -733,7 +741,7 @@ export default function ResearchViewerRoute() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="delete-dossier-modal-title"
+          aria-labelledby="delete-confirm-modal-title"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
         >
           <div className="bg-surface border border-line rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
@@ -742,32 +750,37 @@ export default function ResearchViewerRoute() {
                 <Trash2 className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 id="delete-dossier-modal-title" className="text-base font-semibold text-ink">
-                  Delete Dossier
+                <h3 id="delete-confirm-modal-title" className="text-base font-semibold text-ink">
+                  {isDossier ? 'Delete Dossier' : 'Delete Source'}
                 </h3>
                 <p className="text-ui-sm text-ink-muted leading-relaxed">
-                  Are you sure you want to delete <span className="font-semibold text-ink">"{book?.title || 'this dossier'}"</span>?
-                  This will remove all raw source chapters and semantic index chunks. This action cannot be undone.
+                  Are you sure you want to delete <span className="font-semibold text-ink">"{book?.title || (isDossier ? 'this dossier' : 'this source')}"</span>?
+                  {isDossier
+                    ? ' This will remove all raw source chapters and semantic index chunks. This action cannot be undone.'
+                    : ' This will remove the raw source and its semantic index chunks. This action cannot be undone.'}
                 </p>
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
-                disabled={isDeletingDossier}
-                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                onClick={() => {
+                  playUiSound('ui.button.secondary');
+                  setShowDeleteConfirm(false);
+                }}
                 className="px-4 py-2 text-ui-sm rounded-lg border border-line bg-surface hover:bg-subtle text-ink font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={isDeletingDossier}
-                onClick={handleDeleteDossier}
+                disabled={isDeleting}
+                onClick={handleDelete}
                 className="px-4 py-2 text-ui-sm rounded-lg bg-err text-white hover:bg-err/90 font-medium transition-colors inline-flex items-center gap-1.5 shadow-sm disabled:opacity-50"
               >
-                {isDeletingDossier && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                <span>{isDeletingDossier ? 'Deleting…' : 'Delete Dossier'}</span>
+                {isDeleting && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                <span>{isDeleting ? 'Deleting…' : (isDossier ? 'Delete Dossier' : 'Delete Source')}</span>
               </button>
             </div>
           </div>

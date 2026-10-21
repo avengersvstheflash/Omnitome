@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { AlertCircle, RotateCw } from 'lucide-react';
 import { SmartChapter } from '../../types/domain';
 import { formatRelativeTime } from '../../lib/relativeTime';
+import { playUiSound } from '../../audio/soundPlayer';
 
 export interface SmartChapterListProps {
   smartChapters: SmartChapter[];
@@ -146,6 +147,7 @@ export function SmartChapterList({
               {isGenerated ? (
                 <Link
                   to={`/read/${targetBookId}/${sc.id}`}
+                  onClick={() => playUiSound('ui.button.primary')}
                   className="group flex items-center justify-between py-2.5 px-3 rounded hover:bg-subtle transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {rowContent}

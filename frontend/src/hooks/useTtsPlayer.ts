@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings } from './useSettings';
 import { apiUrl } from '../api/client';
+import {
+  getSharedAudioContext,
+  resumeAudioContext,
+  setKokoroNarrationActive,
+} from '../audio/soundPlayer';
 
 export interface TtsPlayer {
   isPlaying: boolean;
@@ -28,6 +33,7 @@ export interface TtsPlayer {
 
 interface AudioData {
   blobUrl: string;
+  audioBuffer: AudioBuffer | null;
   durationMs: number;
 }
 
@@ -215,6 +221,7 @@ export function useTtsPlayer(
   const deckRefA = useRef<HTMLAudioElement | null>(null);
   const deckRefB = useRef<HTMLAudioElement | null>(null);
   const activeDeckIdRef = useRef<'A' | 'B'>('A');
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
   // Track which sentence index is currently preloaded in each deck
   const loadedDeckIndexRef = useRef<{ A: number | null; B: number | null }>({
@@ -290,6 +297,15 @@ export function useTtsPlayer(
     sessionRef.current += 1;
     abortInFlight();
     clearWarmingTimer();
+    if (currentSourceRef.current) {
+      try {
+        currentSourceRef.current.onended = null;
+        currentSourceRef.current.stop();
+        currentSourceRef.current.disconnect();
+      } catch {}
+      currentSourceRef.current = null;
+    }
+    setKokoroNarrationActive(false);
     if (deckRefA.current) {
       deckRefA.current.pause();
       deckRefA.current.currentTime = 0;
@@ -395,13 +411,25 @@ export function useTtsPlayer(
             throw new Error(`Failed to load audio WAV (${wavRes.status})`);
           }
 
-          const blob = await wavRes.blob();
+          const arrayBuffer = await wavRes.arrayBuffer();
           if (session !== sessionRef.current) return null;
 
+          const ctx = getSharedAudioContext();
+          let decodedBuffer: AudioBuffer | null = null;
+          if (ctx) {
+            try {
+              decodedBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+            } catch (decodeErr) {
+              console.warn('[useTtsPlayer] Failed to decode audio buffer:', decodeErr);
+            }
+          }
+
+          const blob = new Blob([arrayBuffer], { type: 'audio/wav' });
           const blobUrl = URL.createObjectURL(blob);
           const audioData: AudioData = {
             blobUrl,
-            durationMs: data.durationMs || 0,
+            audioBuffer: decodedBuffer,
+            durationMs: data.durationMs || (decodedBuffer ? decodedBuffer.duration * 1000 : 0),
           };
 
           blobMapRef.current.set(idx, audioData);
@@ -467,6 +495,16 @@ export function useTtsPlayer(
     async (nextIdx: number) => {
       const sents = sentencesRef.current;
       if (nextIdx >= sents.length) {
+        if (currentSourceRef.current) {
+          try {
+            currentSourceRef.current.onended = null;
+            currentSourceRef.current.stop();
+            currentSourceRef.current.disconnect();
+          } catch {}
+          currentSourceRef.current = null;
+        }
+        setKokoroNarrationActive(false);
+
         if (autoAdvanceRef.current) {
           isWaitingForChapterRef.current = true;
           if (deckRefA.current) {
@@ -498,6 +536,61 @@ export function useTtsPlayer(
       const freeDeckId: 'A' | 'B' = activeDeckIdRef.current;
       const targetDeck = nextDeckId === 'A' ? deckRefA.current : deckRefB.current;
 
+      const cached = blobMapRef.current.get(nextIdx);
+      const ctx = getSharedAudioContext();
+      if (cached?.audioBuffer && ctx) {
+        // Fast gapless path via Web Audio API
+        if (currentSourceRef.current) {
+          try {
+            currentSourceRef.current.onended = null;
+            currentSourceRef.current.stop();
+            currentSourceRef.current.disconnect();
+          } catch {}
+          currentSourceRef.current = null;
+        }
+
+        activeDeckIdRef.current = nextDeckId;
+        setActiveSentenceIndex(nextIdx);
+        activeIndexRef.current = nextIdx;
+        setIsPlaying(true);
+        isPlayingRef.current = true;
+        setError(null);
+        setCurrentDurationMs(cached.durationMs);
+
+        if (ctx.state === 'suspended') {
+          try {
+            await ctx.resume();
+          } catch {}
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = cached.audioBuffer;
+        source.connect(ctx.destination);
+
+        source.onended = () => {
+          if (sessionRef.current !== session) return;
+          currentSourceRef.current = null;
+          advanceToSentence(nextIdx + 1);
+        };
+
+        try {
+          source.start(0);
+          currentSourceRef.current = source;
+          setKokoroNarrationActive(true);
+          const token = getPendingAdvance();
+          if (token && matchesTargetChapter(token.targetChapterId, chapterIdRef.current)) {
+            clearPendingAdvance();
+          }
+        } catch (sourcePlayErr) {
+          console.error('[useTtsPlayer] Gapless Web Audio play error:', sourcePlayErr);
+        }
+
+        if (session === sessionRef.current) {
+          triggerLookahead(nextIdx, freeDeckId, session);
+        }
+        return;
+      }
+
       // Check if nextIdx is already loaded in targetDeck
       if (
         targetDeck &&
@@ -512,11 +605,11 @@ export function useTtsPlayer(
         isPlayingRef.current = true;
         setError(null);
 
-        const cached = blobMapRef.current.get(nextIdx);
         if (cached) setCurrentDurationMs(cached.durationMs);
 
         try {
           await targetDeck.play();
+          setKokoroNarrationActive(true);
           if (session === sessionRef.current) {
             const token = getPendingAdvance();
             if (token && matchesTargetChapter(token.targetChapterId, chapterIdRef.current)) {
@@ -583,21 +676,66 @@ export function useTtsPlayer(
         setError(null);
         setCurrentDurationMs(audio.durationMs);
 
-        if (activeDeck.src !== audio.blobUrl) {
-          activeDeck.src = audio.blobUrl;
+        // Stop any currently playing Web Audio source
+        if (currentSourceRef.current) {
+          try {
+            currentSourceRef.current.onended = null;
+            currentSourceRef.current.stop();
+            currentSourceRef.current.disconnect();
+          } catch {}
+          currentSourceRef.current = null;
         }
 
-        try {
-          await activeDeck.play();
-          if (session === sessionRef.current) {
-            const token = getPendingAdvance();
-            if (token && matchesTargetChapter(token.targetChapterId, chapterIdRef.current)) {
-              clearPendingAdvance();
-            }
+        const ctx = getSharedAudioContext();
+        if (ctx && audio.audioBuffer) {
+          if (ctx.state === 'suspended') {
+            try {
+              await ctx.resume();
+            } catch {}
           }
-        } catch (playErr: any) {
-          if (session !== sessionRef.current) return;
-          console.error('[useTtsPlayer] play error:', playErr);
+
+          const source = ctx.createBufferSource();
+          source.buffer = audio.audioBuffer;
+          source.connect(ctx.destination);
+
+          source.onended = () => {
+            if (session !== sessionRef.current) return;
+            currentSourceRef.current = null;
+            advanceToSentence(targetIndex + 1);
+          };
+
+          try {
+            source.start(0);
+            currentSourceRef.current = source;
+            setKokoroNarrationActive(true);
+            if (session === sessionRef.current) {
+              const token = getPendingAdvance();
+              if (token && matchesTargetChapter(token.targetChapterId, chapterIdRef.current)) {
+                clearPendingAdvance();
+              }
+            }
+          } catch (sourcePlayErr) {
+            console.error('[useTtsPlayer] Web Audio play error:', sourcePlayErr);
+          }
+        } else {
+          // HTMLAudioElement fallback
+          if (activeDeck.src !== audio.blobUrl) {
+            activeDeck.src = audio.blobUrl;
+          }
+
+          try {
+            await activeDeck.play();
+            setKokoroNarrationActive(true);
+            if (session === sessionRef.current) {
+              const token = getPendingAdvance();
+              if (token && matchesTargetChapter(token.targetChapterId, chapterIdRef.current)) {
+                clearPendingAdvance();
+              }
+            }
+          } catch (playErr: any) {
+            if (session !== sessionRef.current) return;
+            console.error('[useTtsPlayer] play error:', playErr);
+          }
         }
 
         if (session !== sessionRef.current) return;
@@ -658,6 +796,16 @@ export function useTtsPlayer(
   // Player controls
   const play = useCallback(
     (startIndex?: number) => {
+      // 1. Resume shared AudioContext directly inside user click handler
+      void resumeAudioContext();
+
+      // 2. Prime media subsystem in browser/WebView2 safely without polluting deck state
+      try {
+        const dummy = new Audio();
+        dummy.muted = true;
+        void dummy.play().catch(() => {});
+      } catch {}
+
       const sents = sentencesRef.current;
       if (sents.length === 0) return;
 
@@ -670,16 +818,21 @@ export function useTtsPlayer(
 
       const clamped = Math.max(0, Math.min(target, sents.length - 1));
 
-      // If active deck is already paused at this sentence and has src, resume
+      // If active deck is already paused at this sentence and has real media src, resume HTMLAudioElement
       const activeDeck =
         activeDeckIdRef.current === 'A' ? deckRefA.current : deckRefB.current;
       const inactiveDeckId: 'A' | 'B' = activeDeckIdRef.current === 'A' ? 'B' : 'A';
+      const hasRealAudio = Boolean(
+        activeDeck &&
+        activeDeck.src &&
+        (activeDeck.src.startsWith('blob:') || activeDeck.src.startsWith('http'))
+      );
 
       if (
         startIndex === undefined &&
         activeIndexRef.current === clamped &&
         activeDeck &&
-        activeDeck.src &&
+        hasRealAudio &&
         !activeDeck.ended &&
         activeDeck.paused
       ) {
@@ -688,6 +841,7 @@ export function useTtsPlayer(
           .then(() => {
             setIsPlaying(true);
             isPlayingRef.current = true;
+            setKokoroNarrationActive(true);
             // Re-trigger lookahead prefetch after resume
             triggerLookahead(clamped, inactiveDeckId, sessionRef.current);
           })
@@ -715,6 +869,15 @@ export function useTtsPlayer(
     sessionRef.current += 1;
     abortInFlight();
     clearWarmingTimer();
+    if (currentSourceRef.current) {
+      try {
+        currentSourceRef.current.onended = null;
+        currentSourceRef.current.stop();
+        currentSourceRef.current.disconnect();
+      } catch {}
+      currentSourceRef.current = null;
+    }
+    setKokoroNarrationActive(false);
     if (deckRefA.current) deckRefA.current.pause();
     if (deckRefB.current) deckRefB.current.pause();
     setIsPlaying(false);
@@ -733,12 +896,23 @@ export function useTtsPlayer(
   }, [stopInternal, revokeAllBlobs]);
 
   const resumeAtSentence0 = useCallback(() => {
+    void resumeAudioContext();
     const sents = sentencesRef.current;
     if (sents.length === 0) return;
 
     isWaitingForChapterRef.current = false;
     const session = ++sessionRef.current;
     abortInFlight();
+
+    if (currentSourceRef.current) {
+      try {
+        currentSourceRef.current.onended = null;
+        currentSourceRef.current.stop();
+        currentSourceRef.current.disconnect();
+      } catch {}
+      currentSourceRef.current = null;
+    }
+    setKokoroNarrationActive(false);
 
     // Reset decks
     if (deckRefA.current) {
@@ -773,10 +947,21 @@ export function useTtsPlayer(
 
   const seekToSentence = useCallback(
     (index: number) => {
+      void resumeAudioContext();
       clearPendingAdvance();
       const sents = sentencesRef.current;
       if (sents.length === 0) return;
       const target = Math.max(0, Math.min(index, sents.length - 1));
+
+      if (currentSourceRef.current) {
+        try {
+          currentSourceRef.current.onended = null;
+          currentSourceRef.current.stop();
+          currentSourceRef.current.disconnect();
+        } catch {}
+        currentSourceRef.current = null;
+      }
+      setKokoroNarrationActive(false);
 
       // Stop both decks
       if (deckRefA.current) {
@@ -816,6 +1001,16 @@ export function useTtsPlayer(
       speedRef.current = newSpeed;
       saveTtsPref(bookIdRef.current, voiceRef.current, newSpeed, autoAdvanceRef.current);
 
+      if (currentSourceRef.current) {
+        try {
+          currentSourceRef.current.onended = null;
+          currentSourceRef.current.stop();
+          currentSourceRef.current.disconnect();
+        } catch {}
+        currentSourceRef.current = null;
+      }
+      setKokoroNarrationActive(false);
+
       // Abort background lookahead and clear future blob cache so subsequent sentences use new speed
       abortInFlight();
       revokeAllBlobs(activeIndexRef.current);
@@ -842,6 +1037,16 @@ export function useTtsPlayer(
       setVoiceState(newVoice);
       voiceRef.current = newVoice;
       saveTtsPref(bookIdRef.current, newVoice, speedRef.current, autoAdvanceRef.current);
+
+      if (currentSourceRef.current) {
+        try {
+          currentSourceRef.current.onended = null;
+          currentSourceRef.current.stop();
+          currentSourceRef.current.disconnect();
+        } catch {}
+        currentSourceRef.current = null;
+      }
+      setKokoroNarrationActive(false);
 
       // Abort background lookahead and clear future blob cache so subsequent sentences use new voice
       abortInFlight();

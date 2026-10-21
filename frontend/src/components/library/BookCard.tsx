@@ -4,6 +4,7 @@ import { AlertTriangle, BookOpen, Check } from 'lucide-react';
 import { Book, formatAuthorList } from '../../types/domain';
 import { useThemeStore } from '../../store/useThemeStore';
 import { BookCoverArt } from './BookCoverArt';
+import { playUiSound } from '../../audio/soundPlayer';
 
 export interface BookCardProps {
   book: Book;
@@ -140,6 +141,7 @@ export const BookCard: React.FC<BookCardProps> = ({
   const displayAuthor = formatAuthorList(book.bibliographic?.authors, book.author);
 
   const handleCardClick = () => {
+    playUiSound('library.book.open');
     if (onOpen) {
       onOpen(book.id);
     } else {
@@ -245,6 +247,8 @@ export const BookCard: React.FC<BookCardProps> = ({
             if (onOpen) {
               e.preventDefault();
               handleCardClick();
+            } else {
+              playUiSound('library.book.open');
             }
           }}
           className="absolute inset-0 z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"

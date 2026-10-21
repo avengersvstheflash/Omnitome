@@ -4,6 +4,7 @@ import { Palette, Settings, ArrowLeft, HelpCircle, Maximize2, Minimize2 } from '
 import { useThemeStore } from '../../store/useThemeStore';
 import { useFullscreen } from '../../hooks/useFullscreen';
 import { ThemeSigil } from './ThemeSigil';
+import { playUiSound } from '../../audio/soundPlayer';
 
 export interface HeaderProps {
   title?: ReactNode;
@@ -25,6 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { isFullscreen, toggleFullscreen } = useFullscreen();
 
   const handleBack = () => {
+    playUiSound('nav.back');
     if (onBack) {
       onBack();
     } else if (backTo) {
@@ -56,6 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <Link
             to="/"
+            onClick={() => playUiSound('nav.primary.library')}
             className="flex items-center gap-2 text-ink hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded py-0.5 cyber-animated-logo"
           >
             <span className="text-accent text-lg select-none omni-diamond-rune" aria-hidden="true">
@@ -137,6 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <Link
             to="/help"
+            onClick={() => playUiSound('ui.button.secondary')}
             className="p-2 rounded-md text-ink-muted hover:text-ink hover:bg-subtle transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             title="Help & Documentation"
             aria-label="Help & Documentation"
@@ -146,6 +150,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <Link
             to="/settings"
+            onClick={() => playUiSound('settings.open')}
             className="p-2 rounded-md text-ink-muted hover:text-ink hover:bg-subtle transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             title="Settings"
             aria-label="Settings"
