@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 import sys
-from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules, copy_metadata
+from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_dynamic_libs, collect_submodules, copy_metadata
 
 block_cipher = None
 
@@ -62,7 +62,7 @@ def should_exclude_data_file(src, dst=''):
     return False
 
 # Collect data files from installed packages
-for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 'sentence_transformers', 'thinc', 'language_tags', 'espeakng_loader']:
+for pkg in ['paddleocr', 'paddle', 'pysbd', 'kokoro', 'misaki', 'transformers', 'sentence_transformers', 'thinc', 'language_tags', 'espeakng_loader', 'spacy']:
     try:
         pkg_datas = collect_data_files(pkg)
         for item in pkg_datas:
@@ -81,7 +81,7 @@ datas = [
 ]
 
 # Collect package dist-info metadata (required for packages using importlib.metadata.version)
-for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers', 'torch', 'paddleocr', 'kokoro', 'misaki', 'tokenizers', 'safetensors', 'filelock', 'numpy', 'scipy', 'pydantic', 'fastapi', 'thinc', 'language_tags', 'espeakng_loader']:
+for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers', 'torch', 'paddleocr', 'kokoro', 'misaki', 'tokenizers', 'safetensors', 'filelock', 'numpy', 'scipy', 'pydantic', 'fastapi', 'thinc', 'language_tags', 'espeakng_loader', 'spacy', 'en_core_web_sm']:
     try:
         datas += copy_metadata(pkg)
     except Exception as e:
@@ -146,6 +146,8 @@ hiddenimports = [
     'kokoro',
     'soundfile',
     'misaki',
+    'spacy',
+    'en_core_web_sm',
     'espeakng_loader',
     'language_tags',
 
@@ -175,11 +177,20 @@ hiddenimports = [
 ]
 
 # Collect submodules for core dynamic packages
-for pkg in ['pydantic', 'pydantic_core', 'uvicorn', 'fastapi', 'sentence_transformers', 'transformers.models.auto', 'transformers.models.xlm_roberta', 'transformers.models.metaclip_2', 'thinc', 'language_tags']:
+for pkg in ['pydantic', 'pydantic_core', 'uvicorn', 'fastapi', 'sentence_transformers', 'transformers.models.auto', 'transformers.models.xlm_roberta', 'transformers.models.metaclip_2', 'thinc', 'language_tags', 'spacy']:
     try:
         hiddenimports += collect_submodules(pkg)
     except Exception as e:
         print(f"[sidecar.spec] Warning: collect_submodules failed for {pkg}: {e}")
+
+# Bundle en_core_web_sm spaCy model assets, binaries, and hiddenimports for Kokoro/misaki
+try:
+    en_datas, en_binaries, en_hidden = collect_all('en_core_web_sm')
+    datas += en_datas
+    binaries += en_binaries
+    hiddenimports += en_hidden
+except Exception as e:
+    print(f"[sidecar.spec] Warning: collect_all failed for en_core_web_sm: {e}")
 
 hiddenimports = list(set(hiddenimports))
 

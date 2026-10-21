@@ -24,6 +24,14 @@
   .border-accent-2-soft { border-color: rgb(var(--accent-2, var(--accent)) / 0.30); }
   .border-accent-3-soft { border-color: rgb(var(--accent-3, var(--accent)) / 0.30); }
   .border-accent-4-soft { border-color: rgb(var(--accent-4, var(--accent)) / 0.30); }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 

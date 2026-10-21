@@ -1,7 +1,7 @@
 # Omnitome — Session Handoff
 
-> Last updated: 2026-10-20 (Post-S14 Packaging, Kokoro Offline & Library Self-Healing)
-> Repository: github.com/avengersvstheflash/Omnitome
+> Last updated: 2026-10-21 (Post-v1.0.1 Packaging Fixes, Kokoro/spaCy TTS Bundling & UI Polish)  
+> Repository: github.com/avengersvstheflash/Omnitome  
 > Purpose: Full orientation in one turn for any assistant.
 
 ---
@@ -14,56 +14,43 @@
   - **Rust (Tauri):** 17 / 17 Cargo unit tests (`cargo test --manifest-path src-tauri/Cargo.toml`)
   - **Backend (Node.js):** 60 / 60 Regression suites + 1 Network suite (`npm test`)
   - **Corpus Release Gate (F42):** 10 / 10 multi-format fixtures (Classes A, B, C)
-  - **TTS & Library Verification:** 5 / 5 integration tests (`node backend/tests/tts_and_library_fix_test.js`)
+  - **Dossier & Queue Integration:** 10 / 10 pipeline tests (`node backend/tests/import_queue_pipeline_test.js`)
+  - **Dossier Append Tests:** 8 / 8 tests (`node backend/tests/f79b_append_source_test.js`)
   - **Sidecar TTS Integration:** 10 / 10 tests (`node backend/tests/f85_kokoro_tts_sidecar_test.js`)
-  - **Frontend (Vite + React):** Production build passes cleanly with zero errors (`npm --prefix frontend run build`)
+  - **Frontend (Vite + React):** TypeScript check (`tsc --noEmit`) and production build pass with 0 errors (`npm --prefix frontend run build`)
 - **License:** AGPL-3.0-only (Public) / MIT (Private V2)
 
 ### Recent Commit Trail
+- `ce2f68c` — fix(v1.0.1): bundle espeak-ng-data for Kokoro TTS, fix Queue false-positive, and add independent Research scrolling
+- `28d5bc0` — chore(release): generate custom app icons and enforce strict CSP
+- `82e2b84` — feat(ui): add F11 fullscreen toggle and global state sync
+- `9b62607` — feat(ux): import queue hygiene, research dossier append/delete, library batch delete, and 404 handling
 - `b67c806` — feat(tts,library): offline Kokoro voice resolution, library lifecycle self-healing, and S14 doc sync
-- `7ebb600` — chore(tts): add bundled kokoro config fallback
-- `6405fa3` — fix(ingestion,tts): resolve Kokoro offline mode and PDF TOC leakage
-- `a6423c0` — fix(dev): resolve venv and backend paths when running from src-tauri
-- `f5c5557` — feat(security): comprehensive hardening and edge-case fixes
-- `7ae3ad7` — config(models): update model URLs to Cloudflare R2 and fix marker files
-- `0584480` — feat(sidecar): fix pyinstaller missing imports and upgrade splash animation
-- `68d86c1` — fix(supervisor): strip windows verbatim path prefix for node v22 compatibility
-- `ed586fc` — docs: S14 in progress status and session handoff
 
 ---
 
 ## 2. Key Accomplishments & Architectural Solutions
 
-### A. NSIS Installer & 7z Extraction Architecture (S14)
+### A. NSIS Installer & 7z Extraction Architecture (S14 & v1.0.1)
 - **Overcoming the 2GB NSIS Limit:** Tauri's NSIS bundler crashes on the 4.6 GB PyInstaller sidecar due to the 32-bit `makensis` file size ceiling. Solved by pre-compressing the frozen sidecar into `resources/sidecar.7z` (1.36 GB) with LZMA via 7-Zip.
 - **Runtime Rust Unpacker:** The Rust supervisor extracts `sidecar.7z` to `%LOCALAPPDATA%\Omnitome\sidecar\` on first boot via `sevenz-rust`. Implemented `wipe_dir` in Rust to cleanly handle Windows read-only locks on existing files during staging cleanup.
 - **Dynamic Path Resolution:** Rewrote path resolution across `src-tauri/src/lib.rs` using `std::env::current_exe()` parent directory to resolve resources dynamically regardless of installation directory. Added `strip_windows_verbatim` to sanitize `\\?\` prefixes that caused Node v22 `EISDIR: lstat 'C:'` crashes.
-- **Dev-Mode Flexibility:** Fixed dev-mode path resolution to check both `src-tauri` and the repository root for the Python virtual environment (`.venv`).
+- **Security Hardening (CSP):** Enforces strict Content Security Policy (`default-src 'self' ... connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:*`) inside `tauri.conf.json`.
 
-### B. Animated Splash Screen
-- Created `frontend/public/splashscreen.html` featuring a pure CSS 3D flipping book animation and 3-phase initialization text cycling.
-- Offloaded the supervisor setup to a background thread (`std::thread::spawn`) in `src-tauri/src/lib.rs`, preventing UI thread hangs and allowing smooth 60fps splash animations during archive extraction.
+### B. Kokoro TTS Engine & Phonemizer Freezing
+- **Phonetic Dictionaries (`espeak-ng`):** Bundled `espeakng_loader` data files (38 files) and `espeak-ng.dll` in `sidecar.spec` to prevent `RuntimeError: data path not exists` in frozen environments.
+- **spaCy Local Model Bundling (`en_core_web_sm`):** Kokoro's `misaki` dependency requires `en_core_web_sm`. Bundled the model via `collect_all('en_core_web_sm')` and added `spacy` submodules and metadata to `sidecar.spec`, eliminating runtime pip download crashes.
+- **Offline Voice Loader:** Monkeypatched `_engine.load_single_voice` with `_resolve_voice_path` across local directory hierarchies and Hugging Face snapshot caches, enabling 100% offline synthesis (`HF_HUB_OFFLINE=1`).
+- **Citation-Only Sentences:** Empty/citation-only sentences (e.g. `[p12]`) synthesize a 250ms silence WAV buffer instead of raising `ValueError`, preventing dual-deck audio player stalls.
 
-### C. Sidecar Dependencies & Packaging
-- Added `transformers.models.metaclip_2`, `thinc` data files, and `language_tags` JSON data to `sidecar.spec` to eliminate PyInstaller runtime import failures.
-- Resolved embedding 503 errors in `sidecars/python/embed/routes.py` by supporting both `pytorch_model.bin` and safetensors and preventing spurious 503s when models are already in memory.
+### C. Import Queue & Research Dossier State Synchronization
+- **Fresh Task Cache Invalidation:** In `QueueManager.tsx`, tasks completed within 60 seconds are designated as fresh; opening a fresh book triggers `queryClient.refetchQueries({ queryKey: ['books'], type: 'all' })` rather than showing a false-positive deleted toast.
+- **Ghost Entry Pruning:** Automatically prunes completed/failed tasks from SQLite when their `book_id` has been deleted from the `books` table.
+- **Dual Independent Scrolling:** Constrained `ResearchViewerRoute.tsx` container to `h-[calc(100vh-var(--header-height,10rem))]`, providing independent vertical scrollbars for the chapter index and source text pane, with automated scroll reset on chapter changes.
 
-### D. Kokoro TTS Engine Hardening
-- **Offline Mode Fix:** Fixed `OfflineModeIsEnabled` crash when running without an internet connection (`HF_HUB_OFFLINE=1`). Kokoro's upstream `load_single_voice` was calling `hf_hub_download`. Implemented `_resolve_voice_path` across local directory hierarchies and Hugging Face snapshot caches, monkeypatching `_engine.load_single_voice` to use `torch.load(..., weights_only=True)`.
-- **Citation-Only Sentences:** Empty/citation-only sentences (e.g. `[p12]`) now synthesize a 250ms silence WAV buffer instead of raising `ValueError("Text cannot be empty after sanitization")`, preventing dual-deck audio player stalls.
-- **Whitelisted Preloading:** Pre-loads and validates all whitelisted voices (`af_heart`, `am_adam`, `bf_alice`, `bm_george`) at startup and exposes `availableVoices` on `GET /v1/tts/status`.
-
-### E. Library Ingestion & Lifecycle Self-Healing
-- **Root Cause Solved:** Fixed issue where imported books (such as *"corpsex"*) generated smart chapters but failed to appear in the Library tab due to early lifecycle record creation defaulting `in_library = 0`.
-- **Multi-Layer Self-Healing:**
-  - `backend/services/bookService.js`: Reconciles `in_library = 1` and `lifecycle_state = 'active'` upon smart chapter generation and post-ingest pipeline completion.
-  - `backend/services/ingestion/importQueueService.js`: Reconciles `in_library = 1` on task completion.
-  - `backend/services/lifecycle/bookLifecycleService.js`: Dynamic reconciliation inside `ensureLifecycle`, and default `in_library: 1` for non-research books.
-  - `backend/db/database.js`: Startup schema backfill automatically reconciles pre-existing books with smart chapters.
-- **Dynamic UI Cache Sync:**
-  - `frontend/src/hooks/useBooks.ts`: Configured `refetchOnMount: 'always'`.
-  - `frontend/src/routes/LibraryRoute.tsx`: Refetches on mount and listens for the custom `'omnitome:books-changed'` event.
-  - `frontend/src/store/useImportQueueStore.ts`: Dispatches `'omnitome:books-changed'` upon import completion.
+### D. Full-Screen (F11) & Themed Scrollbars
+- **Global Fullscreen Hook (`useFullscreen.ts`):** Supports HTML5 Fullscreen API with standard <kbd>F11</kbd> hotkey and UI toggle buttons in `Header.tsx` and `ReaderRoute.tsx`. State is kept in sync via `fullscreenchange` when exiting with <kbd>Esc</kbd>.
+- **Omnitome Themed Scrollbars:** Replaced generic gray scrollbars with theme-reactive WebKit scrollbars (`--accent` tint with rounded padding-box clips) in `frontend/src/index.css`.
 
 ---
 
@@ -79,12 +66,17 @@
 
 ## 4. Next Session Action Items
 
-1. **Test Full NSIS Lightweight Build:**
+1. **Freeze Python Sidecar with spaCy Model:**
    ```powershell
-   .\scripts\build-installers.ps1 -Type Lightweight
+   cd sidecars/python
+   .\.venv\Scripts\activate
+   pyinstaller sidecar.spec --noconfirm
    ```
-2. **Verify Fresh Installation Flow:**
-   - Execute the compiled installer in a clean VM or test directory.
-   - Confirm splash screen animation, background 7z extraction to `%LOCALAPPDATA%\Omnitome\sidecar\`, and smooth main window transition.
-3. **Verify Complete End-to-End User Journey:**
-   - Import PDF/EPUB -> Verify live 5-stage progress -> Confirm immediate appearance in Library tab -> Test Kokoro TTS offline playback with dual-deck auto-advance.
+2. **Re-pack 7z Archive:**
+   Compress `sidecars/python/dist/omnitome-sidecar/` into `resources/sidecar.7z` using 7-Zip (`7z a -t7z -m0=lzma2 -mx=9 resources\sidecar.7z .\sidecars\python\dist\omnitome-sidecar\*`).
+3. **Build Final v1.0.1 Installer:**
+   ```powershell
+   npm run tauri:build
+   ```
+4. **Verify Clean Installation:**
+   Install and test on a clean Windows machine without python/node pre-installed; verify Kokoro TTS playback, custom scrollbars, and F11 fullscreen mode.

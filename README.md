@@ -11,7 +11,7 @@
 <p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0" /></a>
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform" />
-  <img src="https://img.shields.io/badge/Status-Feature%20Freeze%20v1.0-blue" alt="Status" />
+  <img src="https://img.shields.io/badge/Status-v1.0.1%20Release%20Candidate-blue" alt="Status" />
   <img src="https://img.shields.io/badge/Tests-60%20Suites%20%2B%2017%20Rust%20%2B%20Corpus-3fb950" alt="Tests" />
   <img src="https://img.shields.io/badge/Tauri-v2-FFC131?logo=tauri&logoColor=black" alt="Tauri v2" />
   <img src="https://img.shields.io/badge/Node.js-22%20LTS-339933?logo=node.js&logoColor=white" alt="Node.js" />
@@ -50,8 +50,10 @@ At the heart of Omnitome is the **Two-Representation Invariant**:
 - 🔒 **100% Local-First & Private:** Run entirely offline with local LLMs (Ollama) and local embeddings. Zero cloud tracking, zero data egress.
 - ⚡ **Hardware-Accelerated Vectorization:** PyTorch FP16 CUDA sidecar provides sub-second 16-chunk batch embeddings and input-calibrated cross-encoder reranking.
 - 📚 **Universal Multi-Format Ingestion:** First-class ingestion for PDF (layout-aware & scanned OCR), EPUB, DOCX, RTF, Markdown, web URLs, and plain text with Tier 1+2 statistical charset detection.
-- 🎙️ **Local Neural Voice (Kokoro-82M):** High-fidelity offline voice narration with gapless dual-deck playback, real-time sentence highlighting, and podcast auto-advance mode.
-- 🎨 **Adaptive Theme & Typography Engine:** 5 bespoke visual themes (Omni, Sakura, Spring, Coffee, Cyberpunk), procedural SVG cover generation, and native KaTeX math typesetting.
+- 🎙️ **Local Neural Voice (Kokoro-82M):** High-fidelity offline voice narration with gapless dual-deck playback, chapter title narration, real-time sentence highlighting, and podcast auto-advance mode.
+- 🎨 **Adaptive Theme & Typography Engine:** 5 bespoke visual themes (Omni, Sakura, Spring, Coffee, Cyberpunk), theme-reactive custom scrollbars, procedural SVG cover generation, and native KaTeX math typesetting.
+- 🖥️ **Distraction-Free Fullscreen & Windowed Modes:** Universal <kbd>F11</kbd> hotkey and toolbar toggles with instant state synchronization across reading sessions.
+- 🗃️ **Library Batch Operations & Dossier Management:** Multi-select batch deletion with cascade database pruning, "Source Only" badging for uncompressed source books, and append-source research pipelines.
 
 👉 *Read the full breakdown in [docs/FEATURES.md](./docs/FEATURES.md).*
 
@@ -107,7 +109,8 @@ Omnitome is engineered as a coordinated multi-process desktop application:
 | **S11 — Tauri Scaffold** | ✅ Complete | Native desktop shell, app icon |
 | **S12 — Supervisor** | ✅ Complete | PyInstaller freeze, dynamic ports, process tree cleanup |
 | **S13 — Resources** | ✅ Complete | Neural setup UX, streaming downloads, hash locking |
-| **S14 — Installer** | 🚧 Near Complete (98%) | NSIS installer, 7z sidecar extraction, animated splash screen & dynamic path resolution |
+| **S14 — Installer** | ✅ Complete | NSIS installer, 7z sidecar extraction, animated splash screen & dynamic path resolution |
+| **v1.0.1 Patch** | ✅ Complete | Kokoro/misaki spaCy & espeak offline bundling, F11 fullscreen, batch delete, custom scrollbars |
 | **S15 — Release** | 📋 Planned | Code signing, distribution |
 
 👉 *Track strategic milestones and deep architectural context in [docs/ROADMAP_2026-09.md](./docs/ROADMAP_2026-09.md).*

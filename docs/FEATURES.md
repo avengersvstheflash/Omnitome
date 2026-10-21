@@ -67,7 +67,8 @@ Omnitome processes long-form texts into structured, highly readable reading unit
 
 Omnitome includes an offline neural audio narration system designed for deep, long-form listening:
 
-- **100% Offline Synthesis:** Powered by Kokoro-82M running locally via PyTorch FP16 CUDA (with transparent CPU fallback). Fully verified in offline isolation (`HF_HUB_OFFLINE=1`) with a custom local voice loader (`_resolve_voice_path`) that resolves voice weights directly without Hugging Face Hub dependencies.
+- **100% Offline Synthesis & Frozen Sidecar Bundling:** Powered by Kokoro-82M running locally via PyTorch FP16 CUDA (with transparent CPU fallback). Fully verified in offline isolation (`HF_HUB_OFFLINE=1`). Pre-bundles `espeakng_loader` phoneme dictionaries and `spaCy en_core_web_sm` model assets directly into the PyInstaller binary, eliminating runtime pip or web download dependencies.
+- **Chapter Title Narration:** Intelligently reads and visually highlights chapter titles prior to the first paragraph, maintaining flawless dual-deck audio queue synchronization.
 - **Citation-Only Sentence Resilience:** Generates a synthetic 250ms silence WAV buffer when encountering citation-only sentences (e.g. `[p12]`), preventing audio pipeline stalls without throwing client-side playback exceptions.
 - **Curated Neural Voices:** Four expressive, balanced voices preloaded and verified at boot:
   - `af_heart`: Warm, gentle American female voice.
@@ -97,8 +98,11 @@ Omnitome's interface follows three strict aesthetic laws:
 - 🌌 **Omni:** Signature brand theme featuring cosmic deep-violet backdrops and glowing purple sigils.
 
 ### Procedural Art & Mathematical Typesetting
-- **Procedural Geometric Covers:** Automatically generates unique SVG book covers based on title hashes and theme aesthetics.
+- **Procedural Geometric Covers:** Automatically generates unique SVG book covers based on title hashes and theme aesthetics, including distinct "Source Only" and "Empty" status badging for uncompressed source books.
 - **KaTeX Mathematical Typesetting:** Renders inline and block math formulas ($E = mc^2$, $\sum_{i=1}^n x_i$) with native LaTeX typography.
+- **Universal Full-Screen & Windowed Modes:** Toggle true distraction-free reading with a global <kbd>F11</kbd> hotkey or top-bar UI buttons, complete with automatic two-way state synchronization on <kbd>Esc</kbd>.
+- **Theme-Reactive Custom Scrollbars:** Elegant 10px WebKit scrollbars utilizing active theme `--accent` color variables with translucent tracks, rounded padding-box thumbs, and smooth hover feedback.
+- **Library Batch Management:** Multi-select checkboxes for bulk book deletion with cascading SQLite foreign-key removal and automatic queue synchronization.
 - **Responsive 48px Import Dock:** Persistent right-side collapsible dock displaying active import queues and stage checklists without obstructing reading flow.
 
 ---
