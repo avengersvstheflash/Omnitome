@@ -100,6 +100,23 @@ export interface RawImportTask {
   completedAt?: string | null;
 }
 
+export const STAGE_PROGRESS_MAP: Record<string, number> = {
+  ingest: 15,
+  acquiring: 5,
+  extracting: 10,
+  structuring: 15,
+  semantic_index: 30,
+  indexing: 30,
+  classify: 45,
+  classification: 45,
+  outline: 55,
+  synopsis: 60,
+  synthesis: 70,
+  attribution: 85,
+  ready: 100,
+  done: 100,
+};
+
 export function normalizeImportTask(raw: RawImportTask): ImportTask {
   let meta: Record<string, any> = {};
   const rawMeta = raw.sourceMeta || raw.source_meta;
@@ -126,15 +143,43 @@ export function normalizeImportTask(raw: RawImportTask): ImportTask {
     }
   }
 
+  const rawProgress = typeof raw.progress === 'number' ? raw.progress : 0;
+  const taskStatus = (raw.status as ImportTaskStatus) || 'queued';
+  let taskStage = (raw.stage as ImportStageKey) || 'preparing';
+
+  // Align progress percentage with active/completed stages
+  let computedProgress = rawProgress;
+  if (taskStatus === 'completed') {
+    computedProgress = 100;
+  } else if (stages.length > 0) {
+    const runningStage = stages.find((s) => s.status === 'running');
+    if (runningStage && STAGE_PROGRESS_MAP[runningStage.stage] !== undefined) {
+      computedProgress = STAGE_PROGRESS_MAP[runningStage.stage];
+      taskStage = runningStage.stage as ImportStageKey;
+    } else {
+      let maxDone = 0;
+      for (const s of stages) {
+        if (s.status === 'done' && STAGE_PROGRESS_MAP[s.stage] !== undefined) {
+          maxDone = Math.max(maxDone, STAGE_PROGRESS_MAP[s.stage]);
+        }
+      }
+      if (maxDone > 0) {
+        computedProgress = Math.max(rawProgress, maxDone);
+      }
+    }
+  } else if (taskStage && STAGE_PROGRESS_MAP[taskStage] !== undefined) {
+    computedProgress = Math.max(rawProgress, STAGE_PROGRESS_MAP[taskStage]);
+  }
+
   return {
     id: raw.id,
     type: (raw.type as ImportTaskType) || 'file',
     sourceTitle: raw.sourceTitle || raw.source_title || 'Untitled Import',
     sourceMeta: meta,
-    status: (raw.status as ImportTaskStatus) || 'queued',
-    stage: (raw.stage as ImportStageKey) || 'preparing',
+    status: taskStatus,
+    stage: taskStage,
     stageLabel: raw.stageLabel || raw.stage_label || 'Queued for processing',
-    progress: typeof raw.progress === 'number' ? raw.progress : 0,
+    progress: Math.min(100, Math.max(0, Math.round(computedProgress))),
     queueOrder: typeof (raw.queueOrder ?? raw.queue_order) === 'number' ? (raw.queueOrder ?? raw.queue_order)! : 0,
     bookId: raw.bookId || raw.book_id || null,
     error: raw.error || null,

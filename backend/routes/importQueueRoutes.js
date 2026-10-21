@@ -1,7 +1,11 @@
 const express = require('express');
 const multer = require('multer');
+const crypto = require('crypto');
 const config = require('../config');
 const importQueueService = require('../services/ingestion/importQueueService');
+const bookService = require('../services/bookService');
+const bookRepository = require('../repositories/bookRepository');
+const { getDatabase } = require('../db/database');
 
 const router = express.Router();
 
@@ -43,6 +47,41 @@ router.post('/files', upload.array('files', 20), async (req, res, next) => {
 
     const dossierId = req.body.dossierId || null;
     const contentType = req.body.contentType || 'novel';
+    const isReplace = req.body.replace === 'true' || req.body.replace === true;
+    const db = getDatabase();
+
+    // Check duplicate files against existing books
+    if (!dossierId) {
+      for (const file of files) {
+        if (!file.buffer) continue;
+        const fileHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
+        const existingBook = db.prepare(`
+          SELECT id, title, metadata_json
+          FROM books
+          WHERE status != 'failed'
+            AND (
+              json_extract(metadata_json, '$.file_hash') = ?
+              OR id IN (SELECT book_id FROM dossier_append_log WHERE file_hash = ?)
+            )
+          LIMIT 1
+        `).get(fileHash, fileHash);
+
+        if (existingBook) {
+          if (isReplace) {
+            try {
+              bookRepository.delete(existingBook.id);
+            } catch (_) {}
+          } else {
+            return res.status(409).json({
+              error: `This book already exists: "${existingBook.title}". Replace the old version or cancel?`,
+              code: 'DUPLICATE_BOOK',
+              existingBookId: existingBook.id,
+              existingBookTitle: existingBook.title,
+            });
+          }
+        }
+      }
+    }
 
     const tasks = [];
     for (const file of files) {
@@ -51,6 +90,7 @@ router.post('/files', upload.array('files', 20), async (req, res, next) => {
         metadata: {
           dossierId,
           contentType,
+          replace: isReplace,
         },
       });
       tasks.push(task);
@@ -73,6 +113,37 @@ router.post('/file', upload.single('file'), async (req, res, next) => {
       return res.status(400).json({ error: 'No file provided for import.' });
     }
 
+    const isReplace = req.body.replace === 'true' || req.body.replace === true;
+    const db = getDatabase();
+    if (!req.body.dossierId && req.file.buffer) {
+      const fileHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+      const existingBook = db.prepare(`
+        SELECT id, title, metadata_json
+        FROM books
+        WHERE status != 'failed'
+          AND (
+            json_extract(metadata_json, '$.file_hash') = ?
+            OR id IN (SELECT book_id FROM dossier_append_log WHERE file_hash = ?)
+          )
+        LIMIT 1
+      `).get(fileHash, fileHash);
+
+      if (existingBook) {
+        if (isReplace) {
+          try {
+            bookRepository.delete(existingBook.id);
+          } catch (_) {}
+        } else {
+          return res.status(409).json({
+            error: `This book already exists: "${existingBook.title}". Replace the old version or cancel?`,
+            code: 'DUPLICATE_BOOK',
+            existingBookId: existingBook.id,
+            existingBookTitle: existingBook.title,
+          });
+        }
+      }
+    }
+
     const task = await importQueueService.enqueueFile({
       file: req.file,
       metadata: {
@@ -80,6 +151,7 @@ router.post('/file', upload.single('file'), async (req, res, next) => {
         author: req.body.author,
         dossierId: req.body.dossierId,
         contentType: req.body.contentType,
+        replace: isReplace,
       },
     });
 
@@ -92,9 +164,40 @@ router.post('/file', upload.single('file'), async (req, res, next) => {
 // POST /api/import/queue/paste - enqueue large pasted text with destination dossier
 router.post('/paste', async (req, res, next) => {
   try {
-    const { title, author, text, dossierId, dossierTitle, isNewDossier } = req.body || {};
+    const { title, author, text, dossierId, dossierTitle, isNewDossier, replace } = req.body || {};
     if (!text || !text.trim()) {
       return res.status(400).json({ error: 'Text content is required.' });
+    }
+
+    const isReplace = replace === 'true' || replace === true;
+    const db = getDatabase();
+    if (!dossierId) {
+      const textHash = crypto.createHash('sha256').update(Buffer.from(text, 'utf8')).digest('hex');
+      const existingBook = db.prepare(`
+        SELECT id, title, metadata_json
+        FROM books
+        WHERE status != 'failed'
+          AND (
+            json_extract(metadata_json, '$.file_hash') = ?
+            OR id IN (SELECT book_id FROM dossier_append_log WHERE file_hash = ?)
+          )
+        LIMIT 1
+      `).get(textHash, textHash);
+
+      if (existingBook) {
+        if (isReplace) {
+          try {
+            bookRepository.delete(existingBook.id);
+          } catch (_) {}
+        } else {
+          return res.status(409).json({
+            error: `This book already exists: "${existingBook.title}". Replace the old version or cancel?`,
+            code: 'DUPLICATE_BOOK',
+            existingBookId: existingBook.id,
+            existingBookTitle: existingBook.title,
+          });
+        }
+      }
     }
 
     const task = await importQueueService.enqueuePaste({
@@ -108,7 +211,7 @@ router.post('/paste', async (req, res, next) => {
 
     res.status(201).json({ success: true, task });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Failed to enqueue paste import.' });
+    res.status(err.statusCode || 400).json({ error: err.message || 'Failed to enqueue paste import.' });
   }
 });
 

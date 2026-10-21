@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, DragEvent, KeyboardEvent, ChangeEvent } from 'react';
 import { Upload } from 'lucide-react';
 import { getClientConfig } from '../../api/client';
+import { useSoundEffects } from '../../hooks/useSoundEffects';
 
 export interface ImportDropzoneProps {
   onFiles: (files: File[]) => void;
@@ -22,6 +23,7 @@ export const ImportDropzone: React.FC<ImportDropzoneProps> = ({
   const [maxImportSizeMB, setMaxImportSizeMB] = useState<number>(50);
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { playClick } = useSoundEffects();
 
   useEffect(() => {
     let mounted = true;
@@ -41,6 +43,7 @@ export const ImportDropzone: React.FC<ImportDropzoneProps> = ({
 
   const handleClick = () => {
     if (!disabled) {
+      playClick();
       inputRef.current?.click();
     }
   };
@@ -49,6 +52,7 @@ export const ImportDropzone: React.FC<ImportDropzoneProps> = ({
     if (disabled) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
+      playClick();
       inputRef.current?.click();
     }
   };
@@ -83,6 +87,7 @@ export const ImportDropzone: React.FC<ImportDropzoneProps> = ({
 
     const droppedFiles = Array.from(e.dataTransfer.files);
     if (droppedFiles.length > 0) {
+      playClick();
       onFiles(multiple ? droppedFiles : [droppedFiles[0]]);
     }
   };
@@ -91,6 +96,7 @@ export const ImportDropzone: React.FC<ImportDropzoneProps> = ({
     if (disabled || !e.target.files) return;
     const selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length > 0) {
+      playClick();
       onFiles(multiple ? selectedFiles : [selectedFiles[0]]);
     }
     // Reset file input so selecting the same file triggers change again

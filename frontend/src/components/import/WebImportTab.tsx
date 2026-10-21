@@ -14,6 +14,7 @@ import { Modal } from '../shared/Modal';
 import { apiClient } from '../../api/client';
 import { useImportQueueStore } from '../../store/useImportQueueStore';
 import { toast } from '../../store/useToastStore';
+import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { Book } from '../../types/domain';
 
 interface SearchResult {
@@ -79,6 +80,7 @@ const POPULAR_TOPICS = [
 
 export function WebImportTab({ onSuccess }: WebImportTabProps) {
   const { enqueueWeb, enqueueWebMulti } = useImportQueueStore();
+  const { playClick } = useSoundEffects();
 
   const [mode, setMode] = useState<'search' | 'url'>('search');
 
@@ -158,6 +160,7 @@ export function WebImportTab({ onSuccess }: WebImportTabProps) {
 
   // Enqueue single search item
   const handleEnqueueSingle = async (item: SearchResult) => {
+    playClick();
     setEnqueuingId(item.id);
     try {
       const task = await enqueueWeb({
@@ -191,6 +194,7 @@ export function WebImportTab({ onSuccess }: WebImportTabProps) {
   // Enqueue multi selection as a dossier
   const handleEnqueueSelectedBatch = async () => {
     if (selected.size === 0) return;
+    playClick();
     const selectedItems = results.filter((r) => selected.has(r.id));
     const sources = selectedItems.map((r) => ({ url: r.url, title: r.title }));
 
@@ -224,6 +228,7 @@ export function WebImportTab({ onSuccess }: WebImportTabProps) {
   // Direct URL Inspection
   const handleInspectUrl = async () => {
     if (!directUrl.trim()) return;
+    playClick();
     setInspectingUrl(true);
     setUrlError(null);
     setUrlPreview(null);
@@ -246,6 +251,7 @@ export function WebImportTab({ onSuccess }: WebImportTabProps) {
 
   const handleEnqueueDirectUrl = async () => {
     if (!directUrl.trim()) return;
+    playClick();
     try {
       const titleToUse = customTitle.trim() || urlPreview?.metadata?.title || directUrl.trim();
       const task = await enqueueWeb({

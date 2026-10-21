@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Settings as SettingsIcon,
   Eye,
   EyeOff,
   RotateCw,
-  Check,
   AlertCircle,
   Shield,
   Sliders,
@@ -13,8 +13,12 @@ import {
   CheckCircle2,
   Volume2,
   Trash2,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { useSettings, TestConnectionResult } from '../hooks/useSettings';
+import { toast } from '../store/useToastStore';
+import { useSoundEffects } from '../hooks/useSoundEffects';
 
 const OPENROUTER_MODEL_PRESETS = [
   { label: 'DeepSeek V4 Flash', model: 'deepseek/deepseek-v4-flash' },
@@ -67,10 +71,31 @@ export const SettingsRoute: React.FC = () => {
   const [ttsKeepLoaded, setTtsKeepLoaded] = useState<boolean>(false);
   const [showClearCacheConfirm, setShowClearCacheConfirm] = useState<boolean>(false);
 
-  // Diagnostic & Toast feedback state
+  // Diagnostic & Feedback state
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
-  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'ok' | 'err' } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { playClick, playSuccess } = useSoundEffects();
+
+  const isOnboardingQuery = searchParams.get('onboarding') === 'true';
+  const hasApiKey = Boolean(settings?.openrouter?.apiKey && settings.openrouter.apiKey.trim().length > 0);
+  const hasLocal = Boolean(settings?.local?.apiKey?.trim() || (settings?.local?.preset && settings.local.baseUrl && (settings.aiProvider === 'local' || settings.aiProvider === 'ollama')));
+  const hasSkipped = typeof window !== 'undefined' && (
+    localStorage.getItem('omnitome_onboarding_skipped') === 'true' ||
+    sessionStorage.getItem('omnitome_onboarding_skipped') === 'true'
+  );
+  const isOnboarding = isOnboardingQuery || (!hasApiKey && !hasLocal && !hasSkipped);
+
+  const handleSkipOnboarding = () => {
+    playClick();
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('omnitome_onboarding_skipped', 'true');
+      sessionStorage.setItem('omnitome_onboarding_skipped', 'true');
+    }
+    navigate('/');
+  };
 
   // Populate form when settings are loaded or reset
   useEffect(() => {
@@ -109,14 +134,6 @@ export const SettingsRoute: React.FC = () => {
     }
   }, [settings]);
 
-  // Toast auto-dismiss
-  useEffect(() => {
-    if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [toastMessage]);
-
   const handleApplyLocalPreset = (preset: 'ollama' | 'lmstudio' | 'custom') => {
     setLocalPreset(preset);
     setTestResult(null);
@@ -130,6 +147,7 @@ export const SettingsRoute: React.FC = () => {
   };
 
   const handleTestConnection = async () => {
+    playClick();
     setTestResult(null);
     try {
       const payload =
@@ -149,17 +167,25 @@ export const SettingsRoute: React.FC = () => {
 
       const result = await testConnection.mutateAsync(payload);
       setTestResult(result);
+      if (result.success) {
+        playSuccess();
+        toast.success(`Connection succeeded (${result.latencyMs}ms)`);
+      } else {
+        toast.warning(result.message || 'Connection test returned a warning');
+      }
     } catch (err: any) {
+      const message = err.message || 'Connection test failed';
       setTestResult({
         success: false,
         latencyMs: 0,
-        message: err.message || 'Connection test failed',
+        message,
       });
+      toast.error(message);
     }
   };
 
   const handleSave = async () => {
-    setToastMessage(null);
+    playClick();
     try {
       await updateSettings.mutateAsync({
         aiProvider: provider,
@@ -184,33 +210,40 @@ export const SettingsRoute: React.FC = () => {
           keepLoaded: ttsKeepLoaded,
         },
       });
-      setToastMessage({ text: 'Settings saved successfully', type: 'ok' });
+      playSuccess();
+      toast.success('Settings saved successfully');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('omnitome_onboarding_skipped', 'true');
+        sessionStorage.setItem('omnitome_onboarding_skipped', 'true');
+      }
     } catch (err: any) {
-      setToastMessage({ text: err.message || 'Failed to save settings', type: 'err' });
+      toast.error(err.message || 'Failed to save settings');
     }
   };
 
   const handleClearCache = async () => {
     setShowClearCacheConfirm(false);
-    setToastMessage(null);
+    playClick();
     try {
       const res = await clearTtsCache.mutateAsync();
       const freedMB = (res.freedBytes / (1024 * 1024)).toFixed(1);
-      setToastMessage({ text: `TTS cache cleared (${freedMB} MB freed)`, type: 'ok' });
+      playSuccess();
+      toast.success(`TTS cache cleared (${freedMB} MB freed)`);
     } catch (err: any) {
-      setToastMessage({ text: err.message || 'Failed to clear TTS cache', type: 'err' });
+      toast.error(err.message || 'Failed to clear TTS cache');
     }
   };
 
   const handleResetConfirm = async () => {
     setShowResetConfirm(false);
-    setToastMessage(null);
     setTestResult(null);
+    playClick();
     try {
       await resetSettings.mutateAsync();
-      setToastMessage({ text: 'Settings reset to .env defaults', type: 'ok' });
+      playSuccess();
+      toast.success('Settings reset to .env defaults');
     } catch (err: any) {
-      setToastMessage({ text: err.message || 'Failed to reset settings', type: 'err' });
+      toast.error(err.message || 'Failed to reset settings');
     }
   };
 
@@ -235,6 +268,42 @@ export const SettingsRoute: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      {/* Onboarding Welcome Banner */}
+      {isOnboarding && (
+        <div className="p-6 rounded-2xl border-2 border-brand/40 bg-brand/5 shadow-md space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 rounded-xl bg-brand/10 text-brand shrink-0">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-display font-semibold text-ink">
+                  Welcome to Omnitome! Connect an AI to get started
+                </h2>
+                <p className="text-ui-sm text-ink-muted mt-1 leading-relaxed">
+                  Omnitome requires an AI provider to generate compressed Omni chapters. Connect an AI provider below
+                  using an OpenRouter API key for high-speed cloud inference, or a local runtime (Ollama or LM Studio)
+                  for 100% private offline generation.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-brand/20">
+            <button
+              type="button"
+              onClick={handleSkipOnboarding}
+              className="px-4 py-2 rounded-lg border border-line bg-surface hover:bg-subtle text-ink font-medium text-ui-sm shadow-xs transition-colors inline-flex items-center gap-2"
+            >
+              <span>Skip for now (Explore offline)</span>
+              <ArrowRight className="w-4 h-4 text-ink-muted" />
+            </button>
+            <p className="text-caption text-ink-faint">
+              You can still read raw chapters and Structured Extracts offline without an active AI connection.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-2.5 text-accent mb-2">
@@ -246,34 +315,6 @@ export const SettingsRoute: React.FC = () => {
           Configure model inference providers, memory bounds, and local AI runtimes.
         </p>
       </div>
-
-      {/* Status Toast */}
-      {toastMessage && (
-        <div
-          role="status"
-          className={`p-4 rounded-xl border flex items-center justify-between gap-3 shadow-sm ${
-            toastMessage.type === 'ok'
-              ? 'border-ok/30 bg-ok/10 text-ok'
-              : 'border-err/30 bg-err/10 text-err'
-          }`}
-        >
-          <div className="flex items-center gap-2.5 text-ui-sm font-medium">
-            {toastMessage.type === 'ok' ? (
-              <Check className="w-4 h-4" />
-            ) : (
-              <AlertCircle className="w-4 h-4" />
-            )}
-            <span>{toastMessage.text}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setToastMessage(null)}
-            className="text-xs font-semibold hover:opacity-75"
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* ── Section 1: AI Provider Selector ── */}
       <section className="bg-surface rounded-2xl border border-line p-6 shadow-xs space-y-6">

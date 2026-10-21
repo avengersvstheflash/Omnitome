@@ -117,9 +117,21 @@ export function PipelineStepper({ jobs, activeJob }: PipelineStepperProps) {
                   )}
                 </div>
 
-                {status === 'active' && job && typeof job.progress === 'number' && job.progress > 0 && (
+                {status === 'active' && (
                   <span className="text-micro font-mono text-accent-ink px-1.5 py-0.5 rounded bg-accent-wash/30">
-                    {Math.round(job.progress)}%
+                    {Math.round(
+                      job && typeof job.progress === 'number' && job.progress > 0
+                        ? job.progress
+                        : step.key === 'index'
+                        ? 30
+                        : step.key === 'classification'
+                        ? 45
+                        : step.key === 'synopsis'
+                        ? 60
+                        : step.key === 'synthesis'
+                        ? 70
+                        : 15
+                    )}%
                   </span>
                 )}
               </div>

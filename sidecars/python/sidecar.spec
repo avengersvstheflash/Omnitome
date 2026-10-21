@@ -32,10 +32,8 @@ try:
 except Exception as e:
     print(f"[sidecar.spec] Warning: direct transformers models collection failed: {e}")
 
-# Heavy non-essential CUDA precompiled lookup tables (saves ~588 MB, safe to exclude without breaking PyTorch link dependencies)
-EXCLUDED_DLLS = {
-    'cudnn_engines_precompiled64_9.dll',
-}
+# CUDA DLL exclusions disabled: bundle all CUDA/cuDNN DLLs required at runtime
+EXCLUDED_DLLS = set()
 
 def should_exclude_binary_file(src, dst=''):
     for p in (src, dst):
@@ -89,7 +87,7 @@ for pkg in ['imageio', 'tqdm', 'regex', 'requests', 'packaging', 'transformers',
 
 # Collect dynamic libraries (DLLs)
 binaries = []
-for pkg in ['torch', 'paddle', 'espeakng_loader']:
+for pkg in ['paddle', 'espeakng_loader']:
     try:
         binaries += collect_dynamic_libs(pkg)
     except Exception as e:
@@ -124,6 +122,7 @@ hiddenimports = [
 
     # PyTorch & Neural Models
     'torch',
+    'torchvision',
     'torch.utils',
     'torch.distributions',
     'sentence_transformers',
@@ -193,6 +192,25 @@ except Exception as e:
     print(f"[sidecar.spec] Warning: collect_all failed for en_core_web_sm: {e}")
 
 hiddenimports = list(set(hiddenimports))
+
+# ── Bulletproof PyTorch & CUDA Bundling ──
+try:
+    # 1. Collect everything from torch (datas, binaries, hiddenimports)
+    torch_datas, torch_binaries, torch_hiddenimports = collect_all('torch')
+    datas += torch_datas
+    binaries += torch_binaries
+    hiddenimports += torch_hiddenimports
+    
+    # 2. Collect everything from NVIDIA packages (pip installs these alongside torch for CUDA)
+    import glob
+    import os
+    import nvidia
+    nvidia_path = os.path.dirname(nvidia.__file__)
+    for dll in glob.glob(os.path.join(nvidia_path, '**', '*.dll'), recursive=True):
+        # Place these DLLs in the root _internal folder so PyTorch can find them
+        binaries.append((dll, '.'))
+except Exception as e:
+    print(f"[sidecar.spec] Warning: bulletproof torch/nvidia bundling failed: {e}")
 
 a = Analysis(
     [os.path.join(sidecar_dir, 'main.py')],

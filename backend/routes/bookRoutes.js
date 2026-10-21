@@ -222,6 +222,7 @@ router.post('/', async (req, res, next) => {
         description: req.body.description,
         contentType: req.body.contentType || 'other',
         text,
+        replace: req.body.replace === 'true' || req.body.replace === true,
       });
       return res.status(201).json(result);
     }
@@ -229,6 +230,14 @@ router.post('/', async (req, res, next) => {
     const book = bookService.createBook(req.body);
     return res.status(201).json({ book });
   } catch (err) {
+    if (err.statusCode === 409 || err.code === 'DUPLICATE_BOOK') {
+      return res.status(409).json({
+        error: err.message,
+        code: 'DUPLICATE_BOOK',
+        existingBookId: err.existingBookId,
+        existingBookTitle: err.existingBookTitle,
+      });
+    }
     next(err);
   }
 });
@@ -253,10 +262,19 @@ router.post('/import', upload.single('file'), async (req, res, next) => {
       text,
       fileBuffer,
       originalFilename,
+      replace: req.body.replace === 'true' || req.body.replace === true,
     });
 
     return res.status(201).json(result);
   } catch (err) {
+    if (err.statusCode === 409 || err.code === 'DUPLICATE_BOOK') {
+      return res.status(409).json({
+        error: err.message,
+        code: 'DUPLICATE_BOOK',
+        existingBookId: err.existingBookId,
+        existingBookTitle: err.existingBookTitle,
+      });
+    }
     next(err);
   }
 });
@@ -533,6 +551,65 @@ router.post('/:id/ask', async (req, res, next) => {
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(400).json({ error: err.message || 'Failed to answer query.' });
+  }
+});
+
+// POST /api/books/:id/resynthesize - re-synthesize all failed/fallback or all chapters for a book
+router.post('/:id/resynthesize', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const db = getDatabase();
+    const book = bookService.getBook(id);
+    if (!book) {
+      return res.status(404).json({ error: `Book ${id} not found` });
+    }
+
+    const now = new Date().toISOString();
+
+    // Reset smart chapters for this book to pending
+    db.prepare(`
+      UPDATE smart_chapters
+      SET status = 'pending',
+          content = NULL,
+          word_count = 0,
+          synthesis_type = NULL,
+          metadata_json = '{}',
+          updated_at = ?
+      WHERE book_id = ?
+    `).run(now, id);
+
+    // Clean up stale paragraph attributions for reset smart chapters
+    try {
+      db.prepare(`
+        DELETE FROM paragraph_attributions
+        WHERE smart_chapter_id IN (SELECT id FROM smart_chapters WHERE book_id = ?)
+      `).run(id);
+    } catch (_) {}
+
+    // Reset synthesis_completed_at on book
+    db.prepare(`
+      UPDATE books
+      SET synthesis_completed_at = NULL,
+          updated_at = ?
+      WHERE id = ?
+    `).run(now, id);
+
+    // Enqueue re-synthesis task via importQueueService
+    const task = await importQueueService.enqueueResynthesis({
+      dossierId: id,
+      bookId: id,
+      title: book.title,
+      contentType: book.content_type || book.contentType || 'novel',
+    });
+
+    res.json({
+      success: true,
+      taskId: task.id,
+      bookId: id,
+      message: 'Book queued for re-synthesis.',
+    });
+  } catch (err) {
+    next(err);
   }
 });
 

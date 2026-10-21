@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { apiClient, apiUrl } from '../api/client';
 import { queryClient } from '../api/queryClient';
 import { ImportTask, RawImportTask, normalizeImportTask } from '../types/domain';
+import { playSuccessSound } from '../hooks/useSoundEffects';
 
 interface QueueApiResponse {
   success: boolean;
@@ -32,7 +33,7 @@ interface ImportQueueState {
   fetchQueue: () => Promise<void>;
   toggleDock: () => void;
   setDockExpanded: (val: boolean) => void;
-  enqueueFiles: (files: File[], dossierId?: string) => Promise<ImportTask[]>;
+  enqueueFiles: (files: File[], dossierId?: string, replace?: boolean) => Promise<ImportTask[]>;
   enqueuePaste: (data: {
     title: string;
     author?: string;
@@ -40,6 +41,7 @@ interface ImportQueueState {
     dossierId?: string;
     dossierTitle?: string;
     isNewDossier?: boolean;
+    replace?: boolean;
   }) => Promise<ImportTask>;
   enqueueWeb: (data: {
     url: string;
@@ -250,6 +252,9 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
           (prevPending > 0 && pendingCount === 0);
 
         if (taskJustFinished) {
+          if (curCompletedCount > prevCompletedCount || hasNewlyCompletedTask) {
+            playSuccessSound();
+          }
           queryClient.invalidateQueries({ queryKey: ['books'] });
           queryClient.invalidateQueries({ queryKey: ['book'] });
           queryClient.invalidateQueries({ queryKey: ['chapters'] });
@@ -286,12 +291,13 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
       }
     },
 
-    enqueueFiles: async (files: File[], dossierId?: string) => {
+    enqueueFiles: async (files: File[], dossierId?: string, replace?: boolean) => {
       const formData = new FormData();
       for (const file of files) {
         formData.append('files', file);
       }
       if (dossierId) formData.append('dossierId', dossierId);
+      if (replace) formData.append('replace', 'true');
 
       set({ isDismissed: false });
 
@@ -299,6 +305,16 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
         method: 'POST',
         body: formData,
       });
+
+      if (res.status === 409) {
+        const errJson = await res.json().catch(() => ({}));
+        const promptMsg = errJson.error || 'This book already exists. Replace the old version or cancel?';
+        const shouldReplace = window.confirm(promptMsg);
+        if (shouldReplace) {
+          return get().enqueueFiles(files, dossierId, true);
+        }
+        throw new Error('Import cancelled by user');
+      }
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
@@ -313,13 +329,26 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
 
     enqueuePaste: async (data) => {
       set({ isDismissed: false });
-      const res = await apiClient<{ success: boolean; task: RawImportTask }>('/api/import/queue/paste', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-      const task = normalizeImportTask(res.task);
-      void get().fetchQueue();
-      return task;
+      try {
+        const res = await apiClient<{ success: boolean; task: RawImportTask }>('/api/import/queue/paste', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        });
+        const task = normalizeImportTask(res.task);
+        void get().fetchQueue();
+        return task;
+      } catch (err: any) {
+        if (err?.status === 409 || err?.message?.includes('already exists')) {
+          const promptMsg =
+            (err?.data && err.data.error) || err?.message || 'This book already exists. Replace the old version or cancel?';
+          const shouldReplace = window.confirm(promptMsg);
+          if (shouldReplace) {
+            return get().enqueuePaste({ ...data, replace: true });
+          }
+          throw new Error('Import cancelled by user');
+        }
+        throw err;
+      }
     },
 
     enqueueWeb: async (data) => {

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const bookRepository = require('../repositories/bookRepository');
 const chapterRepository = require('../repositories/chapterRepository');
 const jobRepository = require('../repositories/jobRepository');
@@ -618,6 +619,7 @@ class BookService {
     fileBuffer,
     originalFilename,
     taskId,
+    replace = false,
   }) {
     let provisionalTitle = title;
     if (!provisionalTitle && originalFilename) {
@@ -634,6 +636,43 @@ class BookService {
       (!fileBuffer || fileBuffer.length === 0)
     ) {
       throw new Error('No readable text or file buffer provided for import.');
+    }
+
+    // SHA-256 Deduplication check
+    let fileHash = null;
+    if (!text || !/^(https?:\/\/[^\s]+)$/.test(text.trim())) {
+      const contentToHash = fileBuffer || Buffer.from(text || '', 'utf8');
+      fileHash = crypto.createHash('sha256').update(contentToHash).digest('hex');
+
+      const db = getDatabase();
+      const existingBook = db.prepare(`
+        SELECT id, title, metadata_json
+        FROM books
+        WHERE status != 'failed'
+          AND (
+            json_extract(metadata_json, '$.file_hash') = ?
+            OR id IN (SELECT book_id FROM dossier_append_log WHERE file_hash = ?)
+          )
+        LIMIT 1
+      `).get(fileHash, fileHash);
+
+      if (existingBook) {
+        if (replace) {
+          console.log(`[Import] Replacing existing duplicate book ${existingBook.id} ("${existingBook.title}") with new import.`);
+          try {
+            bookRepository.delete(existingBook.id);
+          } catch (delErr) {
+            console.warn(`[Import] Failed to delete old duplicate book ${existingBook.id}:`, delErr.message);
+          }
+        } else {
+          const err = new Error(`This book already exists: "${existingBook.title}". Replace the old version or cancel?`);
+          err.statusCode = 409;
+          err.code = 'DUPLICATE_BOOK';
+          err.existingBookId = existingBook.id;
+          err.existingBookTitle = existingBook.title;
+          throw err;
+        }
+      }
     }
 
     // 0. Web Acquisition Pipeline
@@ -679,6 +718,7 @@ class BookService {
       original_filename: originalFilename || '',
       status: 'processing',
       import_started_at: importStartedAt,
+      metadata_json: fileHash ? { file_hash: fileHash } : {},
     });
 
     const pipelineT0 = Date.now();
@@ -746,6 +786,7 @@ class BookService {
         integrity_warning: ingestionResult.integrityWarning || '',
         status: 'active',
         metadata_json: {
+          file_hash: fileHash,
           tablesCount: ingestionResult.tablesCount || 0,
           sectionCount: ingestionResult.sectionCount || 0,
           sourceFormat: ingestionResult.format,

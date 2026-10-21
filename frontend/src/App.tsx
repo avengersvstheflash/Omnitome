@@ -1,6 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './api/queryClient';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { ModalHost } from './components/shared/ModalHost';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
@@ -16,6 +16,34 @@ import { useEffect, useState } from 'react';
 import { ThemeDecor } from './components/decor/ThemeDecor';
 import { useResourceStore } from './store/useResourceStore';
 import { FirstRunScreen } from './components/resources/FirstRunScreen';
+import { useSettings } from './hooks/useSettings';
+
+function OnboardingRedirect() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { settings, isLoading } = useSettings();
+
+  useEffect(() => {
+    if (isLoading || !settings) return;
+    if (location.pathname === '/settings') return;
+
+    const hasApiKey = Boolean(settings.openrouter?.apiKey && settings.openrouter.apiKey.trim().length > 0);
+    const hasLocal = Boolean(
+      settings.local?.apiKey?.trim() ||
+      (settings.local?.preset && settings.local.baseUrl && (settings.aiProvider === 'local' || settings.aiProvider === 'ollama'))
+    );
+    const hasSkipped = typeof window !== 'undefined' && (
+      localStorage.getItem('omnitome_onboarding_skipped') === 'true' ||
+      sessionStorage.getItem('omnitome_onboarding_skipped') === 'true'
+    );
+
+    if (!hasApiKey && !hasLocal && !hasSkipped) {
+      navigate('/settings?onboarding=true', { replace: true });
+    }
+  }, [settings, isLoading, location.pathname, navigate]);
+
+  return null;
+}
 
 export default function App() {
   const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
@@ -207,6 +235,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <OnboardingRedirect />
         <ThemeDecor />
         <Layout>
           <ErrorBoundary>

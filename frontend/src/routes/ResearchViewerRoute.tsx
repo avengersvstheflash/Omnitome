@@ -6,7 +6,6 @@ import { useBook } from '../hooks/useBook';
 import { useChapters, useChapter } from '../hooks/useChapters';
 import { useLifecycle } from '../hooks/useLifecycle';
 import { useResynthesizeDossier } from '../hooks/useResynthesis';
-import { useModal } from '../store/useModalStore';
 import { AttachSourceModal } from '../components/modals/AttachSourceModal';
 import { CanonicalBlock } from '../components/reader/CanonicalBlock';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -203,7 +202,6 @@ export default function ResearchViewerRoute() {
   const resynthesisMutation = useResynthesizeDossier(bookId);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const [newBookId, setNewBookId] = React.useState<string | null>(null);
-  const { open } = useModal();
   const queryClient = useQueryClient();
   const [isAttachModalOpen, setIsAttachModalOpen] = React.useState(false);
   const [showScrollTop, setShowScrollTop] = React.useState(false);
@@ -251,6 +249,30 @@ export default function ResearchViewerRoute() {
       const msg = err?.message || 'Failed to queue synthesis';
       toast.error(msg);
       setToastMessage(msg);
+    }
+  };
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [isDeletingDossier, setIsDeletingDossier] = React.useState(false);
+
+  const handleDeleteDossier = async () => {
+    if (!book?.id) return;
+    setIsDeletingDossier(true);
+    try {
+      await apiClient<{ success: boolean }>(`/api/books/${book.id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ operation: 'B' }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ['books'] });
+      await queryClient.invalidateQueries({ queryKey: ['sources'] });
+      await queryClient.invalidateQueries({ queryKey: ['dossiers'] });
+      await queryClient.invalidateQueries({ queryKey: ['import-queue'] });
+      toast.success('Dossier deleted successfully');
+      navigate('/research');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete dossier');
+      setIsDeletingDossier(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -415,13 +437,7 @@ export default function ResearchViewerRoute() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    open('deleteBook', {
-                      bookId: book.id,
-                      bookTitle: book.title,
-                      chapterCount,
-                    })
-                  }
+                  onClick={() => setShowDeleteConfirm(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border border-err/30 text-err bg-err/5 hover:bg-err/10 transition-colors shadow-sm"
                 >
                   <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
@@ -711,6 +727,51 @@ export default function ResearchViewerRoute() {
             setToastMessage(msg);
           }}
         />
+      )}
+
+      {showDeleteConfirm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dossier-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+        >
+          <div className="bg-surface border border-line rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-lg bg-err/10 text-err shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 id="delete-dossier-modal-title" className="text-base font-semibold text-ink">
+                  Delete Dossier
+                </h3>
+                <p className="text-ui-sm text-ink-muted leading-relaxed">
+                  Are you sure you want to delete <span className="font-semibold text-ink">"{book?.title || 'this dossier'}"</span>?
+                  This will remove all raw source chapters and semantic index chunks. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingDossier}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-ui-sm rounded-lg border border-line bg-surface hover:bg-subtle text-ink font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingDossier}
+                onClick={handleDeleteDossier}
+                className="px-4 py-2 text-ui-sm rounded-lg bg-err text-white hover:bg-err/90 font-medium transition-colors inline-flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              >
+                {isDeletingDossier && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                <span>{isDeletingDossier ? 'Deleting…' : 'Delete Dossier'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

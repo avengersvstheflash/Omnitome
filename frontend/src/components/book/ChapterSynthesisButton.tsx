@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Zap, ChevronDown, RotateCw } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { useEditorialProgress } from '../../hooks/useEditorial';
+import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { ButtonDecor } from '../reader/ButtonDecor';
 
 export interface ChapterSynthesisButtonProps {
@@ -79,6 +80,7 @@ export const ChapterSynthesisButton: React.FC<ChapterSynthesisButtonProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { playClick } = useSoundEffects();
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [inFlightTarget, setInFlightTarget] = useState<number | null>(null);
@@ -182,6 +184,7 @@ export const ChapterSynthesisButton: React.FC<ChapterSynthesisButtonProps> = ({
 
   const handleSynthesize = (count: number) => {
     if (isSynthesizingActive || count <= 0) return;
+    playClick();
     setIsDropdownOpen(false);
     synthesizeMutation.mutate(count);
   };

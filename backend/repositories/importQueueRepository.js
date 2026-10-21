@@ -1,5 +1,27 @@
 const { getDatabase } = require('../db/database');
 
+const STAGE_WEIGHTS = {
+  ingest: 15,
+  semantic_index: 30,
+  classify: 45,
+  outline: 55,
+  synopsis: 60,
+  synthesis: 70,
+  attribution: 85,
+  done: 100,
+};
+
+const STAGE_LABELS = {
+  ingest: 'Importing content…',
+  semantic_index: 'Indexing semantic memory…',
+  classify: 'Classifying document…',
+  outline: 'Building editorial outline…',
+  synopsis: 'Writing synopsis…',
+  synthesis: 'Compressing chapters…',
+  attribution: 'Tracing sources & attributions…',
+  done: 'Ready to read',
+};
+
 class ImportQueueRepository {
   create({
     id,
@@ -194,9 +216,24 @@ class ImportQueueRepository {
         completed_at: ['done', 'failed', 'skipped'].includes(status) ? now : null,
       });
     }
-    return this.update(id, {
+
+    let newProgress = task.progress || 0;
+    const updates = {
       stages_json: currentStages,
-    });
+    };
+
+    if (status === 'running' && STAGE_WEIGHTS[stageName] !== undefined) {
+      newProgress = STAGE_WEIGHTS[stageName];
+      updates.stage = stageName;
+      if (STAGE_LABELS[stageName]) {
+        updates.stage_label = STAGE_LABELS[stageName];
+      }
+    } else if (status === 'done' && STAGE_WEIGHTS[stageName] !== undefined) {
+      newProgress = Math.max(newProgress, STAGE_WEIGHTS[stageName] + 5);
+    }
+    updates.progress = Math.min(100, newProgress);
+
+    return this.update(id, updates);
   }
 
   delete(id) {
@@ -304,5 +341,10 @@ class ImportQueueRepository {
   }
 }
 
-module.exports = new ImportQueueRepository();
+const repo = new ImportQueueRepository();
+repo.STAGE_WEIGHTS = STAGE_WEIGHTS;
+repo.STAGE_LABELS = STAGE_LABELS;
+module.exports = repo;
+module.exports.STAGE_WEIGHTS = STAGE_WEIGHTS;
+module.exports.STAGE_LABELS = STAGE_LABELS;
 

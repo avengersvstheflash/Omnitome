@@ -13,6 +13,7 @@ import {
 import { apiClient } from '../../api/client';
 import { useImportQueueStore } from '../../store/useImportQueueStore';
 import { toast } from '../../store/useToastStore';
+import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { Book, normalizeBook, RawBook } from '../../types/domain';
 
 interface PasteImportTabProps {
@@ -44,6 +45,7 @@ interface RawDossier extends RawBook {
 
 export function PasteImportTab({ onSuccess }: PasteImportTabProps) {
   const { enqueuePaste } = useImportQueueStore();
+  const { playClick } = useSoundEffects();
 
   // Wizard Step: 1: Text & Meta, 2: Dossier Selection, 3: Review & Confirm
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -145,6 +147,7 @@ export function PasteImportTab({ onSuccess }: PasteImportTabProps) {
   // Final submission into background queue
   const handleConfirmEnqueue = async () => {
     if (!isTextValid || !isDossierValid || submitting) return;
+    playClick();
 
     setSubmitting(true);
     setError(null);
@@ -345,7 +348,10 @@ export function PasteImportTab({ onSuccess }: PasteImportTabProps) {
             <button
               type="button"
               disabled={!isTextValid}
-              onClick={() => setStep(2)}
+              onClick={() => {
+                playClick();
+                setStep(2);
+              }}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand text-white font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent select-none shadow-sm"
             >
               <span>Next: Assign Dossier</span>
@@ -500,7 +506,10 @@ export function PasteImportTab({ onSuccess }: PasteImportTabProps) {
           <div className="flex items-center justify-between pt-4 border-t border-line">
             <button
               type="button"
-              onClick={() => setStep(1)}
+              onClick={() => {
+                playClick();
+                setStep(1);
+              }}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-line bg-card hover:bg-subtle text-ink font-medium text-ui-sm transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -510,7 +519,10 @@ export function PasteImportTab({ onSuccess }: PasteImportTabProps) {
             <button
               type="button"
               disabled={!isDossierValid}
-              onClick={() => setStep(3)}
+              onClick={() => {
+                playClick();
+                setStep(3);
+              }}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand text-white font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent select-none shadow-sm"
             >
               <span>Next: Review & Confirm</span>
@@ -592,7 +604,10 @@ export function PasteImportTab({ onSuccess }: PasteImportTabProps) {
           <div className="flex items-center justify-between pt-2">
             <button
               type="button"
-              onClick={() => setStep(2)}
+              onClick={() => {
+                playClick();
+                setStep(2);
+              }}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-line bg-card hover:bg-subtle text-ink font-medium text-ui-sm transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />

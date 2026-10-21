@@ -316,7 +316,7 @@ class ImportQueueService {
         importQueueRepository.update(nextTask.id, {
           stage: 'acquiring',
           stage_label: `Reading ${meta.originalFilename}…`,
-          progress: 15,
+          progress: 5,
         });
 
         const fileBuffer = await fs.promises.readFile(stagingPath);
@@ -328,7 +328,7 @@ class ImportQueueService {
         importQueueRepository.update(nextTask.id, {
           stage: 'extracting',
           stage_label: 'Parsing document blocks and metadata…',
-          progress: 35,
+          progress: 10,
         });
 
         if (targetDossierId) {
@@ -369,6 +369,13 @@ class ImportQueueService {
           importQueueRepository.updateStage(nextTask.id, 'synopsis', 'skipped');
           importQueueRepository.updateStage(nextTask.id, 'synthesis', 'skipped');
           importQueueRepository.updateStage(nextTask.id, 'attribution', 'skipped');
+
+          importQueueRepository.update(nextTask.id, {
+            stage: 'structuring',
+            stage_label: 'Structured chapters and sections saved into dossier.',
+            progress: 15,
+            book_id: bookId,
+          });
         } else {
           // Run through full BookService pipeline
           const importResult = await bookService.importBook({
@@ -378,21 +385,18 @@ class ImportQueueService {
             fileBuffer,
             originalFilename: meta.originalFilename,
             taskId: nextTask.id,
+            replace: Boolean(meta.replace),
           });
 
           bookId = importResult.book?.id;
+          importQueueRepository.update(nextTask.id, {
+            book_id: bookId,
+          });
         }
 
         if (this._isCancelled(nextTask.id)) {
           throw new Error('Task cancelled by user');
         }
-
-        importQueueRepository.update(nextTask.id, {
-          stage: 'structuring',
-          stage_label: 'Structured chapters and sections saved.',
-          progress: 65,
-          book_id: bookId,
-        });
 
         // Cleanup staging file
         try {
@@ -407,7 +411,7 @@ class ImportQueueService {
         importQueueRepository.update(nextTask.id, {
           stage: 'extracting',
           stage_label: `Analyzing pasted text (${meta.charCount?.toLocaleString() || 0} chars)…`,
-          progress: 25,
+          progress: 10,
         });
 
         if (this._isCancelled(nextTask.id)) {
@@ -425,7 +429,7 @@ class ImportQueueService {
           importQueueRepository.update(nextTask.id, {
             stage: 'structuring',
             stage_label: `Creating research dossier "${candidateTitle}"…`,
-            progress: 40,
+            progress: 15,
           });
 
           if (this._isCancelled(nextTask.id)) {
@@ -453,7 +457,7 @@ class ImportQueueService {
             importQueueRepository.update(nextTask.id, {
               stage: 'structuring',
               stage_label: `Creating research dossier "${candidateTitle}"…`,
-              progress: 40,
+              progress: 15,
             });
 
             if (this._isCancelled(nextTask.id)) {
@@ -477,7 +481,7 @@ class ImportQueueService {
         importQueueRepository.update(nextTask.id, {
           stage: 'structuring',
           stage_label: 'Ingesting document into destination dossier…',
-          progress: 60,
+          progress: 15,
           book_id: targetDossierId,
         });
 
@@ -538,7 +542,7 @@ class ImportQueueService {
         importQueueRepository.update(nextTask.id, {
           stage: 'acquiring',
           stage_label: `Fetching web content from ${meta.url}…`,
-          progress: 20,
+          progress: 5,
         });
 
         if (this._isCancelled(nextTask.id)) {
@@ -548,7 +552,7 @@ class ImportQueueService {
         importQueueRepository.update(nextTask.id, {
           stage: 'extracting',
           stage_label: 'Extracting readable article body and metadata…',
-          progress: 50,
+          progress: 10,
         });
 
         if (targetDossierId) {
@@ -590,6 +594,13 @@ class ImportQueueService {
           importQueueRepository.updateStage(nextTask.id, 'synopsis', 'skipped');
           importQueueRepository.updateStage(nextTask.id, 'synthesis', 'skipped');
           importQueueRepository.updateStage(nextTask.id, 'attribution', 'skipped');
+
+          importQueueRepository.update(nextTask.id, {
+            stage: 'indexing',
+            stage_label: 'Semantic vectors and document memory updated.',
+            progress: 30,
+            book_id: bookId,
+          });
         } else {
           const webResult = await webAcquisitionService.importSingle({
             url: meta.url,
@@ -601,18 +612,14 @@ class ImportQueueService {
           });
 
           bookId = webResult.book?.id;
+          importQueueRepository.update(nextTask.id, {
+            book_id: bookId,
+          });
         }
 
         if (this._isCancelled(nextTask.id)) {
           throw new Error('Task cancelled by user');
         }
-
-        importQueueRepository.update(nextTask.id, {
-          stage: 'indexing',
-          stage_label: 'Building semantic representations…',
-          progress: 80,
-          book_id: bookId,
-        });
       }
 
       // ── TYPE: WEB MULTI ─────────────────────────────────────────────────────

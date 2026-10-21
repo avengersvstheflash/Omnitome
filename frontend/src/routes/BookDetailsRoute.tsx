@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,6 +11,7 @@ import {
   Trash2,
   Paperclip,
   Check,
+  Search,
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { useBook, useBookSynopsis, useSemanticStatus } from '../hooks/useBook';
@@ -18,6 +19,8 @@ import { useChapters } from '../hooks/useChapters';
 import { useSmartChapters, useResumeTarget, useResynthesizeSmartChapter } from '../hooks/useSmartChapters';
 import { useLifecycle } from '../hooks/useLifecycle';
 import { useModal } from '../store/useModalStore';
+import { useSoundEffects } from '../hooks/useSoundEffects';
+import { toast } from '../store/useToastStore';
 import { getCoverTheme } from '../components/library/BookCard';
 import { ExpandableTagPanel } from '../components/library/ExpandableTagPanel';
 import { formatAuthorList } from '../types/domain';
@@ -154,6 +157,9 @@ function BookDetailsContent() {
   const [synopsisToast, setSynopsisToast] = useState<string | null>(null);
   const [isAttachModalOpen, setIsAttachModalOpen] = useState(false);
   const [attachToast, setAttachToast] = useState<string | null>(null);
+  const { playClick } = useSoundEffects();
+  const [chapterSearchQuery, setChapterSearchQuery] = useState('');
+  const [isResynthesizingAll, setIsResynthesizingAll] = useState(false);
 
   useEffect(() => {
     if (attachToast) {
@@ -221,6 +227,43 @@ function BookDetailsContent() {
       setResynthesizingId(null);
     }
   };
+
+  const hasFailedOrFallback = smartChapters.some(
+    (c) =>
+      c.status === 'failed' ||
+      c.synthesisType === 'fallback' ||
+      Boolean((c.metadata as any)?.fallback_reason) ||
+      Boolean((c.metadata as any)?.fell_back)
+  );
+
+  const handleResynthesizeAll = async () => {
+    if (!bookId || isResynthesizingAll) return;
+    playClick();
+    setIsResynthesizingAll(true);
+    try {
+      await apiClient<{ success: boolean; taskId?: string }>(`/api/books/${bookId}/resynthesize`, {
+        method: 'POST',
+      });
+      await queryClient.invalidateQueries({ queryKey: ['smart-chapters', bookId] });
+      await queryClient.invalidateQueries({ queryKey: ['book', bookId] });
+      await queryClient.invalidateQueries({ queryKey: ['import-queue'] });
+      toast.success('Re-synthesis enqueued for all chapters');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to re-synthesize chapters');
+    } finally {
+      setIsResynthesizingAll(false);
+    }
+  };
+
+  const filteredSmartChapters = useMemo(() => {
+    if (!chapterSearchQuery.trim()) return smartChapters;
+    const q = chapterSearchQuery.trim().toLowerCase();
+    return smartChapters.filter((c) => {
+      const titleMatch = c.title ? c.title.toLowerCase().includes(q) : false;
+      const numMatch = `chapter ${c.sequence}`.includes(q) || String(c.sequence) === q;
+      return titleMatch || numMatch;
+    });
+  }, [smartChapters, chapterSearchQuery]);
 
   const providerLabel = formatAiProvider(book?.aiProvider);
   const isPartialSynopsis = Boolean(
@@ -566,6 +609,19 @@ function BookDetailsContent() {
               </button>
             )}
 
+            {hasFailedOrFallback && (
+              <button
+                type="button"
+                disabled={isResynthesizingAll}
+                onClick={handleResynthesizeAll}
+                className="inline-flex items-center gap-2 px-4 py-2 text-ui-sm font-medium rounded-md border border-err/40 bg-err/10 text-err hover:bg-err/20 transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-err disabled:opacity-50"
+                title="Re-synthesize all failed and fallback chapters"
+              >
+                <RotateCw className={`w-4 h-4 ${isResynthesizingAll ? 'animate-spin' : ''}`} aria-hidden="true" />
+                <span>{isResynthesizingAll ? 'Queueing…' : 'Re-synthesize all'}</span>
+              </button>
+            )}
+
             <ChapterSynthesisButton
               bookId={book.id}
               generatedCount={smartGenerated}
@@ -735,11 +791,47 @@ function BookDetailsContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT COLUMN: SMART CHAPTERS (65% / col-span-8) */}
         <div className="lg:col-span-8 space-y-4">
-          <div className="flex items-center justify-between border-b border-line/60 pb-2">
-            <h2 className="text-h2 font-semibold text-ink">Omni Chapters</h2>
-            <span className="text-caption text-ink-faint">
-              {smartGenerated} of {smartTotal} generated{readCount > 0 ? ` · ${readCount} read` : ''}
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line/60 pb-2">
+            <div>
+              <h2 className="text-h2 font-semibold text-ink">Omni Chapters</h2>
+              <span className="text-caption text-ink-faint">
+                {smartGenerated} of {smartTotal} generated{readCount > 0 ? ` · ${readCount} read` : ''}
+              </span>
+            </div>
+            {hasFailedOrFallback && (
+              <button
+                type="button"
+                disabled={isResynthesizingAll}
+                onClick={handleResynthesizeAll}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-err/30 bg-err/10 text-err hover:bg-err/20 active:scale-95 transition-all self-start sm:self-auto cursor-pointer disabled:opacity-50"
+                title="Re-synthesize all failed or fallback chapters"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${isResynthesizingAll ? 'animate-spin' : ''}`} />
+                <span>{isResynthesizingAll ? 'Queueing…' : 'Re-synthesize all'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Live Chapter Title Filter Search */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+            <input
+              type="text"
+              value={chapterSearchQuery}
+              onChange={(e) => setChapterSearchQuery(e.target.value)}
+              placeholder="Search chapters by title…"
+              className="w-full pl-9 pr-8 py-1.5 text-ui-sm rounded-lg border border-line bg-surface text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+            />
+            {chapterSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setChapterSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink text-xs px-1"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           {isSmartChaptersLoading ? (
@@ -748,9 +840,20 @@ function BookDetailsContent() {
                 <div key={i} className="h-11 bg-subtle rounded animate-pulse" />
               ))}
             </div>
+          ) : smartChapters.length > 0 && filteredSmartChapters.length === 0 ? (
+            <div className="py-8 text-center rounded-lg border border-line bg-subtle/30">
+              <p className="text-caption text-ink-muted">No chapters match "{chapterSearchQuery}".</p>
+              <button
+                type="button"
+                onClick={() => setChapterSearchQuery('')}
+                className="mt-2 text-xs text-accent-ink font-medium hover:underline"
+              >
+                Clear filter
+              </button>
+            </div>
           ) : (
             <SmartChapterList
-              smartChapters={smartChapters}
+              smartChapters={filteredSmartChapters}
               resynthesizingId={resynthesizingId}
               onResynthesize={handleResynthesize}
               resynthesizeToast={resynthesizeToast}
