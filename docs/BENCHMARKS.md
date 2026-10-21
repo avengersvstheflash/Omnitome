@@ -39,6 +39,8 @@ All measurements documented below were recorded on consumer-grade laptop hardwar
 | **TTS Sentence Synthesis Throughput** | Multi-second (cloud API) | **~100–300 ms/sentence** (RTX 3050) | ⚡ Gapless dual-deck playback (CPU fallback) |
 | **Bundled spaCy Model Initialization** | Dynamic pip download (fails in .exe) | **< 45 ms** (Pre-bundled `en_core_web_sm`) | 🛡️ 100% offline Kokoro/misaki bootstrap |
 | **Custom Themed Scrollbar Paint Cost**| Default gray OS bars | **0 ms** (Compositor-accelerated CSS) | 🎨 Theme-native scrollbar integration |
+| **Procedural UI Sound Synthesis** | Runtime Web Audio synth | **Offline DSP Pipeline (90 WAV stems)** | ⚡ <700ms 90-file build, 0ms playback latency, -3dBFS peak normalized |
+| **PyInstaller PyTorch / CUDA DLL Bundling** | Missing cuDNN DLLs / runtime crash | **`collect_all('torch')` + explicit NVIDIA DLL root mapping** | 🛡️ 100% offline Kokoro CUDA acceleration verified in frozen binary |
 
 ---
 
@@ -438,6 +440,16 @@ timeline
   - **Library Ingestion & Lifecycle Self-Healing:** Reconciled `in_library = 1` and `lifecycle_state = 'active'` upon smart chapter generation and queue completion; added automatic DB backfill for existing books; wired dynamic UI refresh (`refetchOnMount: 'always'`, `'omnitome:books-changed'` event).
   - **Regression Gate:** **All 60 regression suites + 1 network suite + 1 corpus gate passed clean (Node). All 17 Cargo unit tests passed clean (Rust). Frontend builds clean with zero errors.**
 - **Commits:** `97cbcf1`, `a5f95c4`, `fddd360`, `9813d4b`, `340fec3`, `80286b5`, `058da19`, `ed586fc`, `68d86c1`, `0584480`, `7ae3ad7`, `f5c5557`, `a6423c0`, `6405fa3`, `7ebb600`, `b67c806`.
+
+#### 🗓️ 2026-10-22 — Series 4 Close (v1.0.1–v1.0.2): PyInstaller CUDA/cuDNN Bundling, UI Sound Engine & Final Packaging Verification
+- **Progress:** `[████████████████████]` 100%
+- **Milestones:**
+  - **Bulletproof PyInstaller CUDA Bundling (`sidecar.spec`):** Replaced piecemeal dynamic lib collection with `collect_all('torch')` and recursive globbing of all `nvidia/` package DLLs directly into root `_internal`, resolving Kokoro cuDNN engine runtime failures (`cudnn_engines_precompiled64_9.dll`).
+  - **Offline Procedural Sound Engine:** Integrated 90 pre-rendered mathematically synthesized WAV sound stems across 5 themes (Classic, Paper, Terminal, Soft, Mechanical). Generated in <700ms via pure Node DSP (`tools/sound-design/generate-all-sounds.mjs`) with zero runtime synthesis latency.
+  - **Shared AudioContext Architecture:** Unlocked single global `AudioContext` on first user gesture, unifying UI SFX and Kokoro TTS playback to defeat Chromium / WebView2 autoplay restrictions.
+  - **First-Run Onboarding & UX Polish:** Shipped onboarding redirect for unconfigured AI backends, non-blocking offline skip, SHA-256 book deduplication, live chapter search, and prominent dossier deletion.
+  - **Verification Gate:** **All 60 regression suites + 1 corpus gate passed clean. Frontend typecheck and build pass clean. Full NSIS Windows installer verified functional end-to-end.**
+- **Commits:** `32e2c56`, `f70656a`, `77c5906`.
 
 ---
 

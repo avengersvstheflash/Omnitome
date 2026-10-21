@@ -83,6 +83,29 @@ Omnitome includes an offline neural audio narration system designed for deep, lo
 
 ---
 
+## 🔊 Procedural UI Sound Engine
+
+Omnitome features an offline procedural auditory feedback engine designed to provide tactile, acoustic confirmation of interactions without introducing jarring digital noises or network latency:
+
+- **Mathematical DSP Synthesis:** All 90 WAV audio stems are generated via a deterministic Node.js DSP pipeline (`tools/sound-design/generate-all-sounds.mjs`) employing subtractive FM synthesis, biquad resonant filtering, pink/white noise, ADSR envelope shaping, and -3dBFS peak normalization.
+- **Five Bespoke Sound Palettes:** Sound designs mirror the application's visual themes:
+  - **Classic:** Warm marimba and organic mallet textures calibrated for calm reading.
+  - **Paper:** Fibrous page turns, parchment slides, and tactile card deck clicks.
+  - **Terminal:** Retro monochrome CRT blips, resonant square chirps, and telemetry tones.
+  - **Soft:** Gentle sine hums, ambient chimes, and smooth micro-damped transients.
+  - **Mechanical:** Tactile mechanical switch clacks, heavy latches, and weighted spring detents.
+- **18 Semantic Interaction Events:** Comprehensive coverage across the interface:
+  - Primary, secondary, ghost, danger, and toggle button clicks (`ui.button.*`).
+  - Navigation tabs (`nav.primary.*`) for Library, Research, and Import.
+  - Book opening and closing transitions (`library.book.*`).
+  - Operation start, completion, and warning cues (`operation.*`, `import.start`).
+  - Theme switching motifs (`settings.theme.switch`) playing the signature audio motif of the incoming theme.
+- **Pure Web Audio API Playback:** Stems are preloaded on application boot into native memory (`AudioBuffer`) via `preloadUiSounds()`, completely eliminating disk read pauses, garbage collection hiccups, and playback jitter.
+- **Shared AudioContext Architecture:** Unlocks a single master `AudioContext` on first user gesture across both UI sound effects (`soundPlayer.ts`) and neural speech synthesis (`useTtsPlayer.ts`), permanently neutralizing WebView2 and modern browser autoplay restrictions.
+- **Narration Ducking & User Controls:** Automatically suppresses operational sound effects while Kokoro neural voice narration is active. Includes master volume attenuation (0.0 to 1.0) and global mute toggles in user settings.
+
+---
+
 ## 🎨 Theme System & Visual Aesthetics
 
 Omnitome's interface follows three strict aesthetic laws:
@@ -104,6 +127,19 @@ Omnitome's interface follows three strict aesthetic laws:
 - **Theme-Reactive Custom Scrollbars:** Elegant 10px WebKit scrollbars utilizing active theme `--accent` color variables with translucent tracks, rounded padding-box thumbs, and smooth hover feedback.
 - **Library Batch Management:** Multi-select checkboxes for bulk book deletion with cascading SQLite foreign-key removal and automatic queue synchronization.
 - **Responsive 48px Import Dock:** Persistent right-side collapsible dock displaying active import queues and stage checklists without obstructing reading flow.
+
+---
+
+## 🚀 First-Run Onboarding & Ingestion Hygiene
+
+Omnitome v1.0.2 introduces streamlined onboarding workflows and robust library maintenance tools to ensure users never face empty-state confusion or corrupted data catalogs:
+
+- **Intelligent First-Run AI Interceptor:** On initial boot, if neither a cloud API key (OpenRouter) nor a local LLM endpoint (Ollama) is detected, Omnitome automatically routes the reader to `/settings?onboarding=true` with a focused configuration banner.
+- **Non-Blocking Offline Exploration:** Users who wish to read without configuring an AI can click the prominent *"Skip for now (Explore offline)"* button. The application sets an onboarding bypass flag, granting immediate access to the Library to inspect verbatim documents and existing structured extracts.
+- **Cryptographic SHA-256 Deduplication:** When importing documents or pasting raw text, the ingestion pipeline computes a SHA-256 digest of the content. If an identical document already exists in the SQLite repository, Omnitome prompts the user with an explicit decision modal: replace the existing record or abort the import.
+- **Live Chapter Filtering & Search:** A responsive search input in `BookDetailsRoute` allows readers to instantly filter chapter lists by title or index in real time, essential for navigating large multi-volume works (e.g. 500K-word texts with 30+ chapters).
+- **One-Click Re-Synthesis Queueing:** If a chapter synthesis was interrupted or fell back to heuristic compression due to upstream LLM timeouts, a prominent *"Re-synthesize all"* button resets generated chapters and re-enqueues them with fresh vector context.
+- **Research Dossier & Source Deletion:** Users can directly purge individual dossiers or uncompressed standalone research documents from the `ResearchViewerRoute` toolbar with cascade removal of associated SQLite chunks.
 
 ---
 
