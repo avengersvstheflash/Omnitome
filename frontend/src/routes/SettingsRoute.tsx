@@ -18,7 +18,15 @@ import {
 } from 'lucide-react';
 import { useSettings, TestConnectionResult } from '../hooks/useSettings';
 import { toast } from '../store/useToastStore';
-import { useSoundEffects } from '../hooks/useSoundEffects';
+import { useSoundEffects, playUiSound } from '../hooks/useSoundEffects';
+import {
+  getUiSoundSettings,
+  setUiSoundEnabled,
+  setUiSoundVolume,
+  setUiThemeSwitchSoundEnabled,
+  subscribeUiSoundSettings,
+  type UiSoundSettings,
+} from '../audio/soundPlayer';
 
 const OPENROUTER_MODEL_PRESETS = [
   { label: 'DeepSeek V4 Flash', model: 'deepseek/deepseek-v4-flash' },
@@ -78,6 +86,35 @@ export const SettingsRoute: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { playClick, playSuccess } = useSoundEffects();
+
+  // UI Sound Effects state (persisted in localStorage via soundPlayer)
+  const [soundSettings, setSoundSettings] = useState<UiSoundSettings>(() => getUiSoundSettings());
+
+  useEffect(() => {
+    return subscribeUiSoundSettings((updated) => {
+      setSoundSettings(updated);
+    });
+  }, []);
+
+  const handleToggleSoundEnabled = (checked: boolean) => {
+    setUiSoundEnabled(checked);
+    if (checked) {
+      playUiSound('ui.toggle.on');
+    }
+  };
+
+  const handleSoundVolumeChange = (vol: number) => {
+    setUiSoundVolume(vol);
+  };
+
+  const handleToggleThemeSwitchSound = (checked: boolean) => {
+    setUiThemeSwitchSoundEnabled(checked);
+    playUiSound(checked ? 'ui.toggle.on' : 'ui.toggle.off');
+  };
+
+  const handlePreviewThemeSignature = () => {
+    playUiSound('settings.theme.preview');
+  };
 
   const isOnboardingQuery = searchParams.get('onboarding') === 'true';
   const hasApiKey = Boolean(settings?.openrouter?.apiKey && settings.openrouter.apiKey.trim().length > 0);
@@ -240,6 +277,9 @@ export const SettingsRoute: React.FC = () => {
     playClick();
     try {
       await resetSettings.mutateAsync();
+      setUiSoundEnabled(true);
+      setUiSoundVolume(24);
+      setUiThemeSwitchSoundEnabled(true);
       playSuccess();
       toast.success('Settings reset to .env defaults');
     } catch (err: any) {
@@ -920,6 +960,111 @@ export const SettingsRoute: React.FC = () => {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── Section: UI Sound Effects ── */}
+      <section className="bg-surface rounded-2xl border border-line p-6 shadow-xs space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-ink flex items-center gap-2">
+              <Volume2 className="w-5 h-5 text-accent" />
+              <span>UI Sound Effects</span>
+            </h2>
+            <p className="text-caption text-ink-muted mt-1">
+              Subtle procedural auditory cues for tactile interactions, operations, and theme identity.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="sound-effects-toggle" className="text-ui-sm font-medium text-ink cursor-pointer">
+              Enable SFX
+            </label>
+            <input
+              id="sound-effects-toggle"
+              type="checkbox"
+              checked={soundSettings.enabled}
+              onChange={(e) => handleToggleSoundEnabled(e.target.checked)}
+              className="w-5 h-5 rounded border-line text-brand focus:ring-accent cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {soundSettings.enabled && (
+          <div className="space-y-5 pt-2 border-t border-line/50">
+            {/* Master Volume Slider */}
+            <div className="space-y-3 max-w-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label htmlFor="sound-volume-slider" className="text-ui-sm font-medium text-ink">
+                    SFX Master Volume
+                  </label>
+                  <p className="text-caption text-ink-muted">
+                    Perceptual loudness curve (0% completely silences UI audio).
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-16 px-2 py-0.5 text-right font-mono text-ui font-semibold text-accent-ink bg-accent/10 border border-accent/20 rounded-lg">
+                    {soundSettings.volume}%
+                  </span>
+                </div>
+              </div>
+
+              <input
+                id="sound-volume-slider"
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={soundSettings.volume}
+                onChange={(e) => handleSoundVolumeChange(parseInt(e.target.value, 10))}
+                className="w-full accent-accent cursor-pointer h-2 bg-subtle rounded-lg"
+                aria-label="UI sound master volume"
+              />
+
+              <div className="flex justify-between text-micro font-mono text-ink-faint">
+                <span>0% (Mute)</span>
+                <span>24% (Default)</span>
+                <span>100%</span>
+              </div>
+            </div>
+
+            {/* Theme Switch Sound Toggle */}
+            <div className="flex items-center justify-between gap-4 pt-2 border-t border-line/40">
+              <div>
+                <label htmlFor="sound-theme-switch-toggle" className="text-ui font-medium text-ink cursor-pointer">
+                  Play sound on theme switch
+                </label>
+                <p className="text-caption text-ink-muted">
+                  Emits the theme's signature auditory motif when switching between color palettes.
+                </p>
+              </div>
+              <input
+                id="sound-theme-switch-toggle"
+                type="checkbox"
+                checked={soundSettings.themeSwitchEnabled}
+                onChange={(e) => handleToggleThemeSwitchSound(e.target.checked)}
+                className="w-5 h-5 rounded border-line text-brand focus:ring-accent cursor-pointer"
+              />
+            </div>
+
+            {/* Preview Signature Sound */}
+            <div className="pt-2 flex items-center justify-between border-t border-line/40">
+              <div>
+                <span className="text-ui font-medium text-ink">Theme Signature Motif</span>
+                <p className="text-caption text-ink-muted">
+                  Audition the active theme's procedural signature sound.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handlePreviewThemeSignature}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-ui-sm font-medium border border-line bg-surface hover:bg-subtle text-ink transition-all active:scale-95 shadow-xs"
+              >
+                <Sparkles className="w-4 h-4 text-accent" />
+                <span>Preview Motif</span>
+              </button>
             </div>
           </div>
         )}

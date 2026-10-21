@@ -17,6 +17,8 @@ import { ThemeDecor } from './components/decor/ThemeDecor';
 import { useResourceStore } from './store/useResourceStore';
 import { FirstRunScreen } from './components/resources/FirstRunScreen';
 import { useSettings } from './hooks/useSettings';
+import { preloadUiSounds, registerThemeResolver, playUiSound, type ThemeId } from './audio/soundPlayer';
+import { useThemeStore } from './store/useThemeStore';
 
 function OnboardingRedirect() {
   const location = useLocation();
@@ -65,6 +67,22 @@ export default function App() {
   const [hasTimeout, setHasTimeout] = useState(false);
 
   const { status, isLoading, error, fetchStatus } = useResourceStore();
+
+  useEffect(() => {
+    registerThemeResolver(() => useThemeStore.getState().theme as ThemeId);
+    void preloadUiSounds();
+
+    // Play signature motif on user theme change (skip initial mount hydration)
+    let currentTheme = useThemeStore.getState().theme;
+    const unsub = useThemeStore.subscribe((state) => {
+      if (state.theme !== currentTheme) {
+        currentTheme = state.theme;
+        playUiSound('settings.theme.switch', { theme: state.theme as ThemeId });
+      }
+    });
+
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (!isTauri || nodePort) return;

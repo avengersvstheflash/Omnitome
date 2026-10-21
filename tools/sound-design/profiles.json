@@ -1,0 +1,1102 @@
+{
+  "schemaVersion": 1,
+  "generatorVersion": "1.0.0",
+  "sampleRateHz": 48000,
+  "targetPeakDbfs": -3.0,
+  "boundaryFadeMs": 5.0,
+  "canonicalEvents": [
+    "button-primary",
+    "button-secondary",
+    "toggle-on",
+    "toggle-off",
+    "nav-primary",
+    "tab-switch",
+    "nav-back",
+    "panel-open",
+    "panel-close",
+    "book-open",
+    "mode-original",
+    "mode-omni",
+    "citation-jump",
+    "import-start",
+    "operation-success",
+    "operation-error",
+    "operation-cancel",
+    "theme-switch"
+  ],
+  "themes": {
+    "omni": {
+      "id": "omni",
+      "profileVersion": 1,
+      "displayName": "Omni - The Arcane Library",
+      "signatureAsset": "theme-switch",
+      "signatureName": "Sigil Wakes",
+      "rootRangeHz": [392, 523],
+      "bodyWaveform": "sine",
+      "accentWaveform": "triangle",
+      "intervalRatios": [1.0, 1.5, 2.0, 2.25, 3.0],
+      "detuneCents": 2.0,
+      "attackMs": { "click": 5, "signature": 18 },
+      "decayMs": { "click": 120, "medium": 310, "signature": 590 },
+      "noiseTexture": {
+        "enabled": true,
+        "kind": "seeded-filtered-grain",
+        "filterType": "bandpass",
+        "bandHz": [1500, 4000],
+        "maxRelativeGain": 0.035,
+        "durationMs": 160,
+        "seed": 17001
+      },
+      "defaults": {
+        "rootHz": 432.0,
+        "subHz": 108.0,
+        "bodyWaveform": "sine",
+        "accentWaveform": "triangle",
+        "intervalRatios": [1.0, 1.5, 2.0, 2.25, 3.0],
+        "detuneCents": 2.0,
+        "noiseTexture": {
+          "enabled": true,
+          "filterType": "bandpass",
+          "bandHz": [1500, 4000],
+          "gain": 0.032
+        }
+      },
+      "events": {
+        "button-primary": {
+          "durationMs": 85,
+          "tones": [
+            {
+              "waveform": "sine",
+              "freqHz": 432.0,
+              "endFreqHz": 440.0,
+              "gain": 0.85,
+              "adsr": { "attackMs": 5, "decayMs": 45, "sustainLevel": 0.15, "releaseMs": 35, "curvePower": 2.1 }
+            },
+            {
+              "waveform": "triangle",
+              "freqHz": 648.0,
+              "detuneCents": 2.0,
+              "gain": 0.28,
+              "adsr": { "attackMs": 5, "decayMs": 35, "sustainLevel": 0.08, "releaseMs": 30, "curvePower": 2.4 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "omni:button-primary:17001",
+            "bandHz": [1500, 4000],
+            "durationMs": 45,
+            "gain": 0.025,
+            "adsr": { "attackMs": 3, "decayMs": 22, "sustainLevel": 0.0, "releaseMs": 20 }
+          }
+        },
+        "tab-switch": {
+          "durationMs": 140,
+          "tones": [
+            {
+              "waveform": "sine",
+              "startMs": 0,
+              "durationMs": 95,
+              "freqHz": 432.0,
+              "gain": 0.72,
+              "adsr": { "attackMs": 5, "decayMs": 50, "sustainLevel": 0.14, "releaseMs": 40, "curvePower": 2.0 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 32,
+              "durationMs": 105,
+              "freqHz": 648.0,
+              "detuneCents": 2.0,
+              "gain": 0.48,
+              "adsr": { "attackMs": 6, "decayMs": 52, "sustainLevel": 0.12, "releaseMs": 45, "curvePower": 2.1 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "omni:tab-switch:17001",
+            "bandHz": [1500, 4000],
+            "durationMs": 70,
+            "gain": 0.022,
+            "adsr": { "attackMs": 4, "decayMs": 35, "sustainLevel": 0.0, "releaseMs": 30 }
+          }
+        },
+        "book-open": {
+          "durationMs": 460,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "freqHz": 110.0,
+              "endFreqHz": 108.0,
+              "gain": 0.45,
+              "adsr": { "attackMs": 16, "decayMs": 190, "sustainLevel": 0.2, "releaseMs": 210, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "sine",
+              "freqHz": 432.0,
+              "gain": 0.72,
+              "adsr": { "attackMs": 12, "decayMs": 180, "sustainLevel": 0.25, "releaseMs": 240, "curvePower": 1.8 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 38,
+              "durationMs": 410,
+              "freqHz": 648.0,
+              "detuneCents": 2.0,
+              "gain": 0.42,
+              "adsr": { "attackMs": 14, "decayMs": 170, "sustainLevel": 0.2, "releaseMs": 210, "curvePower": 2.0 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 76,
+              "durationMs": 370,
+              "freqHz": 972.0,
+              "detuneCents": -2.0,
+              "gain": 0.22,
+              "adsr": { "attackMs": 15, "decayMs": 150, "sustainLevel": 0.12, "releaseMs": 195, "curvePower": 2.2 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "omni:book-open:17001",
+            "bandHz": [1500, 4000],
+            "durationMs": 160,
+            "gain": 0.035,
+            "adsr": { "attackMs": 12, "decayMs": 80, "sustainLevel": 0.1, "releaseMs": 68 }
+          }
+        },
+        "citation-jump": {
+          "durationMs": 180,
+          "tones": [
+            {
+              "waveform": "sine",
+              "freqHz": 648.0,
+              "endFreqHz": 640.0,
+              "gain": 0.75,
+              "adsr": { "attackMs": 5, "decayMs": 72, "sustainLevel": 0.18, "releaseMs": 85, "curvePower": 2.0 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 34,
+              "durationMs": 142,
+              "freqHz": 576.0,
+              "gain": 0.48,
+              "adsr": { "attackMs": 5, "decayMs": 55, "sustainLevel": 0.12, "releaseMs": 75, "curvePower": 2.1 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "omni:citation-jump:17001",
+            "bandHz": [1800, 3800],
+            "durationMs": 65,
+            "gain": 0.02,
+            "adsr": { "attackMs": 3, "decayMs": 32, "sustainLevel": 0.0, "releaseMs": 28 }
+          }
+        },
+        "operation-success": {
+          "durationMs": 380,
+          "tones": [
+            {
+              "waveform": "sine",
+              "startMs": 0,
+              "durationMs": 240,
+              "freqHz": 432.0,
+              "gain": 0.68,
+              "adsr": { "attackMs": 7, "decayMs": 100, "sustainLevel": 0.2, "releaseMs": 120, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 65,
+              "durationMs": 250,
+              "freqHz": 648.0,
+              "detuneCents": 2.0,
+              "gain": 0.72,
+              "adsr": { "attackMs": 7, "decayMs": 105, "sustainLevel": 0.22, "releaseMs": 125, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 130,
+              "durationMs": 245,
+              "freqHz": 864.0,
+              "detuneCents": -2.0,
+              "gain": 0.52,
+              "adsr": { "attackMs": 8, "decayMs": 105, "sustainLevel": 0.18, "releaseMs": 125, "curvePower": 2.0 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "omni:operation-success:17001",
+            "bandHz": [1500, 4000],
+            "durationMs": 160,
+            "gain": 0.03,
+            "adsr": { "attackMs": 8, "decayMs": 80, "sustainLevel": 0.08, "releaseMs": 70 }
+          }
+        },
+        "operation-error": {
+          "durationMs": 240,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "startMs": 0,
+              "durationMs": 130,
+              "freqHz": 288.0,
+              "endFreqHz": 276.0,
+              "gain": 0.72,
+              "adsr": { "attackMs": 6, "decayMs": 60, "sustainLevel": 0.16, "releaseMs": 58, "curvePower": 2.1 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 75,
+              "durationMs": 160,
+              "freqHz": 256.0,
+              "endFreqHz": 243.0,
+              "gain": 0.68,
+              "adsr": { "attackMs": 6, "decayMs": 72, "sustainLevel": 0.14, "releaseMs": 75, "curvePower": 2.1 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "omni:operation-error:17001",
+            "bandHz": [1500, 3200],
+            "durationMs": 100,
+            "gain": 0.024,
+            "adsr": { "attackMs": 5, "decayMs": 50, "sustainLevel": 0.05, "releaseMs": 45 }
+          }
+        },
+        "theme-switch": {
+          "durationMs": 510,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "freqHz": 108.0,
+              "endFreqHz": 110.0,
+              "gain": 0.52,
+              "adsr": { "attackMs": 18, "decayMs": 210, "sustainLevel": 0.24, "releaseMs": 250, "curvePower": 1.8 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 15,
+              "durationMs": 490,
+              "freqHz": 432.0,
+              "gain": 0.78,
+              "adsr": { "attackMs": 18, "decayMs": 200, "sustainLevel": 0.28, "releaseMs": 245, "curvePower": 1.8 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 65,
+              "durationMs": 440,
+              "freqHz": 648.0,
+              "detuneCents": 2.0,
+              "gain": 0.48,
+              "adsr": { "attackMs": 18, "decayMs": 180, "sustainLevel": 0.22, "releaseMs": 225, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 120,
+              "durationMs": 385,
+              "freqHz": 972.0,
+              "detuneCents": -2.0,
+              "gain": 0.28,
+              "adsr": { "attackMs": 20, "decayMs": 160, "sustainLevel": 0.16, "releaseMs": 195, "curvePower": 2.1 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 165,
+              "durationMs": 340,
+              "freqHz": 1296.0,
+              "detuneCents": 2.5,
+              "gain": 0.16,
+              "adsr": { "attackMs": 22, "decayMs": 135, "sustainLevel": 0.1, "releaseMs": 175, "curvePower": 2.3 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "omni:theme-switch:17001",
+            "bandHz": [1500, 4000],
+            "durationMs": 160,
+            "gain": 0.035,
+            "adsr": { "attackMs": 15, "decayMs": 85, "sustainLevel": 0.08, "releaseMs": 60 }
+          }
+        }
+      }
+    },
+    "sakura": {
+      "id": "sakura",
+      "profileVersion": 1,
+      "displayName": "Sakura - A Petal Across Paper",
+      "signatureAsset": "theme-switch",
+      "signatureName": "Petal Drift",
+      "rootRangeHz": [493, 587],
+      "bodyWaveform": "sine",
+      "accentWaveform": "triangle",
+      "intervalRatios": [1.0, 1.25, 1.5, 2.0, 2.5],
+      "detuneCents": 1.8,
+      "attackMs": { "click": 8, "signature": 12 },
+      "decayMs": { "click": 95, "medium": 280, "signature": 460 },
+      "noiseTexture": {
+        "enabled": true,
+        "kind": "seeded-lowpass-veil",
+        "filterType": "lowpass",
+        "bandHz": [900, 2600],
+        "maxRelativeGain": 0.02,
+        "durationMs": 180,
+        "seed": 21011
+      },
+      "defaults": {
+        "rootHz": 523.25,
+        "subHz": 261.63,
+        "bodyWaveform": "sine",
+        "accentWaveform": "triangle",
+        "intervalRatios": [1.0, 1.25, 1.5, 2.0, 2.5],
+        "detuneCents": 1.8,
+        "noiseTexture": {
+          "enabled": true,
+          "filterType": "lowpass",
+          "bandHz": [900, 2600],
+          "gain": 0.018
+        }
+      },
+      "events": {
+        "button-primary": {
+          "durationMs": 85,
+          "tones": [
+            {
+              "waveform": "sine",
+              "freqHz": 523.25,
+              "gain": 0.82,
+              "adsr": { "attackMs": 7, "decayMs": 42, "sustainLevel": 0.14, "releaseMs": 34, "curvePower": 2.0 }
+            },
+            {
+              "waveform": "triangle",
+              "freqHz": 1046.5,
+              "detuneCents": 1.8,
+              "gain": 0.22,
+              "adsr": { "attackMs": 8, "decayMs": 35, "sustainLevel": 0.06, "releaseMs": 30, "curvePower": 2.3 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "sakura:button-primary:21011",
+            "filterType": "lowpass",
+            "cutoffHz": 2400,
+            "endCutoffHz": 1200,
+            "q": 0.9,
+            "durationMs": 55,
+            "gain": 0.015,
+            "adsr": { "attackMs": 6, "decayMs": 26, "sustainLevel": 0.0, "releaseMs": 22 }
+          }
+        },
+        "book-open": {
+          "durationMs": 420,
+          "tones": [
+            {
+              "waveform": "sine",
+              "startMs": 0,
+              "durationMs": 360,
+              "freqHz": 523.25,
+              "gain": 0.72,
+              "adsr": { "attackMs": 10, "decayMs": 165, "sustainLevel": 0.22, "releaseMs": 180, "curvePower": 1.8 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 42,
+              "durationMs": 340,
+              "freqHz": 654.06,
+              "detuneCents": 1.8,
+              "gain": 0.45,
+              "adsr": { "attackMs": 11, "decayMs": 150, "sustainLevel": 0.18, "releaseMs": 175, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 88,
+              "durationMs": 325,
+              "freqHz": 784.88,
+              "endFreqHz": 780.0,
+              "gain": 0.34,
+              "adsr": { "attackMs": 12, "decayMs": 145, "sustainLevel": 0.14, "releaseMs": 165, "curvePower": 2.0 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "sakura:book-open:21011",
+            "filterType": "lowpass",
+            "cutoffHz": 2600,
+            "endCutoffHz": 1100,
+            "q": 1.0,
+            "durationMs": 180,
+            "gain": 0.018,
+            "adsr": { "attackMs": 10, "decayMs": 95, "sustainLevel": 0.06, "releaseMs": 75 }
+          }
+        },
+        "theme-switch": {
+          "durationMs": 460,
+          "tones": [
+            {
+              "waveform": "sine",
+              "startMs": 0,
+              "durationMs": 410,
+              "freqHz": 523.25,
+              "gain": 0.74,
+              "adsr": { "attackMs": 10, "decayMs": 180, "sustainLevel": 0.22, "releaseMs": 215, "curvePower": 1.8 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 48,
+              "durationMs": 385,
+              "freqHz": 654.06,
+              "detuneCents": 1.8,
+              "gain": 0.52,
+              "adsr": { "attackMs": 12, "decayMs": 165, "sustainLevel": 0.18, "releaseMs": 200, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 105,
+              "durationMs": 350,
+              "freqHz": 1046.5,
+              "endFreqHz": 987.77,
+              "detuneCents": -1.5,
+              "gain": 0.34,
+              "adsr": { "attackMs": 14, "decayMs": 150, "sustainLevel": 0.14, "releaseMs": 180, "curvePower": 2.0 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "sakura:theme-switch:21011",
+            "filterType": "lowpass",
+            "cutoffHz": 2800,
+            "endCutoffHz": 950,
+            "q": 1.0,
+            "durationMs": 200,
+            "gain": 0.02,
+            "adsr": { "attackMs": 12, "decayMs": 105, "sustainLevel": 0.06, "releaseMs": 80 }
+          }
+        }
+      }
+    },
+    "spring": {
+      "id": "spring",
+      "profileVersion": 1,
+      "displayName": "Spring - Water and New Leaves",
+      "signatureAsset": "theme-switch",
+      "signatureName": "Ripple Opens",
+      "rootRangeHz": [349, 440],
+      "bodyWaveform": "sine",
+      "accentWaveform": "triangle",
+      "intervalRatios": [1.0, 1.333, 1.5, 2.0],
+      "detuneCents": 3.5,
+      "attackMs": { "click": 9, "signature": 14 },
+      "decayMs": { "click": 110, "medium": 260, "signature": 430 },
+      "noiseTexture": {
+        "enabled": true,
+        "kind": "seeded-water-ripple",
+        "filterType": "bandpass",
+        "bandHz": [900, 2400],
+        "maxRelativeGain": 0.025,
+        "durationMs": 150,
+        "seed": 23017
+      },
+      "defaults": {
+        "rootHz": 392.0,
+        "subHz": 196.0,
+        "bodyWaveform": "sine",
+        "accentWaveform": "triangle",
+        "intervalRatios": [1.0, 1.333, 1.5, 2.0],
+        "detuneCents": 3.5,
+        "noiseTexture": {
+          "enabled": true,
+          "filterType": "bandpass",
+          "bandHz": [900, 2400],
+          "gain": 0.024
+        }
+      },
+      "events": {
+        "button-primary": {
+          "durationMs": 80,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "freqHz": 412.0,
+              "endFreqHz": 392.0,
+              "gain": 0.84,
+              "adsr": { "attackMs": 8, "decayMs": 38, "sustainLevel": 0.12, "releaseMs": 32, "curvePower": 2.0 }
+            },
+            {
+              "waveform": "sine",
+              "freqHz": 588.0,
+              "detuneCents": 3.5,
+              "gain": 0.28,
+              "adsr": { "attackMs": 9, "decayMs": 32, "sustainLevel": 0.08, "releaseMs": 28, "curvePower": 2.2 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "spring:button-primary:23017",
+            "bandHz": [1000, 2200],
+            "durationMs": 50,
+            "gain": 0.02,
+            "adsr": { "attackMs": 5, "decayMs": 24, "sustainLevel": 0.0, "releaseMs": 20 }
+          }
+        },
+        "book-open": {
+          "durationMs": 390,
+          "tones": [
+            {
+              "waveform": "sine",
+              "freqHz": 392.0,
+              "gain": 0.74,
+              "adsr": { "attackMs": 12, "decayMs": 160, "sustainLevel": 0.22, "releaseMs": 195, "curvePower": 1.8 }
+            },
+            {
+              "waveform": "sine",
+              "freqHz": 392.0,
+              "detuneCents": 3.5,
+              "gain": 0.36,
+              "adsr": { "attackMs": 14, "decayMs": 160, "sustainLevel": 0.2, "releaseMs": 195, "curvePower": 1.8 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 35,
+              "durationMs": 345,
+              "freqHz": 588.0,
+              "gain": 0.44,
+              "adsr": { "attackMs": 14, "decayMs": 145, "sustainLevel": 0.16, "releaseMs": 175, "curvePower": 1.9 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "spring:book-open:23017",
+            "bandHz": [900, 2400],
+            "durationMs": 160,
+            "gain": 0.025,
+            "adsr": { "attackMs": 10, "decayMs": 80, "sustainLevel": 0.08, "releaseMs": 68 }
+          }
+        },
+        "theme-switch": {
+          "durationMs": 430,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "startMs": 0,
+              "durationMs": 390,
+              "freqHz": 392.0,
+              "endFreqHz": 384.0,
+              "gain": 0.75,
+              "adsr": { "attackMs": 12, "decayMs": 170, "sustainLevel": 0.22, "releaseMs": 200, "curvePower": 1.8 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 40,
+              "durationMs": 380,
+              "freqHz": 522.5,
+              "detuneCents": 3.5,
+              "gain": 0.52,
+              "adsr": { "attackMs": 15, "decayMs": 165, "sustainLevel": 0.2, "releaseMs": 190, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 85,
+              "durationMs": 340,
+              "freqHz": 588.0,
+              "detuneCents": -3.0,
+              "gain": 0.42,
+              "adsr": { "attackMs": 16, "decayMs": 150, "sustainLevel": 0.16, "releaseMs": 170, "curvePower": 2.0 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "spring:theme-switch:23017",
+            "filterType": "bandpass",
+            "cutoffHz": 1100,
+            "endCutoffHz": 2100,
+            "q": 1.6,
+            "durationMs": 180,
+            "gain": 0.025,
+            "adsr": { "attackMs": 10, "decayMs": 90, "sustainLevel": 0.06, "releaseMs": 75 }
+          }
+        }
+      }
+    },
+    "coffee": {
+      "id": "coffee",
+      "profileVersion": 1,
+      "displayName": "Coffee - The Warm Reading Room",
+      "signatureAsset": "theme-switch",
+      "signatureName": "Lamp and Leather",
+      "rootRangeHz": [246, 330],
+      "bodyWaveform": "triangle",
+      "accentWaveform": "sine",
+      "intervalRatios": [1.0, 1.5, 2.0],
+      "detuneCents": 1.2,
+      "attackMs": { "click": 6, "signature": 9 },
+      "decayMs": { "click": 110, "medium": 220, "signature": 390 },
+      "noiseTexture": {
+        "enabled": true,
+        "kind": "seeded-warm-tap",
+        "filterType": "lowpass",
+        "bandHz": [600, 1800],
+        "maxRelativeGain": 0.028,
+        "durationMs": 90,
+        "seed": 25031
+      },
+      "defaults": {
+        "rootHz": 293.66,
+        "subHz": 146.83,
+        "bodyWaveform": "triangle",
+        "accentWaveform": "sine",
+        "intervalRatios": [1.0, 1.5, 2.0],
+        "detuneCents": 1.2,
+        "noiseTexture": {
+          "enabled": true,
+          "filterType": "lowpass",
+          "bandHz": [600, 1800],
+          "gain": 0.026
+        }
+      },
+      "events": {
+        "button-primary": {
+          "durationMs": 70,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "freqHz": 293.66,
+              "endFreqHz": 285.0,
+              "gain": 0.85,
+              "adsr": { "attackMs": 5, "decayMs": 35, "sustainLevel": 0.1, "releaseMs": 28, "curvePower": 2.2 }
+            },
+            {
+              "waveform": "sine",
+              "freqHz": 440.49,
+              "gain": 0.25,
+              "adsr": { "attackMs": 5, "decayMs": 28, "sustainLevel": 0.05, "releaseMs": 24, "curvePower": 2.4 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "coffee:button-primary:25031",
+            "filterType": "lowpass",
+            "cutoffHz": 1600,
+            "endCutoffHz": 900,
+            "q": 1.0,
+            "durationMs": 38,
+            "gain": 0.028,
+            "adsr": { "attackMs": 3, "decayMs": 18, "sustainLevel": 0.0, "releaseMs": 16 }
+          }
+        },
+        "book-open": {
+          "durationMs": 380,
+          "tones": [
+            {
+              "waveform": "sine",
+              "freqHz": 146.83,
+              "gain": 0.55,
+              "adsr": { "attackMs": 8, "decayMs": 155, "sustainLevel": 0.2, "releaseMs": 190, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 18,
+              "durationMs": 355,
+              "freqHz": 293.66,
+              "gain": 0.76,
+              "adsr": { "attackMs": 8, "decayMs": 150, "sustainLevel": 0.22, "releaseMs": 185, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 55,
+              "durationMs": 320,
+              "freqHz": 440.49,
+              "detuneCents": 1.2,
+              "gain": 0.36,
+              "adsr": { "attackMs": 10, "decayMs": 135, "sustainLevel": 0.15, "releaseMs": 165, "curvePower": 2.0 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "coffee:book-open:25031",
+            "filterType": "lowpass",
+            "cutoffHz": 1800,
+            "endCutoffHz": 1100,
+            "q": 1.1,
+            "durationMs": 95,
+            "gain": 0.028,
+            "adsr": { "attackMs": 5, "decayMs": 48, "sustainLevel": 0.04, "releaseMs": 40 }
+          }
+        },
+        "theme-switch": {
+          "durationMs": 390,
+          "tones": [
+            {
+              "waveform": "sine",
+              "startMs": 0,
+              "durationMs": 360,
+              "freqHz": 146.83,
+              "gain": 0.58,
+              "adsr": { "attackMs": 8, "decayMs": 155, "sustainLevel": 0.22, "releaseMs": 185, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 22,
+              "durationMs": 360,
+              "freqHz": 293.66,
+              "gain": 0.78,
+              "adsr": { "attackMs": 9, "decayMs": 155, "sustainLevel": 0.24, "releaseMs": 185, "curvePower": 1.9 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 68,
+              "durationMs": 315,
+              "freqHz": 440.49,
+              "endFreqHz": 436.0,
+              "detuneCents": 1.2,
+              "gain": 0.38,
+              "adsr": { "attackMs": 10, "decayMs": 135, "sustainLevel": 0.16, "releaseMs": 160, "curvePower": 2.0 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "coffee:theme-switch:25031",
+            "filterType": "lowpass",
+            "cutoffHz": 1900,
+            "endCutoffHz": 1100,
+            "q": 1.1,
+            "durationMs": 90,
+            "gain": 0.028,
+            "adsr": { "attackMs": 5, "decayMs": 45, "sustainLevel": 0.04, "releaseMs": 38 }
+          }
+        }
+      }
+    },
+    "cyberpunk": {
+      "id": "cyberpunk",
+      "profileVersion": 1,
+      "displayName": "Cyberpunk - The Neural Interface",
+      "signatureAsset": "theme-switch",
+      "signatureName": "Neural Handshake",
+      "rootRangeHz": [440, 660],
+      "bodyWaveform": "triangle",
+      "accentWaveform": "sine",
+      "intervalRatios": [1.0, 1.25, 1.5, 2.0],
+      "detuneCents": 0.5,
+      "attackMs": { "click": 2.5, "signature": 3.5 },
+      "decayMs": { "click": 55, "medium": 160, "signature": 320 },
+      "noiseTexture": {
+        "enabled": true,
+        "kind": "seeded-filtered-burst",
+        "filterType": "bandpass",
+        "bandHz": [2400, 5600],
+        "maxRelativeGain": 0.085,
+        "durationMs": 120,
+        "seed": 29009
+      },
+      "defaults": {
+        "rootHz": 520.0,
+        "subHz": 130.0,
+        "bodyWaveform": "triangle",
+        "accentWaveform": "sine",
+        "intervalRatios": [1.0, 1.25, 1.5, 2.0],
+        "detuneCents": 0.5,
+        "noiseTexture": {
+          "enabled": true,
+          "filterType": "bandpass",
+          "bandHz": [2400, 5600],
+          "gain": 0.065
+        }
+      },
+      "events": {
+        "button-primary": {
+          "durationMs": 55,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "freqHz": 780.0,
+              "endFreqHz": 520.0,
+              "fmFreqHz": 260.0,
+              "fmIndex": 0.35,
+              "gain": 0.85,
+              "adsr": { "attackMs": 2.5, "decayMs": 28, "sustainLevel": 0.08, "releaseMs": 22, "curvePower": 2.5 }
+            },
+            {
+              "waveform": "sine",
+              "freqHz": 1040.0,
+              "endFreqHz": 780.0,
+              "gain": 0.32,
+              "adsr": { "attackMs": 2.0, "decayMs": 20, "sustainLevel": 0.0, "releaseMs": 18, "curvePower": 2.8 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "cyberpunk:button-primary:29009",
+            "filterType": "bandpass",
+            "cutoffHz": 3800,
+            "endCutoffHz": 1900,
+            "q": 2.4,
+            "durationMs": 28,
+            "gain": 0.08,
+            "adsr": { "attackMs": 1.5, "decayMs": 15, "sustainLevel": 0.0, "releaseMs": 11 }
+          }
+        },
+        "tab-switch": {
+          "durationMs": 95,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "startMs": 0,
+              "durationMs": 42,
+              "freqHz": 520.0,
+              "endFreqHz": 650.0,
+              "gain": 0.72,
+              "adsr": { "attackMs": 2.5, "decayMs": 22, "sustainLevel": 0.1, "releaseMs": 16, "curvePower": 2.4 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 40,
+              "durationMs": 54,
+              "freqHz": 780.0,
+              "endFreqHz": 910.0,
+              "gain": 0.76,
+              "adsr": { "attackMs": 2.5, "decayMs": 26, "sustainLevel": 0.1, "releaseMs": 24, "curvePower": 2.4 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "cyberpunk:tab-switch:29009",
+            "filterType": "bandpass",
+            "cutoffHz": 2600,
+            "endCutoffHz": 4800,
+            "q": 2.6,
+            "durationMs": 45,
+            "gain": 0.065,
+            "adsr": { "attackMs": 1.5, "decayMs": 22, "sustainLevel": 0.0, "releaseMs": 20 }
+          }
+        },
+        "book-open": {
+          "durationMs": 310,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "freqHz": 130.0,
+              "endFreqHz": 195.0,
+              "gain": 0.55,
+              "adsr": { "attackMs": 4, "decayMs": 95, "sustainLevel": 0.18, "releaseMs": 110, "curvePower": 2.2 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 45,
+              "durationMs": 120,
+              "freqHz": 520.0,
+              "endFreqHz": 780.0,
+              "fmFreqHz": 130.0,
+              "fmIndex": 0.25,
+              "gain": 0.68,
+              "adsr": { "attackMs": 4, "decayMs": 60, "sustainLevel": 0.15, "releaseMs": 50, "curvePower": 2.3 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 135,
+              "durationMs": 170,
+              "freqHz": 780.0,
+              "endFreqHz": 1040.0,
+              "gain": 0.52,
+              "adsr": { "attackMs": 5, "decayMs": 80, "sustainLevel": 0.12, "releaseMs": 80, "curvePower": 2.4 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "cyberpunk:book-open:29009",
+            "filterType": "bandpass",
+            "cutoffHz": 1800,
+            "endCutoffHz": 4800,
+            "q": 3.0,
+            "durationMs": 150,
+            "gain": 0.075,
+            "adsr": { "attackMs": 3, "decayMs": 75, "sustainLevel": 0.1, "releaseMs": 65 }
+          }
+        },
+        "citation-jump": {
+          "durationMs": 125,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "startMs": 0,
+              "durationMs": 52,
+              "freqHz": 650.0,
+              "endFreqHz": 780.0,
+              "gain": 0.72,
+              "adsr": { "attackMs": 2.5, "decayMs": 26, "sustainLevel": 0.1, "releaseMs": 20, "curvePower": 2.5 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 54,
+              "durationMs": 70,
+              "freqHz": 975.0,
+              "endFreqHz": 975.0,
+              "gain": 0.82,
+              "adsr": { "attackMs": 2.5, "decayMs": 35, "sustainLevel": 0.12, "releaseMs": 30, "curvePower": 2.4 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "cyberpunk:citation-jump:29009",
+            "filterType": "bandpass",
+            "cutoffHz": 4200,
+            "endCutoffHz": 2800,
+            "q": 2.8,
+            "durationMs": 45,
+            "gain": 0.06,
+            "adsr": { "attackMs": 1.5, "decayMs": 22, "sustainLevel": 0.0, "releaseMs": 20 }
+          }
+        },
+        "import-start": {
+          "durationMs": 95,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "freqHz": 520.0,
+              "endFreqHz": 780.0,
+              "fmFreqHz": 260.0,
+              "fmIndex": 0.2,
+              "gain": 0.78,
+              "adsr": { "attackMs": 2.5, "decayMs": 45, "sustainLevel": 0.12, "releaseMs": 40, "curvePower": 2.3 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "cyberpunk:import-start:29009",
+            "filterType": "bandpass",
+            "cutoffHz": 2400,
+            "endCutoffHz": 4600,
+            "q": 2.5,
+            "durationMs": 50,
+            "gain": 0.06,
+            "adsr": { "attackMs": 2, "decayMs": 25, "sustainLevel": 0.0, "releaseMs": 22 }
+          }
+        },
+        "operation-success": {
+          "durationMs": 210,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "startMs": 0,
+              "durationMs": 95,
+              "freqHz": 520.0,
+              "endFreqHz": 650.0,
+              "gain": 0.74,
+              "adsr": { "attackMs": 3, "decayMs": 45, "sustainLevel": 0.15, "releaseMs": 42, "curvePower": 2.3 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 82,
+              "durationMs": 125,
+              "freqHz": 780.0,
+              "endFreqHz": 1040.0,
+              "gain": 0.82,
+              "adsr": { "attackMs": 3.5, "decayMs": 58, "sustainLevel": 0.18, "releaseMs": 60, "curvePower": 2.2 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "cyberpunk:operation-success:29009",
+            "filterType": "bandpass",
+            "cutoffHz": 2600,
+            "endCutoffHz": 5200,
+            "q": 2.6,
+            "durationMs": 90,
+            "gain": 0.065,
+            "adsr": { "attackMs": 2, "decayMs": 45, "sustainLevel": 0.05, "releaseMs": 40 }
+          }
+        },
+        "operation-error": {
+          "durationMs": 180,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "startMs": 0,
+              "durationMs": 85,
+              "freqHz": 310.0,
+              "endFreqHz": 275.0,
+              "fmFreqHz": 95.0,
+              "fmIndex": 0.45,
+              "gain": 0.78,
+              "adsr": { "attackMs": 3, "decayMs": 42, "sustainLevel": 0.15, "releaseMs": 36, "curvePower": 2.3 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 78,
+              "durationMs": 100,
+              "freqHz": 220.0,
+              "endFreqHz": 195.0,
+              "fmFreqHz": 95.0,
+              "fmIndex": 0.45,
+              "gain": 0.76,
+              "adsr": { "attackMs": 3, "decayMs": 48, "sustainLevel": 0.12, "releaseMs": 45, "curvePower": 2.3 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "cyberpunk:operation-error:29009",
+            "filterType": "bandpass",
+            "cutoffHz": 3200,
+            "endCutoffHz": 1600,
+            "q": 2.4,
+            "durationMs": 85,
+            "gain": 0.07,
+            "adsr": { "attackMs": 2, "decayMs": 42, "sustainLevel": 0.05, "releaseMs": 38 }
+          }
+        },
+        "theme-switch": {
+          "durationMs": 320,
+          "tones": [
+            {
+              "waveform": "triangle",
+              "startMs": 0,
+              "durationMs": 65,
+              "freqHz": 520.0,
+              "endFreqHz": 650.0,
+              "fmFreqHz": 260.0,
+              "fmIndex": 0.3,
+              "gain": 0.78,
+              "adsr": { "attackMs": 3, "decayMs": 32, "sustainLevel": 0.12, "releaseMs": 28, "curvePower": 2.4 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 72,
+              "durationMs": 85,
+              "freqHz": 650.0,
+              "endFreqHz": 1040.0,
+              "fmFreqHz": 325.0,
+              "fmIndex": 0.25,
+              "gain": 0.82,
+              "adsr": { "attackMs": 3, "decayMs": 42, "sustainLevel": 0.15, "releaseMs": 36, "curvePower": 2.4 }
+            },
+            {
+              "waveform": "sine",
+              "startMs": 152,
+              "durationMs": 165,
+              "freqHz": 390.0,
+              "endFreqHz": 260.0,
+              "gain": 0.68,
+              "adsr": { "attackMs": 5, "decayMs": 80, "sustainLevel": 0.2, "releaseMs": 78, "curvePower": 2.1 }
+            },
+            {
+              "waveform": "triangle",
+              "startMs": 152,
+              "durationMs": 165,
+              "freqHz": 780.0,
+              "endFreqHz": 780.0,
+              "gain": 0.44,
+              "adsr": { "attackMs": 4, "decayMs": 75, "sustainLevel": 0.14, "releaseMs": 82, "curvePower": 2.2 }
+            }
+          ],
+          "noise": {
+            "enabled": true,
+            "seed": "cyberpunk:theme-switch:29009",
+            "filterType": "bandpass",
+            "cutoffHz": 2200,
+            "endCutoffHz": 5400,
+            "q": 2.6,
+            "durationMs": 135,
+            "gain": 0.085,
+            "adsr": { "attackMs": 2, "decayMs": 68, "sustainLevel": 0.1, "releaseMs": 62 }
+          }
+        }
+      }
+    }
+  }
+}

@@ -11,7 +11,10 @@
     "db:reset": "node -e \"require('./backend/db/database').resetAndSeedDatabase(); console.log('Database reset and seeded successfully.');\"",
     "db:seed": "node -e \"require('./backend/db/database').resetAndSeedDatabase(); console.log('Database reset and seeded successfully.');\"",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "sounds:generate": "node tools/sound-design/generate.mjs --write --config tools/sound-design/profiles.json --out frontend/public/sounds",
+    "sounds:verify": "node tools/sound-design/generate.mjs --check --config tools/sound-design/profiles.json --out frontend/public/sounds",
+    "sounds:test": "node --test tools/sound-design/generator.test.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.22.0",

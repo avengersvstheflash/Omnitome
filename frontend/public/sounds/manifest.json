@@ -1,0 +1,650 @@
+{
+  "schemaVersion": 1,
+  "generatorVersion": "1.0.0",
+  "format": {
+    "container": "wav",
+    "codec": "pcm_s16le",
+    "sampleRateHz": 48000,
+    "channels": 1,
+    "bitsPerSample": 16
+  },
+  "themes": [
+    "omni",
+    "sakura",
+    "spring",
+    "coffee",
+    "cyberpunk"
+  ],
+  "assets": {
+    "omni.button-primary": {
+      "path": "themes/omni/button-primary.wav",
+      "durationMs": 85,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.75,
+      "sha256": "c72e98cad86baaaede8a1897291a0db355fd10a8157d87a14f6bb311497dbf89"
+    },
+    "omni.button-secondary": {
+      "path": "themes/omni/button-secondary.wav",
+      "durationMs": 68,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.93,
+      "sha256": "ad08987fff3911284ae6a1bd8d2422f2101d2c186e9dca762540d5e189242dfd"
+    },
+    "omni.toggle-on": {
+      "path": "themes/omni/toggle-on.wav",
+      "durationMs": 115,
+      "peakDbfs": -3,
+      "rmsDbfs": -13.87,
+      "sha256": "5b7252e22922da838c0d3ed6da92daafd39acd920d33abc9480be60e3fc467f0"
+    },
+    "omni.toggle-off": {
+      "path": "themes/omni/toggle-off.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.71,
+      "sha256": "a584fc485b72c08e7949cd85c37b88fc81d42bad3fc9629bd7948af50fc0c5c3"
+    },
+    "omni.nav-primary": {
+      "path": "themes/omni/nav-primary.wav",
+      "durationMs": 135,
+      "peakDbfs": -3,
+      "rmsDbfs": -13.6,
+      "sha256": "4e2ad4ea8fd361935b809961449fbdc46f4f60fde203854461c5fa01b5ae0205"
+    },
+    "omni.tab-switch": {
+      "path": "themes/omni/tab-switch.wav",
+      "durationMs": 140,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.9,
+      "sha256": "7c5faaa40dd8b22a4cb2233e63939c19faf05602e1581e52779c7970589f2094"
+    },
+    "omni.nav-back": {
+      "path": "themes/omni/nav-back.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.95,
+      "sha256": "497c7fd0079290406f5b5ed4e30f878731bb8c55ce5007036ee849884bc71a3f"
+    },
+    "omni.panel-open": {
+      "path": "themes/omni/panel-open.wav",
+      "durationMs": 92,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.55,
+      "sha256": "710eda8dfce7943b2954de2f02e61f055483bf16873120df34153af8059d33d8"
+    },
+    "omni.panel-close": {
+      "path": "themes/omni/panel-close.wav",
+      "durationMs": 82,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.25,
+      "sha256": "8d34c452443d03b3d4442baa15bfc8bb3a196298d411363493ad9129e584a93e"
+    },
+    "omni.book-open": {
+      "path": "themes/omni/book-open.wav",
+      "durationMs": 460,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.03,
+      "sha256": "1b43ffba3fd84955bddbf6b824f3fa29368f363f66bc0ab42049c9f07353d247"
+    },
+    "omni.mode-original": {
+      "path": "themes/omni/mode-original.wav",
+      "durationMs": 150,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.43,
+      "sha256": "d758ece1a21917d01852ad83470baf3e7871a8020af177857af80e7552facfcf"
+    },
+    "omni.mode-omni": {
+      "path": "themes/omni/mode-omni.wav",
+      "durationMs": 175,
+      "peakDbfs": -3,
+      "rmsDbfs": -13.84,
+      "sha256": "a97fd137fff462843f408ca4c50f08fb899c4ed55b1ff3b714f8307fc264dfb6"
+    },
+    "omni.citation-jump": {
+      "path": "themes/omni/citation-jump.wav",
+      "durationMs": 180,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.6,
+      "sha256": "b21cb631f16c3bf5a252e4dda40ead2eb6916dfa66f18f7695bbd2f31f0b0b46"
+    },
+    "omni.import-start": {
+      "path": "themes/omni/import-start.wav",
+      "durationMs": 125,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.65,
+      "sha256": "d38d0001056426041f6835f5fa04348ce45fb8f337ca86d144c1b7b2f3d534ab"
+    },
+    "omni.operation-success": {
+      "path": "themes/omni/operation-success.wav",
+      "durationMs": 380,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.83,
+      "sha256": "ec26da24adc8af59e011d1c5f2566c2ac97e48f68d9e891098b740262df23172"
+    },
+    "omni.operation-error": {
+      "path": "themes/omni/operation-error.wav",
+      "durationMs": 240,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.2,
+      "sha256": "3c08113a51c9ffc6893ff80d568d0f24b4909a381b293a0f298f5bc141f2d4e5"
+    },
+    "omni.operation-cancel": {
+      "path": "themes/omni/operation-cancel.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.47,
+      "sha256": "02ec64bbc5537dbedd3cfbc0c75ce308966e1d0ef4cfa4b9d1fe975de513105b"
+    },
+    "omni.theme-switch": {
+      "path": "themes/omni/theme-switch.wav",
+      "durationMs": 510,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.97,
+      "sha256": "fcc7be5c45ec6ec9fd4a442e0d6737510ef9c6912bce77ad2ba0de0de1ec6d9f"
+    },
+    "sakura.button-primary": {
+      "path": "themes/sakura/button-primary.wav",
+      "durationMs": 85,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.4,
+      "sha256": "41999a1e4901f0802376209720b4cd474c2855f894742653acc6b15c608c5fa9"
+    },
+    "sakura.button-secondary": {
+      "path": "themes/sakura/button-secondary.wav",
+      "durationMs": 68,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.16,
+      "sha256": "dc2e0b856716e796f4a861b347e4c3eeee6fa656b4779f469ad7dc64d0cbd60d"
+    },
+    "sakura.toggle-on": {
+      "path": "themes/sakura/toggle-on.wav",
+      "durationMs": 115,
+      "peakDbfs": -3,
+      "rmsDbfs": -13.89,
+      "sha256": "6524fe380a7bae97e538a847b51631d20363d543b7d18246bbaa3600a476b3da"
+    },
+    "sakura.toggle-off": {
+      "path": "themes/sakura/toggle-off.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.69,
+      "sha256": "1c59a78103dab8f423a73a844c62af0a295d7af8fb988a7f027da9701db676d2"
+    },
+    "sakura.nav-primary": {
+      "path": "themes/sakura/nav-primary.wav",
+      "durationMs": 135,
+      "peakDbfs": -3,
+      "rmsDbfs": -13.59,
+      "sha256": "e24d8d3df1903c3c8889c18f0a0f8fbc6a1b615203b227a592aeafc6b853a479"
+    },
+    "sakura.tab-switch": {
+      "path": "themes/sakura/tab-switch.wav",
+      "durationMs": 115,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.1,
+      "sha256": "5a722c4a625137dce519edb25d427401fdf967e5fe0061a49ab2b9f3f1003956"
+    },
+    "sakura.nav-back": {
+      "path": "themes/sakura/nav-back.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.93,
+      "sha256": "8c80641fe40e9d0134e4ebf7c71cc094bac1ae0c54f977a721b1875f8a7039f9"
+    },
+    "sakura.panel-open": {
+      "path": "themes/sakura/panel-open.wav",
+      "durationMs": 92,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.4,
+      "sha256": "883baf849f9769b8ec91b1b9fda2881bb00d44f9bf751f4dd4252c3219738312"
+    },
+    "sakura.panel-close": {
+      "path": "themes/sakura/panel-close.wav",
+      "durationMs": 82,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.34,
+      "sha256": "0e9145e8689e843b7acf90a8c56fe6730ce306c585f878259cc802b3a3adf6f3"
+    },
+    "sakura.book-open": {
+      "path": "themes/sakura/book-open.wav",
+      "durationMs": 420,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.12,
+      "sha256": "051c56376625c207340b80b021c91160df9a849959a94eaa46ce988bdd86ca88"
+    },
+    "sakura.mode-original": {
+      "path": "themes/sakura/mode-original.wav",
+      "durationMs": 150,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.79,
+      "sha256": "dc83429792d1f27b34ec541de84c458b89d026769f68e66eb3517de1fe4227cc"
+    },
+    "sakura.mode-omni": {
+      "path": "themes/sakura/mode-omni.wav",
+      "durationMs": 175,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.09,
+      "sha256": "0b2c668d7e0471a5e04a329213d58abae17495b11a1fd48981fd9036bcf456b6"
+    },
+    "sakura.citation-jump": {
+      "path": "themes/sakura/citation-jump.wav",
+      "durationMs": 145,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.41,
+      "sha256": "2f7120776f585f29bddad57f3708c361c24fcef041696f56382952af7701b659"
+    },
+    "sakura.import-start": {
+      "path": "themes/sakura/import-start.wav",
+      "durationMs": 125,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.66,
+      "sha256": "bd4d142a8f0e3c2af19ec799d44fe76472d1007bd93dcb5733cd5cbb3b868ac6"
+    },
+    "sakura.operation-success": {
+      "path": "themes/sakura/operation-success.wav",
+      "durationMs": 295,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.33,
+      "sha256": "b2d115a8f658d31ecfe9ef65a57813c615cf3fd9752a34e41406a7bff1d09682"
+    },
+    "sakura.operation-error": {
+      "path": "themes/sakura/operation-error.wav",
+      "durationMs": 215,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.32,
+      "sha256": "682ca6d6f0beb40981f75fe6e30ceaf8184621533e502e82d1d2bba60393564e"
+    },
+    "sakura.operation-cancel": {
+      "path": "themes/sakura/operation-cancel.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.46,
+      "sha256": "d549a5f9bcb575a432375898d9d9b02a244672e99b94d2fc191eda256d3f144c"
+    },
+    "sakura.theme-switch": {
+      "path": "themes/sakura/theme-switch.wav",
+      "durationMs": 460,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.33,
+      "sha256": "8a192ab3093d107ad180cd548cd7320da46c8e6060d4a2526a22c6359f9d159b"
+    },
+    "spring.button-primary": {
+      "path": "themes/spring/button-primary.wav",
+      "durationMs": 80,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.29,
+      "sha256": "a7ab918b10836fc201435c52d64083ffc45bb7bb00389539bb10f2ab690d6525"
+    },
+    "spring.button-secondary": {
+      "path": "themes/spring/button-secondary.wav",
+      "durationMs": 68,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.12,
+      "sha256": "d9ba5245f8e19eac547b827eb41e579fafa876971a53580d5681d7dec24e1120"
+    },
+    "spring.toggle-on": {
+      "path": "themes/spring/toggle-on.wav",
+      "durationMs": 115,
+      "peakDbfs": -3,
+      "rmsDbfs": -13.75,
+      "sha256": "319284e5b28019ce0f6b559114c6319412f4c05bd9917e1cfb23c70e6c9e7657"
+    },
+    "spring.toggle-off": {
+      "path": "themes/spring/toggle-off.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.52,
+      "sha256": "e85e2830dfef73458cfe8cc3f677da2fb5099f072232f0bcf9051ee4719766ec"
+    },
+    "spring.nav-primary": {
+      "path": "themes/spring/nav-primary.wav",
+      "durationMs": 135,
+      "peakDbfs": -3,
+      "rmsDbfs": -13.44,
+      "sha256": "c9c738c80f7e7b9d31a7ee7136fbdb1ebfdee626504ac4404bad64a363b170d9"
+    },
+    "spring.tab-switch": {
+      "path": "themes/spring/tab-switch.wav",
+      "durationMs": 115,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.03,
+      "sha256": "c2b79cacfc20c7b3d59f6f165fe833cd64857494b019e96485da8c81d02fd3d2"
+    },
+    "spring.nav-back": {
+      "path": "themes/spring/nav-back.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.77,
+      "sha256": "bc71588fb6a5b0374ef6a19f020d6954cedb4431d97350a577449b64cf74b2ea"
+    },
+    "spring.panel-open": {
+      "path": "themes/spring/panel-open.wav",
+      "durationMs": 92,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.43,
+      "sha256": "a5cbabc33a9303d674e44dbb2f665d5b8ea6058b5ca79781e3bddf43d2129144"
+    },
+    "spring.panel-close": {
+      "path": "themes/spring/panel-close.wav",
+      "durationMs": 82,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.17,
+      "sha256": "5cede62c07f56bb23b5d231d2afb9648a53b2d0fa0c49965df4efe3f81d256fa"
+    },
+    "spring.book-open": {
+      "path": "themes/spring/book-open.wav",
+      "durationMs": 390,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.88,
+      "sha256": "cb0a27a3e5bb252eb2b19f8d3148902d446d58cacb24176c6a535d2736a5b858"
+    },
+    "spring.mode-original": {
+      "path": "themes/spring/mode-original.wav",
+      "durationMs": 150,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.73,
+      "sha256": "f81e851cc8c2745cbe9dc0bf50d87fd18f75311da20c4607e2bc38eb7f09d76f"
+    },
+    "spring.mode-omni": {
+      "path": "themes/spring/mode-omni.wav",
+      "durationMs": 175,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.17,
+      "sha256": "4157f82458b1e4229811e619df8c2b4a14315a1551e76046d2db18adb11e0236"
+    },
+    "spring.citation-jump": {
+      "path": "themes/spring/citation-jump.wav",
+      "durationMs": 145,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.36,
+      "sha256": "3632576d9220854101dd861c767bd6c1de7dc90c1dec72b58d51cfc3f215d71f"
+    },
+    "spring.import-start": {
+      "path": "themes/spring/import-start.wav",
+      "durationMs": 125,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.81,
+      "sha256": "03875b106f733b1f7b2a8dac5ffb50dfebc6d037ae74f4e5a3fd2eafc9d461b7"
+    },
+    "spring.operation-success": {
+      "path": "themes/spring/operation-success.wav",
+      "durationMs": 295,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.09,
+      "sha256": "66a0c39308bc04276c2130d85529c05711058672da88105722f4b58e5916074c"
+    },
+    "spring.operation-error": {
+      "path": "themes/spring/operation-error.wav",
+      "durationMs": 215,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.34,
+      "sha256": "d24ecf86187c8e3d710e2f02aa8202b87a98db0a48cf61c417bcef61c5239412"
+    },
+    "spring.operation-cancel": {
+      "path": "themes/spring/operation-cancel.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.28,
+      "sha256": "e214d32041eeabc9b85d6454549ca203cebd4ff9d75ce9f956a3c6861ec22ec1"
+    },
+    "spring.theme-switch": {
+      "path": "themes/spring/theme-switch.wav",
+      "durationMs": 430,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.64,
+      "sha256": "edb673a492c2f0b9905ba37afa32b0e6b7b1a9d365e4fe864560b48c9c5ba9ba"
+    },
+    "coffee.button-primary": {
+      "path": "themes/coffee/button-primary.wav",
+      "durationMs": 70,
+      "peakDbfs": -3,
+      "rmsDbfs": -17.33,
+      "sha256": "d6874ff868d38f3b30b544f8660107ec68b76ec5fa64b4d31f917f9a53898186"
+    },
+    "coffee.button-secondary": {
+      "path": "themes/coffee/button-secondary.wav",
+      "durationMs": 68,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.9,
+      "sha256": "4a25792a12ba7e78766fc03ed219ba3b9b5c97cfed9d13b0ca534b6b3805ba96"
+    },
+    "coffee.toggle-on": {
+      "path": "themes/coffee/toggle-on.wav",
+      "durationMs": 115,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.65,
+      "sha256": "4bfe10c572c4b01a75be9aba865c379917bb15db2fd8357ef4350a7dec4ee48d"
+    },
+    "coffee.toggle-off": {
+      "path": "themes/coffee/toggle-off.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.59,
+      "sha256": "bc47702b159af9fad3714b765051db5116c18747ef3d55224aa4379025925696"
+    },
+    "coffee.nav-primary": {
+      "path": "themes/coffee/nav-primary.wav",
+      "durationMs": 135,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.42,
+      "sha256": "c188e950557ad6e41b5758b2b14565c7855a2a70363f6a9bdafe36194712cbff"
+    },
+    "coffee.tab-switch": {
+      "path": "themes/coffee/tab-switch.wav",
+      "durationMs": 115,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.76,
+      "sha256": "a32d5473b1d2e03ec4c071abe8cfa07af079e6b7cc9ebbd0c3f9e7fa6b40019d"
+    },
+    "coffee.nav-back": {
+      "path": "themes/coffee/nav-back.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.57,
+      "sha256": "84768938f18c05cd605afb9a0743b485558046a19fe92de19513dc83c71abfe4"
+    },
+    "coffee.panel-open": {
+      "path": "themes/coffee/panel-open.wav",
+      "durationMs": 92,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.84,
+      "sha256": "e81e0fa9322c78197919250bbec959bfa69cc9ab1a9b3c91e9a38952caf4c439"
+    },
+    "coffee.panel-close": {
+      "path": "themes/coffee/panel-close.wav",
+      "durationMs": 82,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.89,
+      "sha256": "509ed43e49fccccc239e6ae0308e36623ffe1e786c6b1502641f7837749dcf10"
+    },
+    "coffee.book-open": {
+      "path": "themes/coffee/book-open.wav",
+      "durationMs": 380,
+      "peakDbfs": -3,
+      "rmsDbfs": -17.19,
+      "sha256": "c5292ff08409dbc69a19c2f6d84c986b0969f9d59c6ef519957fb28ecb1fecdf"
+    },
+    "coffee.mode-original": {
+      "path": "themes/coffee/mode-original.wav",
+      "durationMs": 150,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.82,
+      "sha256": "160ef5e72709bca9c984b171fec6d6f473c5feaaa51bf533049ba9d254dc5796"
+    },
+    "coffee.mode-omni": {
+      "path": "themes/coffee/mode-omni.wav",
+      "durationMs": 175,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.37,
+      "sha256": "7e718baa91bf5b583c17218b4a54776d5f6cdde9c718513e61d3d2a400d38ee9"
+    },
+    "coffee.citation-jump": {
+      "path": "themes/coffee/citation-jump.wav",
+      "durationMs": 145,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.25,
+      "sha256": "f3df6f5705cb4ff12990b587d66d70870b3fb7457efe0bfed581c8516c86e181"
+    },
+    "coffee.import-start": {
+      "path": "themes/coffee/import-start.wav",
+      "durationMs": 125,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.3,
+      "sha256": "9be1539a958df8cee11dd52884fd15e7c06e7216fb628e4232a27e661635e251"
+    },
+    "coffee.operation-success": {
+      "path": "themes/coffee/operation-success.wav",
+      "durationMs": 295,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.19,
+      "sha256": "baa8ef13aa9fa41362d179289afea5f9da15e8ad7c9d8d8534f573ef0d6e4227"
+    },
+    "coffee.operation-error": {
+      "path": "themes/coffee/operation-error.wav",
+      "durationMs": 215,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.89,
+      "sha256": "baf678934622f02e71e9d6a8a92993760b5d2afb4bdda935c1797667ad0c927f"
+    },
+    "coffee.operation-cancel": {
+      "path": "themes/coffee/operation-cancel.wav",
+      "durationMs": 110,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.87,
+      "sha256": "b3612eae866f4916c922a4e10551ec50ebc1a0c422987d6afa3c94b31ab7b36e"
+    },
+    "coffee.theme-switch": {
+      "path": "themes/coffee/theme-switch.wav",
+      "durationMs": 390,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.37,
+      "sha256": "9102d6b67bf9e8c3c073e6f90e95223dacf954c6ea068c887c0ab89d057518fe"
+    },
+    "cyberpunk.button-primary": {
+      "path": "themes/cyberpunk/button-primary.wav",
+      "durationMs": 55,
+      "peakDbfs": -3,
+      "rmsDbfs": -17.67,
+      "sha256": "6fcb3c3cd8ffb2810c18d01097bde1f93eaffafeb0bd8497447ded91129b78b8"
+    },
+    "cyberpunk.button-secondary": {
+      "path": "themes/cyberpunk/button-secondary.wav",
+      "durationMs": 49,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.19,
+      "sha256": "1a9dc590d1a5e5a35e8e2ce2147094daa384b5b059a911fa64092048e034ed2e"
+    },
+    "cyberpunk.toggle-on": {
+      "path": "themes/cyberpunk/toggle-on.wav",
+      "durationMs": 83,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.67,
+      "sha256": "8b3f2a9d1db5269707b3eac6833a49299d3e0dbe874eac6fcd2f6095a69d9472"
+    },
+    "cyberpunk.toggle-off": {
+      "path": "themes/cyberpunk/toggle-off.wav",
+      "durationMs": 79,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.37,
+      "sha256": "7e53f9ca6f8ddf3b04d4263fd3332d2da4d2d9612ce5385d5bb8109a2e68c928"
+    },
+    "cyberpunk.nav-primary": {
+      "path": "themes/cyberpunk/nav-primary.wav",
+      "durationMs": 97,
+      "peakDbfs": -3,
+      "rmsDbfs": -14.51,
+      "sha256": "7e6a62b9c63c7cf74683415a08ad1ffdc7e3cbcba3a99a194c774e010b16df11"
+    },
+    "cyberpunk.tab-switch": {
+      "path": "themes/cyberpunk/tab-switch.wav",
+      "durationMs": 95,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.27,
+      "sha256": "f41f86754fee7c6518f0d1fe778c870f2c388c7c0b497a7b72d358bde69c80e7"
+    },
+    "cyberpunk.nav-back": {
+      "path": "themes/cyberpunk/nav-back.wav",
+      "durationMs": 79,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.93,
+      "sha256": "4005c92da219af89c2441b98ba3d61ff4e6108909a0a54ea5ad72614e7fd4fe6"
+    },
+    "cyberpunk.panel-open": {
+      "path": "themes/cyberpunk/panel-open.wav",
+      "durationMs": 66,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.75,
+      "sha256": "b06967368e7c1da91bc4db785e1b4b6a0ba97fc5de0f7ff16f669d490a1f90bd"
+    },
+    "cyberpunk.panel-close": {
+      "path": "themes/cyberpunk/panel-close.wav",
+      "durationMs": 59,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.38,
+      "sha256": "77713dfa3b5ffd788650e3a54fc937d3671c1e3ca7d36ff337776ff3fc0fd319"
+    },
+    "cyberpunk.book-open": {
+      "path": "themes/cyberpunk/book-open.wav",
+      "durationMs": 310,
+      "peakDbfs": -3,
+      "rmsDbfs": -17.29,
+      "sha256": "2881d181be3471064dd0339c377912b4e9c795668b39208711cd86c787b38165"
+    },
+    "cyberpunk.mode-original": {
+      "path": "themes/cyberpunk/mode-original.wav",
+      "durationMs": 108,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.05,
+      "sha256": "84e2227d78abb3abc75c5ac6ea817a67e126232bf066a177048d0e17f4982859"
+    },
+    "cyberpunk.mode-omni": {
+      "path": "themes/cyberpunk/mode-omni.wav",
+      "durationMs": 126,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.28,
+      "sha256": "2f76c34fec21705cf7daf2e31c04bcf17601404ddbc7ce8d3121b4e1e6231803"
+    },
+    "cyberpunk.citation-jump": {
+      "path": "themes/cyberpunk/citation-jump.wav",
+      "durationMs": 125,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.56,
+      "sha256": "f48ce0d3ccc461dd449279cb31f585657f5dc1f053fe8579d872672276e7ab3a"
+    },
+    "cyberpunk.import-start": {
+      "path": "themes/cyberpunk/import-start.wav",
+      "durationMs": 95,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.79,
+      "sha256": "6fceed2065f1f5aa30298b30f520601d805dacb96e2c25d09eddf9c06ff54827"
+    },
+    "cyberpunk.operation-success": {
+      "path": "themes/cyberpunk/operation-success.wav",
+      "durationMs": 210,
+      "peakDbfs": -3,
+      "rmsDbfs": -15.74,
+      "sha256": "d7709fa7be91311a664c9d5dd6c46909a20e089c45bba702e5747f9c9d586dd6"
+    },
+    "cyberpunk.operation-error": {
+      "path": "themes/cyberpunk/operation-error.wav",
+      "durationMs": 180,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.89,
+      "sha256": "e7125bf95b84b6637f11e0f70e4603cd31dd16aff577097331a1bd7412ec60f1"
+    },
+    "cyberpunk.operation-cancel": {
+      "path": "themes/cyberpunk/operation-cancel.wav",
+      "durationMs": 79,
+      "peakDbfs": -3,
+      "rmsDbfs": -16.49,
+      "sha256": "90a4c48303b8a24c692f0ce6a0cdc846938b5a5a241ce23a80277989a69ef680"
+    },
+    "cyberpunk.theme-switch": {
+      "path": "themes/cyberpunk/theme-switch.wav",
+      "durationMs": 320,
+      "peakDbfs": -3,
+      "rmsDbfs": -17.22,
+      "sha256": "80dd1e684c312cb569b5f829c09d8cae6560ea60d0481657893f81d2e2223b3e"
+    }
+  }
+}
