@@ -19,8 +19,9 @@ import { FirstRunScreen } from './components/resources/FirstRunScreen';
 import { useSettings } from './hooks/useSettings';
 import { preloadUiSounds, registerThemeResolver, playUiSound, type ThemeId } from './audio/soundPlayer';
 import { useThemeStore } from './store/useThemeStore';
+import { WelcomeWizard } from './components/onboarding';
 
-function OnboardingRedirect() {
+function OnboardingRedirect({ isWizardActive }: { isWizardActive: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { settings, isLoading } = useSettings();
@@ -28,19 +29,26 @@ function OnboardingRedirect() {
   useEffect(() => {
     if (isLoading || !settings) return;
     if (location.pathname === '/settings') return;
+    if (isWizardActive) return;
 
     const openrouterApiKey = settings.openrouterApiKey || settings.openrouter?.apiKey || '';
     const localBaseUrl = settings.localBaseUrl || '';
-    const isDismissed = typeof window !== 'undefined' && (
-      localStorage.getItem('omnitome.onboarding.dismissed') === 'true' ||
-      localStorage.getItem('omnitome_onboarding_skipped') === 'true' ||
-      sessionStorage.getItem('omnitome_onboarding_skipped') === 'true'
-    );
+    let isDismissed = false;
+    try {
+      isDismissed = typeof window !== 'undefined' && (
+        localStorage.getItem('omnitome.onboarding.completed') === 'true' ||
+        localStorage.getItem('omnitome.onboarding.dismissed') === 'true' ||
+        localStorage.getItem('omnitome_onboarding_skipped') === 'true' ||
+        sessionStorage.getItem('omnitome_onboarding_skipped') === 'true'
+      );
+    } catch {
+      isDismissed = true;
+    }
 
     if (!openrouterApiKey.trim() && !localBaseUrl.trim() && !isDismissed) {
       navigate('/settings?onboarding=true', { replace: true });
     }
-  }, [settings, isLoading, location.pathname, navigate]);
+  }, [settings, isLoading, location.pathname, navigate, isWizardActive]);
 
   return null;
 }
@@ -63,6 +71,25 @@ export default function App() {
     return undefined;
   });
   const [hasTimeout, setHasTimeout] = useState(false);
+  const [showWizard, setShowWizard] = useState<boolean>(() => {
+    try {
+      if (typeof window === 'undefined') return false;
+      return localStorage.getItem('omnitome.onboarding.completed') !== 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleWizardClose = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('omnitome.onboarding.completed', 'true');
+        localStorage.setItem('omnitome.onboarding.dismissed', 'true');
+        localStorage.setItem('omnitome_onboarding_skipped', 'true');
+      }
+    } catch {}
+    setShowWizard(false);
+  };
 
   const { status, isLoading, error, fetchStatus } = useResourceStore();
 
@@ -251,7 +278,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <OnboardingRedirect />
+        <OnboardingRedirect isWizardActive={showWizard} />
         <ThemeDecor />
         <Layout>
           <ErrorBoundary>
@@ -269,6 +296,7 @@ export default function App() {
           </ErrorBoundary>
           <ModalHost />
         </Layout>
+        {showWizard && <WelcomeWizard onClose={handleWizardClose} />}
       </BrowserRouter>
     </QueryClientProvider>
   );
