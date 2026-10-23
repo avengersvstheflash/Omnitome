@@ -90,3 +90,6 @@ resources/backend-runtime/
 resources/models/
 resources/sidecar.zip
 resources/sidecar.7z
+
+# Local agent governance
+AGENTS.md

@@ -98,47 +98,15 @@ export const StepStarterPack: React.FC<StepStarterPackProps> = ({
         };
 
         const formData = new FormData();
-        formData.append('file', file);
         formData.append('files', file);
         formData.append('title', meta.title);
         formData.append('replace', 'true');
         formData.append('contentType', meta.contentType);
 
-        // Omnitome backend import:
-        // Try POST /api/books first per task specification.
-        // If not ok (e.g. route without multipart parsing), fallback to the background queue
-        // endpoint (/api/import/queue/files) or synchronous import (/api/books/import).
-        let importRes: Response;
-        try {
-          importRes = await fetch(apiUrl('/api/books'), {
-            method: 'POST',
-            body: formData,
-          });
-        } catch {
-          importRes = { ok: false, status: 500 } as Response;
-        }
-
-        if (!importRes.ok) {
-          try {
-            importRes = await fetch(apiUrl('/api/import/queue/files'), {
-              method: 'POST',
-              body: formData,
-            });
-          } catch {
-            importRes = { ok: false, status: 500 } as Response;
-          }
-        }
-
-        if (!importRes.ok && importRes.status !== 409) {
-          try {
-            importRes = await fetch(apiUrl('/api/books/import'), {
-              method: 'POST',
-              body: formData,
-            });
-          } catch {
-            importRes = { ok: false, status: 500 } as Response;
-          }
-        }
+        const importRes = await fetch(apiUrl('/api/import/queue/files'), {
+          method: 'POST',
+          body: formData,
+        });
 
         if (!importRes.ok && importRes.status !== 409) {
           throw new Error(`Import failed for ${filename} (${importRes.status})`);

@@ -202,6 +202,11 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
         const active = res.active ? normalizeImportTask(res.active) : null;
         const queued = (res.queued || []).map(normalizeImportTask);
         const rawHistory = (res.history || []).map(normalizeImportTask);
+        const booksQueryState = queryClient.getQueryState(['books']);
+        const isBooksRefetching =
+          queryClient.isFetching({ queryKey: ['books'] }) > 0 ||
+          Boolean(booksQueryState?.isInvalidated);
+
         const booksCache = queryClient.getQueryData<any>(['books']);
         const cachedBookList = Array.isArray(booksCache)
           ? booksCache
@@ -210,9 +215,18 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
           : null;
         const knownBookIds = cachedBookList ? new Set(cachedBookList.map((b: any) => b.id)) : null;
 
+        const prevActiveTaskId = get().activeTask?.id;
+        const now = Date.now();
+
         const history = rawHistory.filter((t) => {
           if (['completed', 'failed', 'cancelled', 'interrupted'].includes(t.status)) {
             const bId = t.bookId || (t as any).book_id;
+            // Protect newly finished tasks during the React Query cache refetch window
+            if (isBooksRefetching) return true;
+            if (t.id === prevActiveTaskId) return true;
+            if (t.completedAt && now - new Date(t.completedAt).getTime() < 60000) return true;
+
+            // When books cache is settled, prune tasks for deleted books
             if (bId && knownBookIds && !knownBookIds.has(bId)) {
               return false;
             }
@@ -225,7 +239,6 @@ export const useImportQueueStore = create<ImportQueueState>((set, get) => {
         const { etaSeconds, elapsedSeconds } = calculateEta(active);
 
         // Compute hasActiveWork: active OR queued OR recentFailed (within 30s)
-        const now = Date.now();
         const recentFailed = history.some((t) => {
           const time = t.completedAt || t.startedAt || t.createdAt;
           return t.status === 'failed' && time && now - new Date(time).getTime() < 30000;

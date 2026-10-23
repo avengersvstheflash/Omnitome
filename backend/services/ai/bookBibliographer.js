@@ -223,6 +223,17 @@ OUTPUT:`;
         }
       }
 
+      // Title page metadata fallback if authors still unresolved
+      if (!updatedAuthor || updatedAuthor === 'Unknown Author') {
+        const titleAuthor = this.extractTitlePageAuthor(snippetText);
+        if (titleAuthor) {
+          updatedAuthor = titleAuthor;
+          if (!bibliographicData.authors || bibliographicData.authors.length === 0) {
+            bibliographicData.authors = [titleAuthor];
+          }
+        }
+      }
+
       db.prepare(
         'UPDATE books SET metadata_json = ?, author = ?, updated_at = ? WHERE id = ?'
       ).run(
@@ -305,9 +316,15 @@ OUTPUT:`;
     }
 
     // 4. Contains sentence terminators (. ! ?) mid-string
+    // Strips initials (e.g., "L.", "W.") and standard corporate/academic abbreviations
     if (!rejected) {
-      const withoutTrailing = trimmed.replace(/[.!?]+$/, '');
-      if (/[.!?]\s+\S/.test(trimmed) || /[.!?]/.test(withoutTrailing)) {
+      const withoutInitials = trimmed
+        .replace(/\b[A-Za-z]\./g, '')
+        .replace(/\b(?:Inc|Ltd|Co|Corp|LLC|L\.L\.C|St|Univ|Pub|Publ|Jr|Sr)\.?/gi, '')
+        .replace(/[.!?]+$/, '')
+        .trim();
+
+      if (/[!?]/.test(withoutInitials) || /\.\s+\S/.test(withoutInitials) || /\./.test(withoutInitials)) {
         rejected = true;
       }
     }
@@ -320,6 +337,71 @@ OUTPUT:`;
     }
 
     return trimmed;
+  }
+
+  /**
+   * Deterministically extract author from front-matter / title page text when LLM fails or is absent.
+   *
+   * @param {string} text
+   * @returns {string|null}
+   */
+  extractTitlePageAuthor(text) {
+    if (!text || typeof text !== 'string') return null;
+
+    const cleanCandidate = (candidate) => {
+      if (!candidate || typeof candidate !== 'string') return null;
+      let a = candidate.trim().replace(/^['"*_`#]+|['"*_`#]+$/g, '').trim();
+      a = a.replace(/^(?:by|authored\s+by|for):\s*/i, '').replace(/^(?:by|authored\s+by|for)\s+/i, '').trim();
+      if (!a || a.toLowerCase() === 'unknown author') return null;
+      const words = a.split(/\s+/).filter(Boolean);
+      if (words.length > 8) return null;
+      if (/^[a-z]/.test(a) && !/^(?:van|von|de|di|da|del|della|la|le)\s+/i.test(a)) return null;
+      if (/[!?;\/\\]/.test(a)) return null;
+      if (/\b(?:contrast|definition|systematically|default|comparison|virtue|means|way|using|applying|proved|showed|found|is|was|were|are)\b/i.test(a)) return null;
+      return a;
+    };
+
+    // 1. YAML frontmatter author
+    const fmBlockMatch = text.match(/^---[\s\S]*?---/);
+    if (fmBlockMatch) {
+      const fmMatch = fmBlockMatch[0].match(/(?:^|\n)[*_]*(?:author|authors):?[*_]*\s*([^\n\r]+)/i);
+      if (fmMatch && fmMatch[1]) {
+        const a = cleanCandidate(fmMatch[1]);
+        if (a) return a;
+      }
+    }
+
+    // Preamble: before first chapter / table of contents, or first 2000 chars
+    const withoutFm = text.replace(/^---[\s\S]*?---\s*/, '');
+    const preamble = withoutFm.split(/(?:---|##\s+Table\s+of\s+Contents|##\s+Copyright|#\s+Chapter|#\s+Introduction|#\s+Prologue)/i)[0] || withoutFm.slice(0, 2000);
+
+    // 2. Explicit By-line in preamble
+    const byMatch = preamble.match(/(?:^|\n)[*_]*(?:by|authored\s+by):?[*_]*\s+([^\n\r*#_]+)/i);
+    if (byMatch && byMatch[1]) {
+      const a = cleanCandidate(byMatch[1]);
+      if (a) return a;
+    }
+
+    // 3. Inspect bold title block entities in preamble
+    const boldEntityMatch =
+      preamble.match(/\*\*([^*\n]+(?:Publishing|Press|Team|Studio|Group|House|Labs|Media))\*\*/i) ||
+      preamble.match(/\*([^*\n]+(?:Publishing|Press|Team|Studio|Group|House|Labs|Media))\*/i);
+    if (boldEntityMatch && boldEntityMatch[1]) {
+      const a = cleanCandidate(boldEntityMatch[1]);
+      if (a) return a;
+    }
+
+    // 4. Published by / Copyright holder entity fallback in preamble / first 3000 chars
+    const copyrightScope = text.slice(0, 3000);
+    const pubMatch = copyrightScope.match(
+      /(?:(?:Published\s+by|Copyright\s*(?:©|\(c\))?\s*(?:\d{4})?[,\s]*(?:by\s+)?)\s+([A-Z][A-Za-z0-9&'\s]+(?:Publishing|Press|Media|Team)))/i
+    );
+    if (pubMatch && pubMatch[1]) {
+      const a = cleanCandidate(pubMatch[1]);
+      if (a) return a;
+    }
+
+    return null;
   }
 
   /**
@@ -517,9 +599,12 @@ OUTPUT:`;
     }
 
     // 6. Authors
+    const fallbackAuthor = this.extractTitlePageAuthor(text);
     const authors =
       book?.author && book.author !== 'Unknown Author'
         ? [book.author]
+        : fallbackAuthor
+        ? [fallbackAuthor]
         : [];
 
     return {
@@ -541,7 +626,13 @@ OUTPUT:`;
 
 const instance = new BookBibliographer();
 instance.validatePublisher = instance.validatePublisher.bind(instance);
+instance.extractTitlePageAuthor = instance.extractTitlePageAuthor.bind(instance);
+instance.heuristicFallback = instance.heuristicFallback.bind(instance);
+instance.normalizeBibliographic = instance.normalizeBibliographic.bind(instance);
 module.exports = instance;
 module.exports.BookBibliographer = BookBibliographer;
 module.exports.validatePublisher = instance.validatePublisher;
+module.exports.extractTitlePageAuthor = instance.extractTitlePageAuthor;
+module.exports.heuristicFallback = instance.heuristicFallback;
+module.exports.normalizeBibliographic = instance.normalizeBibliographic;
 

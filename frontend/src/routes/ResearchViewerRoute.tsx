@@ -279,6 +279,8 @@ export default function ResearchViewerRoute() {
   };
 
   const [activeChapterId, setActiveChapterId] = React.useState<string | null>(null);
+  const activeChapterIdRef = React.useRef<string | null>(null);
+  activeChapterIdRef.current = activeChapterId;
 
   // 5.8.0h.1: real canonical block IDs (blk-...) collected from every
   // matching chunk's canonical_json. Empty array = no highlight.
@@ -329,7 +331,7 @@ export default function ResearchViewerRoute() {
 
         if (valid.length === 0) {
           setHighlightBlockIds([]);
-          if (chapters.length > 0 && !activeChapterId) {
+          if (chapters.length > 0 && !activeChapterIdRef.current) {
             setActiveChapterId(chapters[0].id);
           }
           return;
@@ -340,11 +342,11 @@ export default function ResearchViewerRoute() {
 
         if (firstChapterId) {
           setActiveChapterId(firstChapterId);
-        } else if (chapters.length > 0 && !activeChapterId) {
+        } else if (chapters.length > 0 && !activeChapterIdRef.current) {
           setActiveChapterId(chapters[0].id);
         }
 
-        const targetChapter: string | null = firstChapterId ?? activeChapterId;
+        const targetChapter: string | null = firstChapterId ?? activeChapterIdRef.current;
 
         // Collect block IDs from every valid chunk belonging to the target
         // chapter. Chunks without a canonical_json contribute nothing.
@@ -366,7 +368,7 @@ export default function ResearchViewerRoute() {
       .catch(() => {
         if (!isMounted) return;
         setHighlightBlockIds([]);
-        if (chapters.length > 0 && !activeChapterId) {
+        if (chapters.length > 0 && !activeChapterIdRef.current) {
           setActiveChapterId(chapters[0].id);
         }
       });
@@ -374,7 +376,7 @@ export default function ResearchViewerRoute() {
     return () => {
       isMounted = false;
     };
-  }, [highlightParam, chapters, activeChapterId]);
+  }, [highlightParam, chapters]);
 
   const handleReturn = useCallback(() => {
     navigate(returnTo);

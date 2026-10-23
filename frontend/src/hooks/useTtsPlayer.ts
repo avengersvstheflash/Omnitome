@@ -37,6 +37,12 @@ interface AudioData {
   durationMs: number;
 }
 
+function isAbortError(err: any): boolean {
+  if (!err) return false;
+  if (err.name === 'AbortError') return true;
+  return typeof err.message === 'string' && err.message.toLowerCase().includes('aborted');
+}
+
 function loadTtsPref(
   bookId: string,
   fallbackVoice = 'af_heart',
@@ -467,7 +473,7 @@ export function useTtsPlayer(
             }
           })
           .catch((err) => {
-            if (session !== sessionRef.current || err?.name === 'AbortError') return;
+            if (session !== sessionRef.current || isAbortError(err)) return;
             if (err?.code === 'UNSUPPORTED_LANGUAGE') {
               console.warn('[useTtsPlayer] Lookahead nextIdx is unsupported language:', nextIdx);
             }
@@ -478,7 +484,7 @@ export function useTtsPlayer(
       const nextNextIdx = currentIdx + 2;
       if (nextNextIdx < sents.length) {
         fetchSentenceAudio(nextNextIdx, session).catch((err) => {
-          if (session !== sessionRef.current || err?.name === 'AbortError') return;
+          if (session !== sessionRef.current || isAbortError(err)) return;
         });
       }
     },
@@ -743,7 +749,7 @@ export function useTtsPlayer(
         // 2. Prefetch k+1 into inactive deck and k+2 into cache
         triggerLookahead(targetIndex, inactiveDeckId, session);
       } catch (err: any) {
-        if (session !== sessionRef.current || err?.name === 'AbortError') return;
+        if (session !== sessionRef.current || isAbortError(err)) return;
         console.error('[useTtsPlayer] Synthesis error at index', targetIndex, err);
 
         if (err?.code === 'MODEL_NOT_INSTALLED') {
