@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Sparkles,
   History,
@@ -9,6 +9,18 @@ import {
 } from 'lucide-react';
 import { STARTER_ARCHETYPES, ArchetypeBook } from './types';
 import { useSoundStore } from '../../store/useSoundStore';
+import { apiUrl } from '../../api/client';
+import { queryClient } from '../../api/queryClient';
+import { useImportQueueStore } from '../../store/useImportQueueStore';
+
+const STARTER_MD_FILES = [
+  '/samples/md/the_curious_world_of_cats.md',
+  '/samples/md/the_art_and_science_of_reading.md',
+  '/samples/md/the_asterion_expedition.md',
+  '/samples/md/machine_learning_field_notes.md',
+  '/samples/md/The_Making_of_Omnitome.md',
+  '/samples/md/The_Omnitome_Field_Guide.md',
+];
 
 interface StepStarterPackProps {
   status: 'idle' | 'installing' | 'installed' | 'skipped';
@@ -24,43 +36,105 @@ export const StepStarterPack: React.FC<StepStarterPackProps> = ({
   setProgress,
 }) => {
   const playSound = useSoundStore((s) => s.playSound);
-  const [progressLabel, setProgressLabel] = useState<string>('Initializing archive unpacker...');
+  const [progressLabel, setProgressLabel] = useState<string>('Processing in background...');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isInstallingRef = useRef(false);
 
-  useEffect(() => {
-    if (status !== 'installing') return;
-
-    let current = 0;
-    const interval = setInterval(() => {
-      current += 6;
-      if (current < 35) {
-        setProgressLabel('Extracting "The Synthetica Codex: Volume I"...');
-      } else if (current < 70) {
-        setProgressLabel('Reconstructing "Chronicles of the Iron Vault" folios...');
-      } else if (current < 95) {
-        setProgressLabel('Compiling "Neural Graph Traversal" equations & schemas...');
-      } else {
-        setProgressLabel('Indexing synthetic library dossiers...');
-      }
-
-      if (current >= 100) {
-        current = 100;
-        clearInterval(interval);
-        setProgress(100);
-        setStatus('installed');
-        playSound('operation.success');
-      } else {
-        setProgress(current);
-      }
-    }, 120);
-
-    return () => clearInterval(interval);
-  }, [status, setProgress, setStatus, playSound]);
-
-  const handleInstallClick = () => {
+  const handleInstallStarterPack = async () => {
+    if (isInstallingRef.current) return;
+    isInstallingRef.current = true;
+    setErrorMessage(null);
     playSound('ui.button.primary');
     setStatus('installing');
     setProgress(0);
+    setProgressLabel('Processing in background...');
+
+    try {
+      for (let i = 0; i < STARTER_MD_FILES.length; i++) {
+        const url = STARTER_MD_FILES[i];
+        const filename = url.split('/').pop() || `book_${i + 1}.md`;
+        setProgressLabel(`Processing in background... (${i + 1}/${STARTER_MD_FILES.length})`);
+
+        const fileRes = await fetch(url);
+        if (!fileRes.ok) {
+          throw new Error(`Failed to fetch ${url} (${fileRes.status})`);
+        }
+        const blob = await fileRes.blob();
+        const file = new File([blob], filename, { type: 'text/markdown' });
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('files', file);
+        formData.append('title', filename.replace(/\.md$/i, '').replace(/[_-]/g, ' '));
+        formData.append('replace', 'true');
+        formData.append('contentType', 'novel');
+
+        // Omnitome backend import:
+        // Try POST /api/books first per task specification.
+        // If not ok (e.g. route without multipart parsing), fallback to the background queue
+        // endpoint (/api/import/queue/files) or synchronous import (/api/books/import).
+        let importRes: Response;
+        try {
+          importRes = await fetch(apiUrl('/api/books'), {
+            method: 'POST',
+            body: formData,
+          });
+        } catch {
+          importRes = { ok: false, status: 500 } as Response;
+        }
+
+        if (!importRes.ok) {
+          try {
+            importRes = await fetch(apiUrl('/api/import/queue/files'), {
+              method: 'POST',
+              body: formData,
+            });
+          } catch {
+            importRes = { ok: false, status: 500 } as Response;
+          }
+        }
+
+        if (!importRes.ok && importRes.status !== 409) {
+          try {
+            importRes = await fetch(apiUrl('/api/books/import'), {
+              method: 'POST',
+              body: formData,
+            });
+          } catch {
+            importRes = { ok: false, status: 500 } as Response;
+          }
+        }
+
+        if (!importRes.ok && importRes.status !== 409) {
+          throw new Error(`Import failed for ${filename} (${importRes.status})`);
+        }
+
+        setProgress(Math.round(((i + 1) / STARTER_MD_FILES.length) * 100));
+      }
+
+      setProgress(100);
+      setStatus('installed');
+      playSound('operation.success');
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      void useImportQueueStore.getState().fetchQueue();
+    } catch (err: unknown) {
+      console.error('[StarterPack] Error installing starter pack:', err);
+      setStatus('idle');
+      setProgress(0);
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Failed to install starter library. Please try again.'
+      );
+      playSound('ui.button.secondary');
+    } finally {
+      isInstallingRef.current = false;
+    }
   };
+
+  useEffect(() => {
+    if (status === 'installing' && !isInstallingRef.current) {
+      void handleInstallStarterPack();
+    }
+  }, [status]);
 
   const renderIcon = (name: ArchetypeBook['iconName']) => {
     switch (name) {
@@ -136,13 +210,18 @@ export const StepStarterPack: React.FC<StepStarterPackProps> = ({
       <div className="mt-4 pt-3 border-t border-line/40 flex flex-col items-center gap-2">
         {status === 'idle' && (
           <div className="flex flex-col items-center gap-2">
+            {errorMessage && (
+              <div className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-xl max-w-md text-center">
+                {errorMessage}
+              </div>
+            )}
             <button
               type="button"
-              onClick={handleInstallClick}
+              onClick={handleInstallStarterPack}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-accent-ink font-medium text-xs sm:text-sm shadow-md shadow-accent/20 hover:opacity-95 active:scale-[0.98] transition-all"
             >
               <Download className="w-4 h-4" />
-              <span>Install Starter Library (3 Books)</span>
+              <span>{errorMessage ? 'Retry Starter Library Installation' : 'Install Starter Library'}</span>
             </button>
             <button
               type="button"
@@ -162,7 +241,7 @@ export const StepStarterPack: React.FC<StepStarterPackProps> = ({
             <span className="text-xs text-ink-muted">Starting with clean, empty library.</span>
             <button
               type="button"
-              onClick={handleInstallClick}
+              onClick={handleInstallStarterPack}
               className="text-xs text-accent underline hover:opacity-80 font-medium"
             >
               Install starter pack anyway
