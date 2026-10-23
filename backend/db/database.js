@@ -920,7 +920,6 @@ function initSchema(db) {
   } catch {}
 
   backfillBookLifecycles(db);
-  seedDefaultBookIfEmpty(db);
 }
 
 function resetAndSeedDatabase(db) {
@@ -950,13 +949,6 @@ function resetAndSeedDatabase(db) {
   })();
 
   return { success: true, message: 'Database reset and seeded successfully' };
-}
-
-function seedDefaultBookIfEmpty(db) {
-  const count = db.prepare('SELECT COUNT(*) as count FROM books').get().count;
-  if (count === 0) {
-    seedSampleBooks(db);
-  }
 }
 
 function seedSampleBooks(db) {

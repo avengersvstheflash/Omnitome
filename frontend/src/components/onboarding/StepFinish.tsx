@@ -35,7 +35,7 @@ export const StepFinish: React.FC<StepFinishProps> = ({
 
   const getLibrarySummary = () => {
     if (starterPackStatus === 'installed') {
-      return '3 Synthetic Archive books installed';
+      return '6 Synthetic Archive books installed';
     }
     return 'Clean initial library';
   };

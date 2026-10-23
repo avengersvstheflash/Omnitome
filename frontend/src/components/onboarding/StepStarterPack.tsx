@@ -6,6 +6,9 @@ import {
   Download,
   CheckCircle2,
   BookOpen,
+  Cat,
+  Compass,
+  Brain,
 } from 'lucide-react';
 import { STARTER_ARCHETYPES, ArchetypeBook } from './types';
 import { useSoundStore } from '../../store/useSoundStore';
@@ -21,6 +24,33 @@ const STARTER_MD_FILES = [
   '/samples/md/The_Making_of_Omnitome.md',
   '/samples/md/The_Omnitome_Field_Guide.md',
 ];
+
+const STARTER_BOOKS_METADATA: Record<string, { title: string; contentType: string }> = {
+  '/samples/md/the_curious_world_of_cats.md': {
+    title: 'The Curious World of Cats',
+    contentType: 'novel',
+  },
+  '/samples/md/the_art_and_science_of_reading.md': {
+    title: 'The Art and Science of Reading',
+    contentType: 'novel',
+  },
+  '/samples/md/the_asterion_expedition.md': {
+    title: 'The Asterion Expedition',
+    contentType: 'novel',
+  },
+  '/samples/md/machine_learning_field_notes.md': {
+    title: 'Machine Learning Field Notes',
+    contentType: 'textbook',
+  },
+  '/samples/md/The_Making_of_Omnitome.md': {
+    title: 'The Making of Omnitome',
+    contentType: 'novel',
+  },
+  '/samples/md/The_Omnitome_Field_Guide.md': {
+    title: 'The Omnitome Field Guide',
+    contentType: 'novel',
+  },
+};
 
 interface StepStarterPackProps {
   status: 'idle' | 'installing' | 'installed' | 'skipped';
@@ -62,12 +92,17 @@ export const StepStarterPack: React.FC<StepStarterPackProps> = ({
         const blob = await fileRes.blob();
         const file = new File([blob], filename, { type: 'text/markdown' });
 
+        const meta = STARTER_BOOKS_METADATA[url] || {
+          title: filename.replace(/\.md$/i, '').replace(/[_-]/g, ' '),
+          contentType: 'novel',
+        };
+
         const formData = new FormData();
         formData.append('file', file);
         formData.append('files', file);
-        formData.append('title', filename.replace(/\.md$/i, '').replace(/[_-]/g, ' '));
+        formData.append('title', meta.title);
         formData.append('replace', 'true');
-        formData.append('contentType', 'novel');
+        formData.append('contentType', meta.contentType);
 
         // Omnitome backend import:
         // Try POST /api/books first per task specification.
@@ -143,7 +178,15 @@ export const StepStarterPack: React.FC<StepStarterPackProps> = ({
       case 'history':
         return <History className="w-4 h-4 text-amber-400" />;
       case 'cpu':
-        return <Cpu className="w-4 h-4 text-purple-400" />;
+        return <Cpu className="w-4 h-4 text-indigo-400" />;
+      case 'cat':
+        return <Cat className="w-4 h-4 text-amber-400" />;
+      case 'book':
+        return <BookOpen className="w-4 h-4 text-emerald-400" />;
+      case 'compass':
+        return <Compass className="w-4 h-4 text-cyan-400" />;
+      case 'brain':
+        return <Brain className="w-4 h-4 text-purple-400" />;
       default:
         return <BookOpen className="w-4 h-4 text-accent" />;
     }
@@ -152,24 +195,24 @@ export const StepStarterPack: React.FC<StepStarterPackProps> = ({
   return (
     <div className="flex flex-col h-full py-1">
       {/* Header */}
-      <div className="space-y-1.5 text-center mb-4">
+      <div className="space-y-1 text-center mb-3">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-ink font-display">
           Install the Synthetic Archive
         </h2>
-        <p className="text-xs sm:text-sm text-ink-muted max-w-md mx-auto">
-          Explore Omnitome immediately with three pre-synthesized archetype books
-          demonstrating text restoration, formatting, and analysis.
+        <p className="text-xs sm:text-sm text-ink-muted max-w-lg mx-auto">
+          Explore Omnitome immediately with our definitive six-book Synthetic Archive
+          demonstrating neural reading, loss-bounded compression, and on-device synthesis.
         </p>
       </div>
 
-      {/* 3 Archetype Preview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-auto">
+      {/* 6 Archive Preview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 my-auto max-h-[300px] overflow-y-auto pr-1">
         {STARTER_ARCHETYPES.map((book) => (
           <div
             key={book.id}
-            className="flex flex-col justify-between p-3.5 rounded-xl border border-line/60 bg-[rgb(var(--surface)/0.50)] text-left hover:border-line transition-all duration-200"
+            className="flex flex-col justify-between p-3 rounded-xl border border-line/60 bg-[rgb(var(--surface)/0.50)] text-left hover:border-line transition-all duration-200"
           >
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span
                   className={`text-[9px] font-mono font-semibold uppercase px-2 py-0.5 rounded-md border ${book.badgeColor}`}
@@ -183,16 +226,16 @@ export const StepStarterPack: React.FC<StepStarterPackProps> = ({
                 <h4 className="text-xs font-semibold text-ink line-clamp-1 font-display">
                   {book.title}
                 </h4>
-                <p className="text-[10px] text-ink-muted">{book.subtitle}</p>
+                <p className="text-[10px] text-ink-muted line-clamp-1">{book.subtitle}</p>
               </div>
 
-              <p className="text-[11px] text-ink-muted leading-relaxed line-clamp-3">
+              <p className="text-[11px] text-ink-muted leading-relaxed line-clamp-2">
                 {book.description}
               </p>
             </div>
 
             {/* Feature Pills */}
-            <div className="pt-3 border-t border-line/40 flex flex-wrap gap-1 mt-3">
+            <div className="pt-2 border-t border-line/40 flex flex-wrap gap-1 mt-2">
               {book.features.map((f, i) => (
                 <span
                   key={i}
