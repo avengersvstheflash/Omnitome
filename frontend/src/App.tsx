@@ -148,7 +148,6 @@ export default function App() {
 
   useEffect(() => {
     if (isTauri && !nodePort) return;
-    console.log('[App] Calling fetchStatus()...');
     fetchStatus();
   }, [fetchStatus, isTauri, nodePort]);
 

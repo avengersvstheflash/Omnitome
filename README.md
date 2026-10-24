@@ -10,8 +10,8 @@
 
 <p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0" /></a>
-  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform" />
-  <img src="https://img.shields.io/badge/Status-v1.0.2%20Stable-blue" alt="Status" />
+  <img src="https://img.shields.io/badge/Platform-Windows%20(Active)%20%7C%20macOS%20%2F%20Linux%20(Untested)-lightgrey" alt="Platform" />
+  <img src="https://img.shields.io/badge/Status-v1.1.0%20Stable-blue" alt="Status" />
   <img src="https://img.shields.io/badge/Tests-60%20Suites%20%2B%2017%20Rust%20%2B%20Corpus-3fb950" alt="Tests" />
   <img src="https://img.shields.io/badge/Tauri-v2-FFC131?logo=tauri&logoColor=black" alt="Tauri v2" />
   <img src="https://img.shields.io/badge/Node.js-22%20LTS-339933?logo=node.js&logoColor=white" alt="Node.js" />
@@ -47,7 +47,7 @@ At the heart of Omnitome is the **Two-Representation Invariant**:
 ## ✨ Core Features
 
 - 📌 **Loss-Bounded Provenance & Grounding:** Interactive sentence-level citations link every compressed claim to its exact source paragraph in the original text.
-- 🔒 **100% Local-First & Private:** Run entirely offline with local LLMs (Ollama) and local embeddings. Zero cloud tracking, zero data egress.
+- 🔒 **100% Local-First & Private:** Run entirely offline with local LLMs (Ollama, LM Studio) and local embeddings with zero cloud tracking and zero data egress when running local models. When optionally paired with OpenRouter or cloud providers for synthesis, document text is sent directly and exclusively to your chosen provider.
 - ⚡ **Hardware-Accelerated Vectorization:** PyTorch FP16 CUDA sidecar provides sub-second 16-chunk batch embeddings and input-calibrated cross-encoder reranking.
 - 📚 **Universal Multi-Format Ingestion:** First-class ingestion for PDF (layout-aware & scanned OCR), EPUB, DOCX, RTF, Markdown, web URLs, and plain text with Tier 1+2 statistical charset detection.
 - 🎙️ **Local Neural Voice (Kokoro-82M):** High-fidelity offline voice narration with gapless dual-deck playback, chapter title narration, real-time sentence highlighting, and podcast auto-advance mode.
@@ -113,7 +113,8 @@ Omnitome is engineered as a coordinated multi-process desktop application:
 | **S14 — Installer** | ✅ Complete | NSIS installer, 7z sidecar extraction, animated splash screen & dynamic path resolution |
 | **v1.0.1 Patch** | ✅ Complete | Kokoro/misaki spaCy & espeak offline bundling, F11 fullscreen, batch delete, custom scrollbars |
 | **v1.0.2 Stable** | ✅ Complete | Fully functional Windows NSIS installer, CUDA/cuDNN PyInstaller bundle, shared AudioContext TTS, 90-stem procedural sound system, UX & onboarding polish |
-| **v1.1 Release** | 📋 Planned | Welcome Wizard polish, synthetic archive generation, code signing & store distribution |
+| **v1.1 Release** | ✅ Complete | Welcome Wizard (5-step onboarding), Synthetic Archive starter pack, theme catalog, sound system, Oct 24 bug bash polish |
+| **v1.2 Release** | 📋 Planned | F55 Domain-Aware Structure Engine, cross-platform validation, code signing & store distribution |
 
 👉 *Track strategic milestones and deep architectural context in [docs/ROADMAP_2026-09.md](./docs/ROADMAP_2026-09.md).*
 
@@ -123,7 +124,7 @@ Omnitome is engineered as a coordinated multi-process desktop application:
 
 ### Windows Desktop Application (Pre-built)
 
-Omnitome is packaged as a standalone Windows installer (`Omnitome_1.0.2_x64-setup.exe` generated via Tauri v2 and NSIS) with bundled Python 3.10 runtime, PyTorch FP16 CUDA/cuDNN binaries, Kokoro TTS, and Node orchestrator. It extracts to `%LOCALAPPDATA%\Omnitome` and requires zero manual environment configuration.
+Omnitome is packaged as a standalone Windows installer (`Omnitome_1.1.0_x64-setup.exe` generated via Tauri v2 and NSIS) with bundled Python 3.10 runtime, PyTorch FP16 CUDA/cuDNN binaries, Kokoro TTS, and Node orchestrator. It extracts to `%LOCALAPPDATA%\Omnitome` and requires zero manual environment configuration. Windows is the verified active target platform (macOS and Linux support is planned and currently untested).
 
 ### Prerequisites (Development from Source)
 - **Node.js 22 LTS** (see `.nvmrc`)
@@ -134,8 +135,8 @@ Omnitome is packaged as a standalone Windows installer (`Omnitome_1.0.2_x64-setu
 
 ```bash
 # 1. Clone repository & install Node dependencies
-git clone https://github.com/avengersvstheflash/Smart-Reader.git
-cd Smart-Reader
+git clone https://github.com/avengersvstheflash/Omnitome.git
+cd Omnitome
 npm install
 cp .env.example .env
 

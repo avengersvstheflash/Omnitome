@@ -82,7 +82,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     name: 'Smart Reader API',
-    version: '1.0.0',
+    version: '1.1.0',
     aiProvider: config.AI_PROVIDER,
   });
 });

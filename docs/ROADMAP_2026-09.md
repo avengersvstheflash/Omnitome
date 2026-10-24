@@ -8,14 +8,14 @@
 |------|--------|
 | v0.3b.1.9 — Document Structure Engine | ✅ Frozen |
 | v0.4.4 — Progressive Smart Chapter Synthesis | ✅ Tagged, pushed |
-| OpenRouter + DeepSeek V4 Flash (text gen) | ✅ Live |
-| Node 22 LTS | ✅ Pinned |
-| Test suite | ✅ 12/12 in ~2 min |
-| React migration | ⏳ Architecture + blueprint in flight |
-| **BGE-M3 embeddings** | 🔴 **Decided — to build before React UI** |
-| Audio mode | ⏳ Post-React, next multimodal feature |
-| Discussion mode | ⏳ Post-audio |
-| Story mode | ⏳ Build 7+ |
+| BGE-M3 embeddings (1024d) + Reranker v2 | ✅ Live (FP16 CUDA) |
+| React Desktop UI & Multi-theme engine | ✅ Live (5 themes, 90 stems) |
+| Local Kokoro-82M TTS & Audio Engine | ✅ Live (Gapless dual-deck) |
+| v1.0.0 – v1.0.2 Desktop Packaging | ✅ Shipped (NSIS + 7z sidecar) |
+| **v1.1.0 — Welcome Wizard & Synthetic Archive** | ✅ **Shipped (Oct 24, 2026)** |
+| **F55 — Domain-Aware Structure Engine** | 📋 **Next (v1.2+)** |
+| Discussion mode | ⏳ Post-F55 |
+| Story mode | ⏳ Build 9+ |
 
 ---
 
@@ -358,6 +358,16 @@ That's more process maturity than most mid-level engineers show publicly. **The 
 - Layout renderer (manga/webtoon scroll + storybook spread)
 - Provenance chain extension
 - Character consistency debugging (the hard part)
+
+### Build 8 (v1.2+) — F55 Domain-Aware Structure Engine
+**Time:** 4-6 evenings
+- **Content-Adaptive Structure Extraction:** Intelligent table-of-contents extraction tuned for specific document classes:
+  - **Academic Papers:** Identification of Abstract, Methodology, Results, Discussion, Citations, and KaTeX mathematical notation boundaries.
+  - **Legal Documents:** Extraction of Statutes, Holdings, Precedents, Procedural History, and numbered clause hierarchies.
+  - **Technical Manuals & Specs:** Structural detection of API definitions, Parameter tables, Code blocks, and Architecture blueprints.
+  - **Literary Prose:** Detection of Epigraphs, Parts, Volumes, Prologues, and narrative scene breaks.
+- **Header & Footer Disambiguation:** Layout geometry filters preventing running headers/footers from fragmenting chapter spines.
+- **Dynamic Chunker Integration:** Aligns semantic chunk boundaries with domain structural nodes to optimize BGE-M3 vector density and Smart Chapter synthesis bounds.
 
 ---
 

@@ -126,16 +126,28 @@ Omnitome's interface follows three strict aesthetic laws:
 - **Universal Full-Screen & Windowed Modes:** Toggle true distraction-free reading with a global <kbd>F11</kbd> hotkey or top-bar UI buttons, complete with automatic two-way state synchronization on <kbd>Esc</kbd>.
 - **Theme-Reactive Custom Scrollbars:** Elegant 10px WebKit scrollbars utilizing active theme `--accent` color variables with translucent tracks, rounded padding-box thumbs, and smooth hover feedback.
 - **Library Batch Management:** Multi-select checkboxes for bulk book deletion with cascading SQLite foreign-key removal and automatic queue synchronization.
-- **Responsive 48px Import Dock:** Persistent right-side collapsible dock displaying active import queues and stage checklists without obstructing reading flow.
+- **Auto-Minimizing Import Drawer with Hover Immunity:** Persistent bottom-right drawer (`PersistentImportWidget.tsx`) that automatically expands during batch ingestion to show monotonic stage progress. Upon task completion, it begins a 3-second auto-collapse countdown into a compact pill, equipped with hover immunity (`onMouseEnter` pauses timer, `onMouseLeave` resumes) to prevent accidental collapse during inspection.
 
 ---
 
-## 🚀 First-Run Onboarding & Ingestion Hygiene
+## 🚀 First-Run Onboarding, Welcome Wizard & Ingestion Hygiene
 
-Omnitome v1.0.2 introduces streamlined onboarding workflows and robust library maintenance tools to ensure users never face empty-state confusion or corrupted data catalogs:
+Omnitome v1.1 introduces a comprehensive, multi-step onboarding wizard, the Synthetic Archive starter library, and robust catalog maintenance tools:
 
-- **Intelligent First-Run AI Interceptor:** On initial boot, if neither a cloud API key (OpenRouter) nor a local LLM endpoint (Ollama) is detected, Omnitome automatically routes the reader to `/settings?onboarding=true` with a focused configuration banner.
-- **Non-Blocking Offline Exploration:** Users who wish to read without configuring an AI can click the prominent *"Skip for now (Explore offline)"* button. The application sets an onboarding bypass flag, granting immediate access to the Library to inspect verbatim documents and existing structured extracts.
+- **v1.1 Welcome Wizard (5-Step Onboarding):**
+  - *Step 1 — Welcome:* Introduces Omnitome's core philosophy ("Loss-bounded semantic compression, not summarization; Navigable provenance").
+  - *Step 2 — Theme Selection:* Live palette switcher across all 5 themes (`omni`, `sakura`, `spring`, `coffee`, `cyberpunk`) with instant auditory theme motif playback.
+  - *Step 3 — Connect AI:* Flexible connection to cloud inference via OpenRouter (with custom API key and model selection defaulting to `deepseek/deepseek-v4-flash`) or local inference via Ollama (`http://127.0.0.1:11434/v1`) and LM Studio.
+  - *Step 4 — Starter Pack:* 1-click batch installation of 6 pre-formatted Synthetic Archive titles.
+  - *Step 5 — Ready to Read:* Sound-confirmed transition into the populated Library catalog.
+- **Synthetic Archive Starter Pack (6 Curated Volumes):**
+  - Bundles 6 classic works pre-formatted for Omnitome's provenance engine: Marcus Aurelius' *Meditations*, Sun Tzu's *The Art of War*, Mary Shelley's *Frankenstein*, F. Scott Fitzgerald's *The Great Gatsby*, Loyd L. Fueston, Jr.'s *The Mind's Eye*, and Friedrich Nietzsche's *Beyond Good and Evil*.
+  - **4-Layer Attribution Defense:** Guarantees 100% correct metadata attribution even across atypical PDF titles:
+    1. *Parser Info Extraction:* Reads embedded PDF Info dictionary fields (`author`, `title`).
+    2. *Bibliographer Heuristics:* Comprehensive regex parser supporting middle initials and generational suffixes.
+    3. *Database Self-Healing:* Automatic startup and migration backfill query in SQLite repairing any mismatched historical records.
+    4. *Client Fallback Attributor:* Explicit metadata forwarding during onboarding batch injection.
+- **Non-Blocking Offline Exploration:** Users who wish to read without configuring an AI can click the prominent *"Skip for now (Explore offline)"* button, granting immediate access to the Library to inspect verbatim documents and existing structured extracts.
 - **Cryptographic SHA-256 Deduplication:** When importing documents or pasting raw text, the ingestion pipeline computes a SHA-256 digest of the content. If an identical document already exists in the SQLite repository, Omnitome prompts the user with an explicit decision modal: replace the existing record or abort the import.
 - **Live Chapter Filtering & Search:** A responsive search input in `BookDetailsRoute` allows readers to instantly filter chapter lists by title or index in real time, essential for navigating large multi-volume works (e.g. 500K-word texts with 30+ chapters).
 - **One-Click Re-Synthesis Queueing:** If a chapter synthesis was interrupted or fell back to heuristic compression due to upstream LLM timeouts, a prominent *"Re-synthesize all"* button resets generated chapters and re-enqueues them with fresh vector context.
@@ -145,7 +157,7 @@ Omnitome v1.0.2 introduces streamlined onboarding workflows and robust library m
 
 ## 🔒 Privacy, Local-First Storage & Cost Accounting
 
-- **Zero Cloud Dependence:** Works entirely offline with local LLM runtimes (Ollama, LM Studio) and local PyTorch sidecars.
+- **Zero Cloud Dependence (Local Mode):** Works entirely offline with local LLM runtimes (Ollama, LM Studio) and local PyTorch sidecars. Zero data leaves your machine. When cloud synthesis is configured via OpenRouter, document chunks are sent exclusively to your selected endpoint.
 - **SQLite WAL Architecture:** Complete application state resides in a single, high-performance SQLite database (`storage/data.db`) operating in Write-Ahead Log (WAL) mode.
 - **Accountant-Model Cost Ledger:** Tracks all token consumption. When using local LLM models, displays actual cost as **$0.00** while showing estimated cloud cost savings.
 

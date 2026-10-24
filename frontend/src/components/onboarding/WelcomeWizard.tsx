@@ -245,7 +245,7 @@ export const WelcomeWizard: React.FC<OnboardingWizardProps> = ({ onClose }) => {
                   Omnitome
                 </span>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 font-medium">
-                  v1.1
+                  v1.1.0
                 </span>
               </div>
             </div>

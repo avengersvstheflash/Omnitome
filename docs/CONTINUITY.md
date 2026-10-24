@@ -10,8 +10,9 @@
 ## Where the project is right now
 
 **Repo:** https://github.com/avengersvstheflash/Omnitome
+**Release:** `v1.1.0 Stable`
 **HEAD:** (check with `git log -1 --oneline`)
-**Test suite:** 60/60 unit suites + 1 network suite + 1 corpus release gate (10 fixtures) + 17 Tauri Cargo tests green. Verify with `npm test` and `cargo test --manifest-path src-tauri/Cargo.toml`.
+**Test suite:** 60/60 unit suites + 1 network suite + 1 corpus release gate (10 fixtures) + 17 Tauri Cargo tests green + 90 procedural audio stems verified. Verify with `npm test`, `cargo test --manifest-path src-tauri/Cargo.toml`, and `npm run sounds:test`.
 **Vision:** Loss-bounded semantic compression engine (~7:1 ratio), not a summarizer. See `PRODUCT_VISION.md`.
 
 **Working now:**
@@ -22,16 +23,17 @@
 - Self-healing library lifecycle reconciliation guaranteeing imported books with synthesized smart chapters immediately populate the Library catalog
 - Tauri v2 native desktop shell (Rust supervisor, child process tree management, dynamic port allocation, 3D animated CSS splash screen, and 7z LZMA extraction to `%LOCALAPPDATA%\Omnitome\sidecar\`)
 - 5 custom visual themes (Omni, Sakura, Spring, Coffee, Cyberpunk), procedural SVG cover generation, and native KaTeX math typesetting
+- 90-stem procedural Web Audio UI sound engine across all 5 themes with narration ducking
+- 5-step Welcome Wizard with theme auditioning, AI provider setup (OpenRouter / Ollama), and 1-click Synthetic Archive installation
+- 6 curated Synthetic Archive starter books backed by 4-layer author attribution defense
+- Auto-minimizing import drawer with monotonic progress tracking and hover immunity
 
 **Current milestone & immediate focus:**
-- **S14 — Packaging & Desktop Distribution (98% Complete):**
-  - NSIS installer bundling via LZMA 7-Zip (`sidecar.7z`) avoiding 32-bit makensis 2GB limit
-  - Verbatim path prefix sanitization (`strip_windows_verbatim`) resolved for Node v22 `EISDIR: lstat 'C:'`
-  - Offline Kokoro voice loader (`_resolve_voice_path`) and citation-only silence fallback
-- **Next Action Items (see `SESSION_HANDOFF.md` §4):**
-  1. Build full NSIS installer artifact (`.\scripts\build-installers.ps1 -Type Lightweight`)
-  2. Test fresh-machine installation and 7z extraction flow on clean VM
-  3. Validate end-to-end import -> smart chapter synthesis -> offline Kokoro audio playback journey
+- **v1.1.0 Released:** Desktop packaging, Kokoro TTS integration, onboarding wizard, synthetic archive, and bug bash complete.
+- **Next Action Items (v1.2+ Roadmap):**
+  1. **F55 — Domain-Aware Structure Engine:** Content-adaptive TOC extraction for papers, legal briefs, technical docs, and prose.
+  2. **Cross-Platform Packaging (macOS / Linux):** Sidecar recipes for Linux AppImage / deb and macOS Universal binary.
+  3. **Windows Code Signing:** Configure EV certificate for SmartScreen trust.
 
 ## How we work
 
@@ -75,4 +77,4 @@ backward compatibility with existing databases and fixtures.
 
 ---
 
-*End of continuity doc. Updated 2026-10-20.*
+*End of continuity doc. Updated 2026-10-24 for v1.1.0 release.*

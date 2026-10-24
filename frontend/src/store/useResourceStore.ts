@@ -48,7 +48,6 @@ export const useResourceStore = create<ResourceState>((set, get) => ({
     fetchStatusPromise = (async () => {
       try {
         const data = await apiClient<ResourceStatusResponse>('/api/resources/status');
-        console.log('[useResourceStore] Fetched /api/resources/status:', data);
         set({ status: data, isLoading: false, error: null });
         if (data.allInstalled) {
           get().disconnectSSE();
