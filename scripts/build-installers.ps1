@@ -197,7 +197,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Tauri NSIS build failed with exit code $LASTEXITCODE"
 }
 
-$installerExe = Join-Path $rootDir "src-tauri\target\release\bundle\nsis\Omnitome_1.0.0_x64-setup.exe"
+$installerExe = Join-Path $rootDir "src-tauri\target\release\bundle\nsis\Omnitome_1.1.0_x64-setup.exe"
 if (Test-Path $installerExe) {
     $sizeMB = [Math]::Round((Get-Item $installerExe).Length / 1MB, 2)
     Write-Host "Installer created: $installerExe ($sizeMB MB)" -ForegroundColor Green
