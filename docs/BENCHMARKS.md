@@ -141,8 +141,8 @@ The F43 Lifecycle Manager enforces aggressive idle eviction, ensuring the host w
 ## 📊 5. Development Velocity & Historical Milestones
 
 ```text
-Omnitome v1.0 Overall Completion:
-[███████████████████░] 95% (Phase 5.9 Complete — Kokoro TTS & Podcast Mode Closed)
+Omnitome v1.1 Overall Completion:
+[████████████████████] 100% (v1.1.0 Stable — Desktop Packaging, Welcome Wizard, Synthetic Archive & Sound Engine)
 ```
 
 | Subsystem / Milestone | Progress | Status | Key Accomplishments |
@@ -153,12 +153,13 @@ Omnitome v1.0 Overall Completion:
 | **State Coordination (F52)** | `[████████████████████]` 100% | 🟢 COMPLETE | SQLite Schema v3, `book_lifecycle`, 4-way delete semantics, 3-tier reading progress recovery |
 | **Pipeline Reliability (F65–72)** | `[████████████████████]` 100% | 🟢 COMPLETE | Await barrier (Node RAM dropped 14.6 GB → 296 MB), dynamic timeouts (8–60s), backpressure |
 | **Corpus Release Gate (F42)** | `[████████████████████]` 100% | 🟢 COMPLETE | 10 fixtures, 3-class assertion engine (A: invariants, B: tolerance bands, C: bug locks) |
-| **Persistent Queue (F58)** | `[████████████████████]` 100% | 🟢 COMPLETE | SQLite WAL queue worker, live checklist widget, expanded web discovery (arXiv/Gutenberg/IETF) |
+| **Persistent Queue (F58)** | `[████████████████████]` 100% | 🟢 COMPLETE | SQLite WAL queue worker, live checklist widget, auto-minimize drawer with hover immunity |
 | **Theme & Procedural Art** | `[████████████████████]` 100% | 🟢 COMPLETE | 5 complete themes (`omni`, `spring`, `sakura`, `coffee`, `cyberpunk`), procedural book covers & sigils |
-| **UI Surfaces & Polish** | `[████████████████████]` 100% | 🟢 COMPLETE | Polish Batches A–E complete: F78 right-side dock, F82.1 unified split button, F80 stat blocks, F81.1 read time, F79b.1 append |
-| **Kokoro Local TTS** | `[████████████████████]` 100% | 🟢 COMPLETE | Series 3 (Phase 5.9): Kokoro-82M neural TTS, gapless dual-deck player, podcast auto-advance, LRU cache |
-| **Tauri Desktop Packaging** | `[██████████████░░░░░]` 70% | 🚧 **IN PROGRESS** | Series 4: S11 scaffold, S12 supervisor, S13 resource manager complete; S14 installer in progress |
-| **Release & Distribution** | `[░░░░░░░░░░░░░░░░░░░░]` 0% | ⏳ QUEUED | Series 5: Cloudflare Pages + R2 zero-egress distribution |
+| **UI Surfaces & Sound Engine** | `[████████████████████]` 100% | 🟢 COMPLETE | 90-stem procedural UI sound engine, shared AudioContext, F78 right dock, F82.1 split button |
+| **Kokoro Local TTS** | `[████████████████████]` 100% | 🟢 COMPLETE | Kokoro-82M neural TTS, gapless dual-deck player, podcast auto-advance, LRU cache |
+| **Tauri Desktop Packaging** | `[████████████████████]` 100% | 🟢 COMPLETE | Tauri v2 NSIS installer (1.66GB), 7z sidecar extraction, process tree cleanup (`taskkill /F /T`) |
+| **Onboarding & Starter Pack** | `[████████████████████]` 100% | 🟢 COMPLETE | 5-step Welcome Wizard, 6-book Synthetic Archive, 4-layer metadata attribution defense |
+
 
 ---
 
@@ -445,11 +446,21 @@ timeline
 - **Progress:** `[████████████████████]` 100%
 - **Milestones:**
   - **Bulletproof PyInstaller CUDA Bundling (`sidecar.spec`):** Replaced piecemeal dynamic lib collection with `collect_all('torch')` and recursive globbing of all `nvidia/` package DLLs directly into root `_internal`, resolving Kokoro cuDNN engine runtime failures (`cudnn_engines_precompiled64_9.dll`).
-  - **Offline Procedural Sound Engine:** Integrated 90 pre-rendered mathematically synthesized WAV sound stems across 5 themes (Classic, Paper, Terminal, Soft, Mechanical). Generated in <700ms via pure Node DSP (`tools/sound-design/generate-all-sounds.mjs`) with zero runtime synthesis latency.
+  - **Offline Procedural Sound Engine:** Integrated 90 pre-rendered mathematically synthesized WAV sound stems across 5 themes (Classic, Paper, Terminal, Soft, Mechanical). Generated in <700ms via pure Node DSP (`tools/sound-design/generate.mjs`) with zero runtime synthesis latency.
   - **Shared AudioContext Architecture:** Unlocked single global `AudioContext` on first user gesture, unifying UI SFX and Kokoro TTS playback to defeat Chromium / WebView2 autoplay restrictions.
   - **First-Run Onboarding & UX Polish:** Shipped onboarding redirect for unconfigured AI backends, non-blocking offline skip, SHA-256 book deduplication, live chapter search, and prominent dossier deletion.
   - **Verification Gate:** **All 60 regression suites + 1 corpus gate passed clean. Frontend typecheck and build pass clean. Full NSIS Windows installer verified functional end-to-end.**
 - **Commits:** `32e2c56`, `f70656a`, `77c5906`.
+
+#### 🗓️ 2026-10-24 — v1.1.0 Stable: Welcome Wizard, Synthetic Archive & Oct 24 Bug Bash
+- **Progress:** `[████████████████████]` 100%
+- **Milestones:**
+  - **5-Step Onboarding Wizard:** Delivered multi-step first-run experience: Welcome manifesto, theme selection with live auditory playback, AI provider pairing (Ollama / LM Studio / OpenRouter), 1-click Synthetic Archive installation, and library transition.
+  - **Synthetic Archive Starter Pack (6 Volumes):** Pre-formatted classic volumes (*Meditations*, *The Art of War*, *Frankenstein*, *The Great Gatsby*, *The Mind's Eye*, *Beyond Good and Evil*) wired directly into StepStarterPack.
+  - **4-Layer Attribution Defense:** Engineered multi-layer metadata protection for atypical PDF headers: PDF Info dictionary extraction, bibliographer regex with middle initials/suffixes ("Loyd L. Fueston, Jr."), database self-healing backfill, and client fallback attribution.
+  - **Oct 24 Bug Bash All Closed:** Resolved P0 Starter Pack multipart 400 upload, fixed TanStack Query background queue blanking race with monotonic task reconciliation, eliminated Research viewer scroll loop via ref guards, caught TTS DOMException `AbortError` on rapid seek/pause, and added auto-minimizing import drawer with hover immunity.
+  - **Verification Gate:** **All 61 unit test suites + 1 corpus gate passed clean. Frontend typecheck and build pass clean with zero errors. Standalone installer `Omnitome_1.1.0_x64-setup.exe` fully verified.**
+- **Commits:** `dac217a`, `77c5906`, `e25b9e2`, `a7a25e4`, `8a9eab2`, `c1dc70b`, `b31d95f`, `f7fc932`, `6c723a3`, `71280c5`.
 
 ---
 

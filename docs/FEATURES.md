@@ -1,35 +1,50 @@
-# Omnitome Features & Capabilities
+# Omnitome Features & Capabilities Catalog
 
-> Complete catalog of ingestion engines, neural compression contracts, speech synthesis, and visual themes.
+> Technical reference manual for Omnitome's document ingestion engines, semantic compression contracts, neural speech synthesis, procedural acoustics, and visual typography systems.
 
 ---
 
 ## 🎯 Core Philosophy: "Compression, Not Summarization"
 
-Omnitome differentiates itself from conventional AI reading tools through **loss-bounded, provenance-aware semantic compression**. It does not discard complexity or produce generic high-level summaries; it adaptively compresses source text (~7:1 ratio) while preserving arguments, nuances, and technical precision.
+Omnitome differentiates itself fundamentally from conventional generative AI reading tools through **loss-bounded, provenance-aware semantic compression**. Conventional reading tools discard technical arguments and flatten nuance to answer *"what is the gist?"*. Omnitome performs mathematical semantic compression ($\sim 7:1$ target ratio) where every distinct concept, theorem, and factual claim is preserved while redundant connective syntax is condensed.
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        COMPRESSION VS. SUMMARIZATION PARADIGM                          │
+├───────────────────────────────────────────┬────────────────────────────────────────────┤
+│         STANDARD SUMMARIZATION            │         OMNITOME SEMANTIC COMPRESSION      │
+├───────────────────────────────────────────┼────────────────────────────────────────────┤
+│ • Discards technical depth & nuances      │ • Preserves every theorem, argument, step  │
+│ • Invents narrative connective tissue      │ • Retains authorial framing & structure    │
+│ • Unanchored synthetic prose              │ • Clickable, audited sentence provenance   │
+│ • Floating, lossy, unverified text        │ • Loss-bounded range: 250–360 words/unit   │
+└───────────────────────────────────────────┴────────────────────────────────────────────┘
+```
 
 ### The Two-Representation Invariant
 
-Omnitome maintains an architectural split between immutable source material and derived syntheses:
+Omnitome maintains an architectural boundary separating immutable ground truth from derived reading lenses:
 
-| Representation | Placement | Philosophy & Moat |
+| Representation | Placement | Philosophy & Governance |
 | :--- | :--- | :--- |
-| 📄 **Original Reading** | **Research View** | **Immutable Ground Truth.** The document exactly as uploaded. Nothing in the system modifies or truncates it. Governed by **Law 1: *"Source is paper"*** — calm, neutral typography providing authoritative reference. |
-| 🧠 **Omni Reading** | **Library View** | **Derived Reading Lens.** An adaptively synthesized representation (~250–360 words per chapter unit). Governed by **Law 2: *"The lens is tinted"*** and **Law 3: *"Derivation never masquerades as source"*** — every sentence retains deterministic citation backlinks to the source passage. |
+| 📄 **Original Reading** | **Research View** | **Immutable Ground Truth.** The verbatim document exactly as uploaded. Nothing in the system modifies, truncates, or rewrites it. Governed by **Law 1: *"Source is paper"*** — calm, neutral typography providing authoritative reference. |
+| 🧠 **Omni Reading** | **Library View** | **Derived Reading Lens.** An adaptively synthesized representation ($\sim 250–360$ words per chapter unit). Governed by **Law 2: *"The lens is tinted"*** and **Law 3: *"Derivation never masquerades as source"*** — every sentence retains deterministic citation backlinks to the source passage. |
 
 ### Deterministic Provenance & Grounding
-- **Clickable Sentence Citations:** Every claim in an Omni reading links directly to its origin paragraph in the Research dossier.
+
+- **Clickable Sentence-Level Citations:** Every claim in an Omni reading links directly to its origin paragraph in the Research dossier.
 - **Bi-directional Navigation:** Clicking a citation in Omni view instantly jumps the Research view to the corresponding passage, highlighting the exact supporting text.
+- **Visual Defect Indication:** Any sentence synthesized without verified provenance is rendered in `text-ink-muted` with a dotted underline, providing complete transparency.
 - **Source Detached State:** If a heavy source file is purged to conserve disk space, the lightweight Omni reading remains fully intact with an explicit *"Source detached"* status badge.
 - **Self-Healing Lifecycle Reconciliation:** Books completing synthesis automatically sync `in_library = 1` and `lifecycle_state = 'active'`, guaranteeing that imported works with generated smart chapters immediately appear in the Library catalog without manual intervention.
 
 ---
 
-## 📚 Multi-Format Ingestion Engine
+## 📚 Industrial Multi-Format Ingestion Engine
 
-Omnitome features an industrial-grade document ingestion pipeline capable of extracting, normalizing, and structuring complex multi-lingual documents:
+Omnitome features a high-throughput document ingestion pipeline capable of extracting, normalizing, and structuring complex multi-lingual documents:
 
-| Format | Status | Ingestion Mechanism | Example Fixture Tested |
+| Format | Status | Ingestion Mechanism | Benchmark Fixture Tested |
 | :--- | :---: | :--- | :--- |
 | **PDF (Text)** | ✅ | Layout-aware PyMuPDF + automatic table-of-contents detection | Reddi *ML Systems* (508K words, 27 ch) |
 | **PDF (Scanned/OCR)** | ✅ | Sidecar PaddleOCR fallback triggered on zero-character pages | *Boston Art Annual*, Kaggle Dojo |
@@ -42,7 +57,7 @@ Omnitome features an industrial-grade document ingestion pipeline capable of ext
 | **Japanese (Aozora / ShiftJIS)** | ✅ | Tier 2 `jschardet` + `AOZORA_HEADING_REGEX` heading normalizer | *Chijin no Ai* (*痴人の愛*, 201K chars) |
 | **French / European (UTF-8)** | ✅ | UTF-8 fast-path + C1-aware accent normalization rules | *Les Misérables*, *Monsieur Vénus* |
 | **Russian (CP1251 / KOI8-R)** | ✅ | Tier 2 statistical charset detection and Cyrillic block support | Russian classic prose excerpts |
-| **Chinese (GB18030 / Big5)** | ✅ | Tier 2 charset + CJK `countWords` calculation ($words = tokens + chars \times 0.7$) | *Daodejing*, *Reverend Insanity* |
+| **Chinese (GB18030 / Big5)** | ✅ | Tier 2 charset + CJK `countWords` calculation ($W_{\text{eff}} = W_{\text{white}} + \sum 0.7$) | *Daodejing*, *Reverend Insanity* |
 
 ### Tier 1 + Tier 2 Statistical Charset Detection
 - **Tier 1 Fast Path (<0.3 ms):** Probes for UTF-8 Byte Order Marks (BOM) and clean multi-byte sequences. Standard modern documents incur zero statistical overhead.
@@ -55,10 +70,10 @@ Omnitome features an industrial-grade document ingestion pipeline capable of ext
 
 Omnitome processes long-form texts into structured, highly readable reading units through a multi-stage editorial pipeline:
 
-1. **Semantic Chunking:** Text is split into 1,500–2,500 word editorial units with 75-word merge-back thresholds to avoid stranded sentence fragments.
+1. **Semantic Chunking:** Text is split into 1,500–2,500 word editorial units with 75-word merge-back thresholds to avoid stranded sentence fragments, guarded by an 8,000-character ceiling.
 2. **Dense Vectorization (BGE-M3):** Computes 1024-dimensional dense vectors using FP16 CUDA acceleration with sequence-bounded attention (2,048 tokens).
-3. **Cross-Encoder Reranking (BGE Reranker v2):** Refines candidate passages with input-calibrated dynamic timeouts ($8\text{s}$ to $60\text{s}$) to prevent centroid fallbacks on large chapters.
-4. **Range-Contract Synthesis:** Compresses each chapter into an optimal $[250, 360]$ word range (with a strict 500-word ceiling), ensuring consistent pacing across entire volumes.
+3. **Cross-Encoder Reranking (BGE Reranker v2):** Refines candidate passages with input-calibrated dynamic timeouts ($\mathcal{T}_{\text{rerank}} \in [8\text{s}, 60\text{s}]$) to prevent centroid fallbacks on large chapters.
+4. **Range-Contract Synthesis:** Compresses each chapter into an optimal $[250, 360]$ word range (dynamic range $[240, 500]$, hard bounds $[150, 500]$ words), ensuring consistent pacing across entire volumes.
 5. **Dossier Append Pipeline:** Allows appending supplementary materials (web articles, notes, commentary) directly into an existing Research dossier with persistent timeline logging.
 
 ---
@@ -66,6 +81,19 @@ Omnitome processes long-form texts into structured, highly readable reading unit
 ## 🎙️ Local Neural Text-to-Speech (Kokoro-82M)
 
 Omnitome includes an offline neural audio narration system designed for deep, long-form listening:
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        KOKORO-82M NEURAL SPEECH PIPELINE                              │
+├───────────────────┬────────────────────────────────────────────────────────────────────┤
+│ 1. Segmentation   │ Sentence-boundary splitting with citation bracket filtering        │
+│ 2. Text Normalizer│ Strips citation tags ([p12], [4]); emits 250ms synthetic silence   │
+│ 3. Phonemization  │ Local espeakng_loader dictionaries + spaCy en_core_web_sm          │
+│ 4. Neural Engine  │ Kokoro-82M ONNX/PyTorch model (FP16 CUDA with CPU fallback)        │
+│ 5. Dual-Deck Deck │ Native Web Audio AudioBufferSourceNode prefetching next sentence   │
+│ 6. Real-Time Sync │ Sentence highlighting and auto-scroll with manual gesture override │
+└───────────────────┴────────────────────────────────────────────────────────────────────┘
+```
 
 - **100% Offline Synthesis & Frozen Sidecar Bundling:** Powered by Kokoro-82M running locally via PyTorch FP16 CUDA (with transparent CPU fallback). Fully verified in offline isolation (`HF_HUB_OFFLINE=1`). Pre-bundles `espeakng_loader` phoneme dictionaries and `spaCy en_core_web_sm` model assets directly into the PyInstaller binary, eliminating runtime pip or web download dependencies.
 - **Chapter Title Narration:** Intelligently reads and visually highlights chapter titles prior to the first paragraph, maintaining flawless dual-deck audio queue synchronization.
@@ -87,7 +115,7 @@ Omnitome includes an offline neural audio narration system designed for deep, lo
 
 Omnitome features an offline procedural auditory feedback engine designed to provide tactile, acoustic confirmation of interactions without introducing jarring digital noises or network latency:
 
-- **Mathematical DSP Synthesis:** All 90 WAV audio stems are generated via a deterministic Node.js DSP pipeline (`tools/sound-design/generate-all-sounds.mjs`) employing subtractive FM synthesis, biquad resonant filtering, pink/white noise, ADSR envelope shaping, and -3dBFS peak normalization.
+- **Mathematical DSP Synthesis:** All 90 WAV audio stems are generated via a deterministic Node.js DSP pipeline (`tools/sound-design/generate.mjs`) employing subtractive FM synthesis, biquad resonant filtering, pink/white noise, ADSR envelope shaping, and -3dBFS peak normalization.
 - **Five Bespoke Sound Palettes:** Sound designs mirror the application's visual themes:
   - **Classic:** Warm marimba and organic mallet textures calibrated for calm reading.
   - **Paper:** Fibrous page turns, parchment slides, and tactile card deck clicks.
@@ -160,4 +188,3 @@ Omnitome v1.1 introduces a comprehensive, multi-step onboarding wizard, the Synt
 - **Zero Cloud Dependence (Local Mode):** Works entirely offline with local LLM runtimes (Ollama, LM Studio) and local PyTorch sidecars. Zero data leaves your machine. When cloud synthesis is configured via OpenRouter, document chunks are sent exclusively to your selected endpoint.
 - **SQLite WAL Architecture:** Complete application state resides in a single, high-performance SQLite database (`storage/data.db`) operating in Write-Ahead Log (WAL) mode.
 - **Accountant-Model Cost Ledger:** Tracks all token consumption. When using local LLM models, displays actual cost as **$0.00** while showing estimated cloud cost savings.
-
