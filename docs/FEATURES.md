@@ -6,7 +6,7 @@
 
 ## 🎯 Core Philosophy: "Compression, Not Summarization"
 
-Omnitome differentiates itself fundamentally from conventional generative AI reading tools through **loss-bounded, provenance-aware semantic compression**. Conventional reading tools discard technical arguments and flatten nuance to answer *"what is the gist?"*. Omnitome performs mathematical semantic compression ($\sim 7:1$ target ratio) where every distinct concept, theorem, and factual claim is preserved while redundant connective syntax is condensed.
+Omnitome differentiates itself fundamentally from conventional generative AI reading tools through **loss-bounded, provenance-aware semantic compression**. Conventional reading tools discard technical arguments and flatten nuance to answer *"what is the gist?"*. Omnitome performs mathematical semantic compression ($\sim 7:1$ target ratio) engineered to preserve distinct concepts, technical arguments, and factual claims while redundant connective syntax is condensed.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -14,7 +14,7 @@ Omnitome differentiates itself fundamentally from conventional generative AI rea
 ├───────────────────────────────────────────┬────────────────────────────────────────────┤
 │         STANDARD SUMMARIZATION            │         OMNITOME SEMANTIC COMPRESSION      │
 ├───────────────────────────────────────────┼────────────────────────────────────────────┤
-│ • Discards technical depth & nuances      │ • Preserves every theorem, argument, step  │
+│ • Discards technical depth & nuances      │ • Retains core theorems, arguments, & steps│
 │ • Invents narrative connective tissue      │ • Retains authorial framing & structure    │
 │ • Unanchored synthetic prose              │ • Clickable, audited sentence provenance   │
 │ • Floating, lossy, unverified text        │ • Loss-bounded range: 250–360 words/unit   │
@@ -170,7 +170,7 @@ Omnitome v1.1 introduces a comprehensive, multi-step onboarding wizard, the Synt
   - *Step 5 — Ready to Read:* Sound-confirmed transition into the populated Library catalog.
 - **Synthetic Archive Starter Pack (6 Curated Volumes):**
   - Bundles 6 foundational works pre-formatted for Omnitome's provenance engine: *The Curious World of Cats* (Omnitome Publishing), *The Art and Science of Reading* (Omnitome Publishing), *The Asterion Expedition* (Omnitome Publishing), *Machine Learning Field Notes* (Omnitome Publishing), *The Making of Omnitome* (The Omnitome Engineering Team), and *The Omnitome Field Guide* (Omnitome Publishing).
-  - **4-Layer Attribution Defense:** Guarantees 100% correct metadata attribution even across atypical PDF titles:
+  - **4-Layer Attribution Defense:** Maximizes metadata attribution fidelity even across atypical PDF titles (verified across 10/10 corpus gate fixtures):
     1. *Parser Info Extraction:* Reads embedded PDF Info dictionary fields (`author`, `title`).
     2. *Bibliographer Heuristics:* Comprehensive regex parser supporting middle initials and generational suffixes.
     3. *Database Self-Healing:* Automatic startup and migration backfill query in SQLite repairing any mismatched historical records.

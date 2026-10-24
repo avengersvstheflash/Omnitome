@@ -84,7 +84,7 @@
 
 Omnitome addresses the core informational bottleneck of contemporary research and high-volume reading: the divergence between unstructured, long-form ground truth documents and lossy, ungrounded generative summaries.
 
-Conventional large language model (LLM) reading tools summarize documents by discarding nuances, flattening technical depth, and hallucinating synthetic connective tissue to answer the question *"what is the gist?"*. Omnitome rejects lossy summarization in favor of **loss-bounded semantic compression** ($\sim 7:1$ compression ratio). Under this paradigm, every distinct technical concept, mathematical theorem, and evidentiary claim is strictly preserved, while syntactic redundancy, rhetorical flourishes, and non-essential connective padding are systematically condensed.
+Conventional large language model (LLM) reading tools summarize documents by discarding nuances, flattening technical depth, and hallucinating synthetic connective tissue to answer the question *"what is the gist?"*. Omnitome rejects lossy summarization in favor of **loss-bounded semantic compression** ($\sim 7:1$ compression ratio). Under this paradigm, the compression pipeline is engineered to preserve distinct technical concepts, mathematical formulations, and evidentiary claims, while syntactic redundancy, rhetorical flourishes, and non-essential connective padding are systematically condensed.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -92,7 +92,7 @@ Conventional large language model (LLM) reading tools summarize documents by dis
 ├───────────────────────────────────────────┬────────────────────────────────────────────┤
 │         STANDARD SUMMARIZATION            │         OMNITOME SEMANTIC COMPRESSION      │
 ├───────────────────────────────────────────┼────────────────────────────────────────────┤
-│ • Discards technical arguments & formulas │ • Preserves every theorem, claim, and step │
+│ • Discards technical arguments & formulas │ • Retains core theorems, arguments, & steps│
 │ • Invents narrative connective tissue      │ • Retains authorial logical structure      │
 │ • Floating, ungrounded synthetic text     │ • Deterministic, clickable provenance links│
 │ • Answers: "What is the general gist?"    │ • Answers: "What if every sentence carried │
@@ -158,7 +158,7 @@ Under high-density technical chapters containing numerous candidate paragraphs, 
 
 $$\mathcal{T}_{\text{rerank}}(N_{\text{cand}}, N_{\text{para}}) = \mathrm{clamp}\Big(8000 + (N_{\text{cand}} \cdot N_{\text{para}} \cdot 400) + (N_{\text{para}} \cdot 300), \, 8000,\, 60000\Big) \, \text{ms}$$
 
-This guarantees that cross-encoder matrix evaluations finish deterministically, completely eliminating false centroid fallbacks on large 500K-word technical volumes.
+This dynamic budget ensures cross-encoder matrix evaluations have sufficient execution headroom, preventing premature timeouts and false centroid fallbacks on large technical volumes (empirically validated up to 508,000+ words on Reddi *ML Systems*).
 
 ### Invariant 4: Memory Invariance via F65 Sequential Ingestion Barrier
 
@@ -483,7 +483,7 @@ Includes 6 foundational texts pre-formatted for Omnitome's vector provenance eng
 5. *The Making of Omnitome* (The Omnitome Engineering Team)
 6. *The Omnitome Field Guide* (Omnitome Publishing)
 
-**4-Layer Attribution Defense:** Guarantees 100% metadata accuracy across atypical book formatting:
+**4-Layer Attribution Defense:** Multi-layer attribution defense engineered to maximize metadata extraction accuracy and catalog integrity across atypical book formatting (verified on 10/10 corpus gate fixtures):
 1. *Parser Info Extraction:* Reads embedded PDF Info dictionary headers (`author`, `title`).
 2. *Bibliographer Heuristics:* Comprehensive regex parser handling middle initials and generational suffixes ("Jr.", "III").
 3. *Database Self-Healing:* Automated SQLite startup backfill query repairing orphaned records.
