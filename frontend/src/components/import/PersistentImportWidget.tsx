@@ -95,6 +95,62 @@ export function PersistentImportWidget() {
     void fetchQueue();
   }, [fetchQueue]);
 
+  const widgetRef = useRef<HTMLElement | null>(null);
+  const isHoveredRef = useRef(false);
+  const prevPathnameRef = useRef(location.pathname);
+
+  // 1. Auto-collapse on route navigation (e.g. entering reader or research viewer)
+  useEffect(() => {
+    if (location.pathname !== prevPathnameRef.current) {
+      prevPathnameRef.current = location.pathname;
+      if (isDockExpanded) setDockExpanded(false);
+      if (isMobileSheetOpen) setIsMobileSheetOpen(false);
+    }
+  }, [location.pathname, isDockExpanded, isMobileSheetOpen, setDockExpanded]);
+
+  // 2. Click outside and window/container scroll auto-minimize
+  useEffect(() => {
+    if (!isDockExpanded && !isMobileSheetOpen) {
+      isHoveredRef.current = false;
+      return;
+    }
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (widgetRef.current && !widgetRef.current.contains(e.target as Node)) {
+        if (isDockExpanded) setDockExpanded(false);
+        if (isMobileSheetOpen) setIsMobileSheetOpen(false);
+      }
+    };
+
+    const handleScroll = (e: Event) => {
+      // Hover immunity: check both isHoveredRef and :hover pseudo-class for immediate protection
+      let isHovered = isHoveredRef.current;
+      if (!isHovered && widgetRef.current) {
+        try {
+          isHovered = widgetRef.current.matches(':hover');
+        } catch (_) {}
+      }
+      if (isHovered) return;
+
+      // Internal scroll protection: do not collapse when user scrolls the task list inside the drawer
+      if (widgetRef.current && widgetRef.current.contains(e.target as Node)) return;
+
+      if (isDockExpanded) setDockExpanded(false);
+      if (isMobileSheetOpen) setIsMobileSheetOpen(false);
+    };
+
+    // capture: true ensures outside clicks are caught even if child elements call stopPropagation
+    document.addEventListener('pointerdown', handlePointerDown, { capture: true });
+    // capture: true intercepts scroll events from all overflow containers in the window
+    window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, { capture: true });
+      window.removeEventListener('scroll', handleScroll, { capture: true });
+      isHoveredRef.current = false;
+    };
+  }, [isDockExpanded, isMobileSheetOpen, setDockExpanded]);
+
   // If on the /import page itself, don't show floating widget
   if (isImportRoute) return null;
 
@@ -351,7 +407,14 @@ export function PersistentImportWidget() {
               onClick={() => setIsMobileSheetOpen(false)}
               aria-hidden="true"
             />
-            <div className="relative z-10 w-full max-h-[85vh] bg-card border-t border-line rounded-t-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div
+              ref={(el) => { widgetRef.current = el; }}
+              onMouseEnter={() => { isHoveredRef.current = true; }}
+              onMouseLeave={() => { isHoveredRef.current = false; }}
+              onPointerEnter={() => { isHoveredRef.current = true; }}
+              onPointerLeave={() => { isHoveredRef.current = false; }}
+              className="relative z-10 w-full max-h-[85vh] bg-card border-t border-line rounded-t-2xl shadow-2xl flex flex-col overflow-hidden"
+            >
               {renderExpandedContent(true)}
             </div>
           </div>
@@ -365,6 +428,11 @@ export function PersistentImportWidget() {
   if (isDockExpanded) {
     return (
       <aside
+        ref={(el) => { widgetRef.current = el; }}
+        onMouseEnter={() => { isHoveredRef.current = true; }}
+        onMouseLeave={() => { isHoveredRef.current = false; }}
+        onPointerEnter={() => { isHoveredRef.current = true; }}
+        onPointerLeave={() => { isHoveredRef.current = false; }}
         className={`fixed right-0 ${topOffset} bottom-0 z-40 w-80 bg-card border-l border-line text-ink flex flex-col shadow-2xl transition-all`}
         aria-label="Import pipeline dock"
       >
@@ -381,12 +449,16 @@ export function PersistentImportWidget() {
   return (
     <aside
       className={`fixed right-0 ${topOffset} bottom-0 z-40 w-12 bg-card border-l border-line text-ink flex flex-col items-center py-3 select-none cursor-pointer transition-all hover:border-brand/50`}
-      onClick={() => setDockExpanded(true)}
+      onClick={() => {
+        isHoveredRef.current = true;
+        setDockExpanded(true);
+      }}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
+          isHoveredRef.current = true;
           setDockExpanded(true);
         }
       }}

@@ -83,11 +83,16 @@ router.post('/files', upload.array('files', 20), async (req, res, next) => {
       }
     }
 
+    const reqTitle = typeof req.body.title === 'string' && req.body.title.trim() ? req.body.title.trim() : null;
+    const reqAuthor = typeof req.body.author === 'string' && req.body.author.trim() ? req.body.author.trim() : null;
+
     const tasks = [];
     for (const file of files) {
       const task = await importQueueService.enqueueFile({
         file,
         metadata: {
+          title: files.length === 1 ? reqTitle : null,
+          author: reqAuthor || null,
           dossierId,
           contentType,
           replace: isReplace,

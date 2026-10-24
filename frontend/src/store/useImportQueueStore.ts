@@ -86,9 +86,9 @@ const DOCK_EXPANDED_KEY = 'omnitome.importDock.expanded';
 const getStoredDockExpanded = (): boolean => {
   try {
     const val = localStorage.getItem(DOCK_EXPANDED_KEY);
-    return val !== null ? JSON.parse(val) === true : true;
+    return val !== null ? JSON.parse(val) === true : false;
   } catch {
-    return true;
+    return false;
   }
 };
 

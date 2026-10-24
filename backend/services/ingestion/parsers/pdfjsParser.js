@@ -177,8 +177,40 @@ class PDFJSParser {
       }
     }
 
-    let docTitle = options.title || '';
-    let docAuthor = options.author || '';
+    let pdfMetaAuthor = null;
+    let pdfMetaTitle = null;
+    try {
+      const meta = await doc.getMetadata();
+      if (meta?.info) {
+        if (typeof meta.info.Author === 'string') {
+          const a = meta.info.Author.replace(/\0/g, '').trim();
+          if (a && !/^(?:unknown|anonymous|none|null|n\/a|undefined)$/i.test(a)) {
+            pdfMetaAuthor = a;
+          }
+        }
+        if (typeof meta.info.Title === 'string') {
+          const t = meta.info.Title.replace(/\0/g, '').trim();
+          if (t && !/^(?:untitled(?:\s+document)?|none|null|undefined)$/i.test(t)) {
+            pdfMetaTitle = t;
+          }
+        }
+      }
+      if (!pdfMetaAuthor && meta?.metadata?.has?.('dc:creator')) {
+        const creator = String(meta.metadata.get('dc:creator') || '').replace(/\0/g, '').trim();
+        if (creator && !/^(?:unknown|anonymous|none|null|n\/a|undefined)$/i.test(creator)) {
+          pdfMetaAuthor = creator;
+        }
+      }
+      if (!pdfMetaTitle && meta?.metadata?.has?.('dc:title')) {
+        const t = String(meta.metadata.get('dc:title') || '').replace(/\0/g, '').trim();
+        if (t && !/^(?:untitled(?:\s+document)?|none|null|undefined)$/i.test(t)) {
+          pdfMetaTitle = t;
+        }
+      }
+    } catch (_) {}
+
+    let docTitle = options.title || pdfMetaTitle || '';
+    let docAuthor = options.author || pdfMetaAuthor || '';
 
     // If title was not found, search for first heading
     if (!docTitle && allBlocks.length > 0) {

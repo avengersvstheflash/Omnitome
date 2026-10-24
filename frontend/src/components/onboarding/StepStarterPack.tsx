@@ -25,29 +25,35 @@ const STARTER_MD_FILES = [
   '/samples/md/The_Omnitome_Field_Guide.md',
 ];
 
-const STARTER_BOOKS_METADATA: Record<string, { title: string; contentType: string }> = {
+const STARTER_BOOKS_METADATA: Record<string, { title: string; author: string; contentType: string }> = {
   '/samples/md/the_curious_world_of_cats.md': {
     title: 'The Curious World of Cats',
+    author: 'Omnitome Publishing',
     contentType: 'novel',
   },
   '/samples/md/the_art_and_science_of_reading.md': {
     title: 'The Art and Science of Reading',
+    author: 'Omnitome Publishing',
     contentType: 'novel',
   },
   '/samples/md/the_asterion_expedition.md': {
     title: 'The Asterion Expedition',
+    author: 'Omnitome Publishing',
     contentType: 'novel',
   },
   '/samples/md/machine_learning_field_notes.md': {
     title: 'Machine Learning Field Notes',
+    author: 'Omnitome Publishing',
     contentType: 'textbook',
   },
   '/samples/md/The_Making_of_Omnitome.md': {
     title: 'The Making of Omnitome',
+    author: 'The Omnitome Engineering Team',
     contentType: 'novel',
   },
   '/samples/md/The_Omnitome_Field_Guide.md': {
     title: 'The Omnitome Field Guide',
+    author: 'The Omnitome Engineering Team',
     contentType: 'novel',
   },
 };
@@ -94,12 +100,14 @@ export const StepStarterPack: React.FC<StepStarterPackProps> = ({
 
         const meta = STARTER_BOOKS_METADATA[url] || {
           title: filename.replace(/\.md$/i, '').replace(/[_-]/g, ' '),
+          author: 'Omnitome Publishing',
           contentType: 'novel',
         };
 
         const formData = new FormData();
         formData.append('files', file);
         formData.append('title', meta.title);
+        formData.append('author', meta.author);
         formData.append('replace', 'true');
         formData.append('contentType', meta.contentType);
 

@@ -919,6 +919,36 @@ function initSchema(db) {
     }
   } catch {}
 
+  // Self-heal known Synthetic Archive books that previously imported with 'Unknown Author' or lowercase slug titles
+  try {
+    const knownArchive = {
+      'the curious world of cats': { title: 'The Curious World of Cats', author: 'Omnitome Publishing' },
+      'the art and science of reading': { title: 'The Art and Science of Reading', author: 'Omnitome Publishing' },
+      'the asterion expedition': { title: 'The Asterion Expedition', author: 'Omnitome Publishing' },
+      'machine learning field notes': { title: 'Machine Learning Field Notes', author: 'Omnitome Publishing' },
+      'the making of omnitome': { title: 'The Making of Omnitome', author: 'The Omnitome Engineering Team' },
+      'the omnitome field guide': { title: 'The Omnitome Field Guide', author: 'The Omnitome Engineering Team' },
+    };
+
+    const updateStmt = db.prepare(`
+      UPDATE books
+      SET author = CASE WHEN (author = 'Unknown Author' OR author IS NULL OR author = '') THEN @author ELSE author END,
+          title = CASE WHEN (title = LOWER(title) OR title LIKE '%_%' OR title LIKE '%-%') THEN @title ELSE title END,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE LOWER(TRIM(REPLACE(REPLACE(title, '_', ' '), '-', ' '))) = @key
+        AND (author = 'Unknown Author' OR author IS NULL OR author = '' OR title = LOWER(title) OR title LIKE '%_%' OR title LIKE '%-%')
+    `);
+
+    const runBackfill = db.transaction(() => {
+      for (const [key, val] of Object.entries(knownArchive)) {
+        updateStmt.run({ key, author: val.author, title: val.title });
+      }
+    });
+    runBackfill();
+  } catch (err) {
+    console.warn('[DB Migration] Synthetic archive author backfill skipped:', err.message);
+  }
+
   backfillBookLifecycles(db);
 }
 

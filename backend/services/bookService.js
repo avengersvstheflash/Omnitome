@@ -8,6 +8,15 @@ const ingestionService = require('./ingestion/ingestionService');
 const { resetAndSeedDatabase, getDatabase } = require('../db/database');
 const config = require('../config');
 
+const CANONICAL_SYNTHETIC_ARCHIVE = {
+  'the curious world of cats': { title: 'The Curious World of Cats', author: 'Omnitome Publishing' },
+  'the art and science of reading': { title: 'The Art and Science of Reading', author: 'Omnitome Publishing' },
+  'the asterion expedition': { title: 'The Asterion Expedition', author: 'Omnitome Publishing' },
+  'machine learning field notes': { title: 'Machine Learning Field Notes', author: 'Omnitome Publishing' },
+  'the making of omnitome': { title: 'The Making of Omnitome', author: 'The Omnitome Engineering Team' },
+  'the omnitome field guide': { title: 'The Omnitome Field Guide', author: 'The Omnitome Engineering Team' },
+};
+
 /**
  * Classifies which post-import pipeline stages should run based on chapter count and word count.
  * @param {number} chapterCount
@@ -629,6 +638,18 @@ class BookService {
     }
     if (!provisionalTitle || provisionalTitle.trim() === '') {
       provisionalTitle = 'Imported Reading Material';
+    }
+
+    const normKey = provisionalTitle.toLowerCase().trim().replace(/\s+/g, ' ');
+    const canonical = CANONICAL_SYNTHETIC_ARCHIVE[normKey];
+    if (canonical) {
+      if (!author || author.trim() === '' || author.trim() === 'Unknown Author') {
+        author = canonical.author;
+      }
+      provisionalTitle = canonical.title;
+      if (!title || title.toLowerCase().trim().replace(/\s+/g, ' ') === normKey) {
+        title = canonical.title;
+      }
     }
 
     if (
