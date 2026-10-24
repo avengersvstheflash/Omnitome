@@ -456,10 +456,10 @@ timeline
 - **Progress:** `[████████████████████]` 100%
 - **Milestones:**
   - **5-Step Onboarding Wizard:** Delivered multi-step first-run experience: Welcome manifesto, theme selection with live auditory playback, AI provider pairing (Ollama / LM Studio / OpenRouter), 1-click Synthetic Archive installation, and library transition.
-  - **Synthetic Archive Starter Pack (6 Volumes):** Pre-formatted classic volumes (*Meditations*, *The Art of War*, *Frankenstein*, *The Great Gatsby*, *The Mind's Eye*, *Beyond Good and Evil*) wired directly into StepStarterPack.
+  - **Synthetic Archive Starter Pack (6 Volumes):** Pre-formatted foundational volumes (*The Curious World of Cats*, *The Art and Science of Reading*, *The Asterion Expedition*, *Machine Learning Field Notes*, *The Making of Omnitome*, *The Omnitome Field Guide*) wired directly into StepStarterPack.
   - **4-Layer Attribution Defense:** Engineered multi-layer metadata protection for atypical PDF headers: PDF Info dictionary extraction, bibliographer regex with middle initials/suffixes ("Loyd L. Fueston, Jr."), database self-healing backfill, and client fallback attribution.
   - **Oct 24 Bug Bash All Closed:** Resolved P0 Starter Pack multipart 400 upload, fixed TanStack Query background queue blanking race with monotonic task reconciliation, eliminated Research viewer scroll loop via ref guards, caught TTS DOMException `AbortError` on rapid seek/pause, and added auto-minimizing import drawer with hover immunity.
-  - **Verification Gate:** **All 61 unit test suites + 1 corpus gate passed clean. Frontend typecheck and build pass clean with zero errors. Standalone installer `Omnitome_1.1.0_x64-setup.exe` fully verified.**
+  - **Verification Gate:** **61 Unit & Regression Suites | 17 Rust Supervisor Tests | 10/10 Corpus Gate passed clean. Frontend typecheck and build pass clean with zero errors. Standalone installer `Omnitome_1.1.0_x64-setup.exe` fully verified.**
 - **Commits:** `dac217a`, `77c5906`, `e25b9e2`, `a7a25e4`, `8a9eab2`, `c1dc70b`, `b31d95f`, `f7fc932`, `6c723a3`, `71280c5`.
 
 ---
@@ -467,7 +467,7 @@ timeline
 ## 🧪 Benchmark & Verification Suite Execution
 
 ```bash
-# Run all 60 regression suites + the 10-fixture corpus gate:
+# Run 61 unit & regression suites + the 10-fixture corpus gate:
 npm test
 # (Equivalent to: node scripts/run-all-tests.js)
 

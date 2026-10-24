@@ -12,7 +12,7 @@
 **Repo:** https://github.com/avengersvstheflash/Omnitome
 **Release:** `v1.1.0 Stable`
 **HEAD:** (check with `git log -1 --oneline`)
-**Test suite:** 60/60 unit suites + 1 network suite + 1 corpus release gate (10 fixtures) + 17 Tauri Cargo tests green + 90 procedural audio stems verified. Verify with `npm test`, `cargo test --manifest-path src-tauri/Cargo.toml`, and `npm run sounds:test`.
+**Test suite:** 61 Unit & Regression Suites | 17 Rust Supervisor Tests | 10/10 Corpus Gate (plus 90 procedural audio stems verified). Verify with `npm test`, `cargo test --manifest-path src-tauri/Cargo.toml`, and `npm run sounds:test`.
 **Vision:** Loss-bounded semantic compression engine (~7:1 ratio), not a summarizer. See `PRODUCT_VISION.md`.
 
 **Working now:**
@@ -25,7 +25,7 @@
 - 5 custom visual themes (Omni, Sakura, Spring, Coffee, Cyberpunk), procedural SVG cover generation, and native KaTeX math typesetting
 - 90-stem procedural Web Audio UI sound engine across all 5 themes with narration ducking
 - 5-step Welcome Wizard with theme auditioning, AI provider setup (OpenRouter / Ollama), and 1-click Synthetic Archive installation
-- 6 curated Synthetic Archive starter books backed by 4-layer author attribution defense
+- 6 curated Synthetic Archive starter books (*The Curious World of Cats*, *The Art and Science of Reading*, *The Asterion Expedition*, *Machine Learning Field Notes*, *The Making of Omnitome*, *The Omnitome Field Guide*) backed by 4-layer author attribution defense
 - Auto-minimizing import drawer with monotonic progress tracking and hover immunity
 
 **Current milestone & immediate focus:**

@@ -11,12 +11,12 @@
 - **Active Release:** `v1.1.0 Stable`
 - **Current HEAD:** (release prep commit)
 - **Working Tree:** Clean / synced with `origin/main`
-- **Application Status:** Fully packaged Windows installer (`.exe`), verified end-to-end (Neural TTS + 90-Stem Thematic UI Sound Engine + 5-Step Welcome Wizard + Ingestion Pipeline + 6-Book Synthetic Archive Starter Pack).
-- **Test Suites Status:**
+- **Application Status:** Fully packaged Windows installer (`.exe`), verified end-to-end (Neural TTS + 90-Stem Thematic UI Sound Engine + 5-Step Welcome Wizard + Ingestion Pipeline + 6-Book Synthetic Archive Starter Pack: *The Curious World of Cats*, *The Art and Science of Reading*, *The Asterion Expedition*, *Machine Learning Field Notes*, *The Making of Omnitome*, *The Omnitome Field Guide*).
+- **Test Suites Status:** 61 Unit & Regression Suites | 17 Rust Supervisor Tests | 10/10 Corpus Gate
   - **Procedural Sound Engine:** 90 / 90 files verified (`npm run sounds:test`, `npm run sounds:verify`)
   - **Frontend (Vite + React):** TypeScript check (`tsc --noEmit`) and production build pass with 0 errors (`npm --prefix frontend run build`)
   - **Rust Supervisor (Tauri v2):** 17 / 17 Cargo unit tests (`cargo test --manifest-path src-tauri/Cargo.toml`)
-  - **Backend (Node.js Express 5):** 60 / 60 Regression suites + 1 Network suite (`npm test`)
+  - **Backend (Node.js Express 5):** 61 Unit & Regression Suites (60 regression suites + 1 network suite, `npm test`)
   - **Corpus Release Gate (F42):** 10 / 10 multi-format fixtures (Classes A, B, C)
   - **Dossier & Queue Integration:** 10 / 10 pipeline tests (`node backend/tests/import_queue_pipeline_test.js`)
   - **Sidecar TTS Integration:** 10 / 10 tests (`node backend/tests/f85_kokoro_tts_sidecar_test.js`)
@@ -81,7 +81,7 @@ All P0 and P1 defects identified during the v1.1 playtest cycle have been resolv
 
 ### D. Thematic 90-File Procedural Sound System & Welcome Wizard
 - **Deterministic Synthesis Engine:** Bundles an offline DSP engine (`tools/sound-design/`) that generates 90 PCM16 48kHz mono WAV files (18 canonical stems $\times$ 5 themes: Omni, Sakura, Spring, Coffee, Cyberpunk) normalized to -3dBFS peak.
-- **5-Step Onboarding Wizard:** Welcome orientation, live theme selection with auditory feedback, AI provider pairing (OpenRouter / local Ollama / LM Studio), 1-click Synthetic Archive installation, and graceful entry into the Library.
+- **5-Step Onboarding Wizard:** Welcome orientation, live theme selection with auditory feedback, AI provider pairing (OpenRouter / local Ollama / LM Studio), 1-click Synthetic Archive installation (6 volumes: *The Curious World of Cats*, *The Art and Science of Reading*, *The Asterion Expedition*, *Machine Learning Field Notes*, *The Making of Omnitome*, *The Omnitome Field Guide*), and graceful entry into the Library.
 
 ---
 

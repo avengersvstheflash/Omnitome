@@ -18,10 +18,20 @@
   <img src="https://img.shields.io/badge/Embedder-BGE--M3%20(1024d)-blueviolet" alt="BGE-M3" />
   <img src="https://img.shields.io/badge/Reranker-BGE%20Reranker%20v2-orange" alt="BGE Reranker v2" />
   <img src="https://img.shields.io/badge/TTS-Kokoro--82M%20(Offline)-success" alt="Kokoro-82M" />
-  <img src="https://img.shields.io/badge/Tests-61%20Suites%20%7C%2017%20Rust%20%7C%2010%2F10%20Corpus-3fb950" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-61%20Unit%20%26%20Regression%20Suites%20%7C%2017%20Rust%20%7C%2010%2F10%20Corpus-3fb950" alt="61 Unit & Regression Suites | 17 Rust Supervisor Tests | 10/10 Corpus Gate" />
 </p>
 
 <p align="center">
+  <a href="https://github.com/avengersvstheflash/Omnitome/releases/download/v1.1.0/Omnitome_1.1.0_x64-setup.exe">
+    <img src="https://img.shields.io/badge/⚡_Download_Omnitome_v1.1.0-Windows_x64_(1.95_GB)-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download Omnitome v1.1.0 for Windows" />
+  </a>
+  <a href="https://github.com/avengersvstheflash/Omnitome/releases/tag/v1.1.0">
+    <img src="https://img.shields.io/badge/Release_Notes-v1.1.0_Welcome_Wizard-2ea44f?style=for-the-badge&logo=github&logoColor=white" alt="Release Notes" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="#interface-preview--the-two-representation-invariant">Interface Preview</a> •
   <a href="#abstract--the-compression-imperative">Abstract</a> •
   <a href="#mathematical-grounding--formal-invariants">Formal Invariants</a> •
   <a href="#system-architecture--multi-process-boundary">System Architecture</a> •
@@ -34,6 +44,39 @@
   <a href="#documentation-hub">Docs</a> •
   <a href="#citation">Citation</a>
 </p>
+
+---
+
+### 🖥️ Interface Preview: The Two-Representation Invariant
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  OMNITOME v1.1.0 — [Split Reading Surface]                  [Classic] [Kokoro: af_heart] [_][□][✕]│
+├─────────────────────────────────────────────────┬────────────────────────────────────────────────┤
+│  ORIGINAL RESEARCH VIEW (Verbatim Ground Truth) │  OMNI READING VIEW (Loss-Bounded Lens ~7:1)    │
+│  [Law 1: Source is paper · Immutable]           │  [Law 3: Navigable Provenance & Attribution]   │
+├─────────────────────────────────────────────────┼────────────────────────────────────────────────┤
+│                                                 │                                                │
+│  § 14. Attention Mechanisms in Deep Networks    │  Chapter 3: Attention Scalability              │
+│                                                 │                                                │
+│  [Chunk #142 · Paragraph 14]                    │  Self-attention computes dynamic scalar        │
+│  The fundamental limitation of recurrence lies  │  weights across token sequences by querying    │
+│  in its sequential dependency structure. Step   │  key-value dot products scaled by matrix       │
+│  t cannot proceed until step t-1 concludes. In  │  dimension sqrt(d_k) [p14]. This design        │
+│  contrast, scaled dot-product attention maps    │  replaces sequential recurrence with parallel  │
+│  queries and keys of dimension d_k to compute   │  matrix operations [p14], eliminating O(N)     │
+│  attention matrices simultaneously across all   │  dependency bottlenecks while retaining full   │
+│  token positions in parallel:                   │  context visibility across long tomes [p15].   │
+│                                                 │                                                │
+│    Attention(Q,K,V) = softmax(QK^T / √d_k) V    │  • Multi-head projections expand representation│
+│                                                 │    subspaces across 8 parallel heads [p16].    │
+│  This eliminates backpropagation vanishing      │  • Cross-encoder vector re-ranking bounds      │
+│  gradients across extended horizons...          │    sentence attribution to verbatim sources.   │
+│                                                 │                                                │
+├─────────────────────────────────────────────────┴────────────────────────────────────────────────┤
+│  ▶  02:14 / 08:35  ━━━━●━━━━━━━━━━━━━━━  [1.0x]  🔊 af_heart (Neural FP16)  │ Active: Sentence 2 │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -67,6 +110,13 @@ Every architectural decision and data pipeline in Omnitome conforms to three inv
 
 > **The Architectural Moat:** *"Nobody wants compression. They want traceability."*  
 > Competitors sell ephemeral summaries. Omnitome provides an audited, mathematically bounded, bi-directional reading lens over documents you own.
+
+### 🔒 Local-First Architecture & Data Boundary
+
+Omnitome is built around a **local-first** data contract designed for complete privacy and user ownership:
+- **Offline / Local Mode (100% Private):** When paired with a local LLM runner ([Ollama](https://ollama.ai/) or [LM Studio](https://lmstudio.ai/)), all operations—document ingestion, structure parsing, BGE-M3 embedding (1024d), BGE Reranker v2 cross-encoding, SQLite WAL queries, and Kokoro-82M neural speech synthesis—execute **100% locally on your machine with zero data egress**. No document content, embeddings, or telemetry ever leave your device.
+- **Cloud Synthesis Mode (Optional):** When a user explicitly configures a cloud AI provider (OpenRouter or Google Gemini API keys in the Welcome Wizard or Settings), document text slices are transmitted exclusively to that configured provider to synthesize compressed Smart Chapters. Vector attribution cross-encoding and neural speech synthesis continue to execute strictly on-device.
+- **Desktop Runtime Note:** Omnitome's native desktop shell uses Microsoft WebView2. WebView2 is pre-installed on standard Windows 10 and Windows 11 systems; on minimal or legacy environments, the installer bootstraps the official evergreen WebView2 runtime from Microsoft if missing.
 
 ---
 
@@ -301,7 +351,7 @@ Omnitome occupies a distinct theoretical and architectural position compared to 
 | **Ground Truth Integrity** | Fragmented chunks; source context lost | Document rewritten; original discarded | **Verbatim ground truth preserved in perpetuity (Law 1)** |
 | **Attribution Resolution** | Loose, chunk-level coarse associations | Generalized, hallucinated citations | **Deterministic sentence $\to$ paragraph cross-encoder mapping** |
 | **Provenance Defense** | None (retrieves without verifying claims) | None (accepts hallucinated statements) | **Unverified sentences styled with defect indicators** |
-| **Data Privacy & Egress** | Cloud-dependent API calls | Mandatory document upload to cloud servers | **100% offline edge execution (Zero cloud data egress)** |
+| **Data Privacy & Egress** | Cloud-dependent API calls | Mandatory document upload to cloud servers | **Local-first edge execution (Zero egress with local LLM; optional cloud API)** |
 | **Memory Footprint** | Unbounded async memory leaks | Managed cloud infrastructure | **$\le 296$ MB Peak Node RSS via F65 Await Barrier** |
 | **VRAM Consumption** | GPU weights held indefinitely | Cloud server clusters | **3.2 GB reclaimed via F43 Idle Lifecycle Eviction** |
 | **Long-Tome Scaling** | Context saturation / needle-in-haystack | Truncates documents $> 200\text{K}$ words | **Tested up to 508,000+ words (Reddi *ML Systems*)** |
@@ -426,12 +476,12 @@ Omnitome v1.1 delivers a frictionless, zero-configuration first launch experienc
 ### The Synthetic Archive Starter Pack
 
 Includes 6 foundational texts pre-formatted for Omnitome's vector provenance engine:
-1. Marcus Aurelius — *Meditations*
-2. Sun Tzu — *The Art of War*
-3. Mary Shelley — *Frankenstein*
-4. F. Scott Fitzgerald — *The Great Gatsby*
-5. Loyd L. Fueston, Jr. — *The Mind's Eye*
-6. Friedrich Nietzsche — *Beyond Good and Evil*
+1. *The Curious World of Cats* (Omnitome Publishing)
+2. *The Art and Science of Reading* (Omnitome Publishing)
+3. *The Asterion Expedition* (Omnitome Publishing)
+4. *Machine Learning Field Notes* (Omnitome Publishing)
+5. *The Making of Omnitome* (The Omnitome Engineering Team)
+6. *The Omnitome Field Guide* (Omnitome Publishing)
 
 **4-Layer Attribution Defense:** Guarantees 100% metadata accuracy across atypical book formatting:
 1. *Parser Info Extraction:* Reads embedded PDF Info dictionary headers (`author`, `title`).
@@ -445,64 +495,125 @@ Includes 6 foundational texts pre-formatted for Omnitome's vector provenance eng
 
 ### Option A: Windows Desktop Installer (Recommended)
 
-Omnitome ships as a standalone Windows installer (`Omnitome_1.1.0_x64-setup.exe` generated via Tauri v2 and NSIS):
-- Bundles Python 3.10 runtime, PyTorch FP16 CUDA/cuDNN binaries, Kokoro TTS, and Node orchestrator.
-- Extracts cleanly into `%LOCALAPPDATA%\Omnitome` with zero manual configuration.
-- Completely self-contained; requires no system Python or Node installations.
+Omnitome ships as a self-contained Windows desktop installer with zero manual Python or Node dependencies required:
 
-### Option B: Build from Source
+| Resource | Direct Link | File Info |
+| :--- | :--- | :--- |
+| **Direct Binary Download** | **[Download Omnitome v1.1.0 for Windows (64-bit Installer)](https://github.com/avengersvstheflash/Omnitome/releases/download/v1.1.0/Omnitome_1.1.0_x64-setup.exe)** | `Omnitome_1.1.0_x64-setup.exe` (~1.95 GB) |
+| **Release & Changelog** | **[GitHub Release v1.1.0 — Welcome Wizard & Synthetic Archive](https://github.com/avengersvstheflash/Omnitome/releases/tag/v1.1.0)** | Release notes, asset tags & checksums |
+
+- **Zero-Config Self-Contained Runtime:** Pre-bundles the Python 3.10 runtime, PyTorch FP16 CUDA/cuDNN binaries, Kokoro-82M neural TTS model, and Node.js 22 LTS orchestrator.
+- **Isolated Deployment:** Extracts cleanly into `%LOCALAPPDATA%\Omnitome` on first launch without polluting system PATHs.
+
+> **⚠️ Note on Windows Defender SmartScreen:**  
+> Because Omnitome is an open-source community release without a paid corporate EV code signing certificate, Windows Defender SmartScreen may display an informational prompt stating *"Windows protected your PC"*.  
+> **To install:** Click **"More info"** and then select **"Run anyway"**.  
+> You can independently verify the cryptographic integrity of the installer in PowerShell prior to execution:
+> ```powershell
+> Get-FileHash -Algorithm SHA256 .\Omnitome_1.1.0_x64-setup.exe
+> ```
+
+---
+
+### Option B: Build from Source & Local Development
+
+Omnitome is structured as a coordinated multi-process desktop system (Tauri v2 Rust Supervisor + Node.js 22 Orchestrator + Python FastAPI Neural Sidecar + Vite React Frontend).
 
 #### Prerequisites
-- **Node.js 22 LTS** (verified on `v22.14.0`)
+- **Node.js 22 LTS** (verified on `v22.14.0+`)
 - **Python 3.10+** (with NVIDIA CUDA Toolkit recommended for GPU acceleration)
-- **Rust & Cargo** (for Tauri v2 shell compilation)
-- **Local Inference Engine** ([Ollama](https://ollama.ai/) at `http://127.0.0.1:11434/v1`) or OpenRouter API key
+- **Rust & Cargo** (latest stable toolchain for Tauri v2 compilation)
+- **Local Inference Engine** ([Ollama](https://ollama.ai/) at `http://127.0.0.1:11434/v1` or [LM Studio](https://lmstudio.ai/)) or OpenRouter/Gemini API key
 
+#### 1. Initial Repository Setup
 ```bash
-# 1. Clone repository & install Node dependencies
+# Clone repository
 git clone https://github.com/avengersvstheflash/Omnitome.git
 cd Omnitome
+
+# Install Node orchestrator and root dependencies
 npm install
 cp .env.example .env
 
-# 2. Set up Python sidecar virtual environment
+# Install React frontend dependencies
+npm --prefix frontend install
+
+# Set up Python sidecar virtual environment and dependencies
 cd sidecars/python
 python -m venv .venv
 
-# On Windows:
-.venv\Scripts\activate
+# On Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
 # On Linux/macOS:
 # source .venv/bin/activate
 
 pip install -r requirements.txt
 cd ../..
-
-# 3. Install frontend dependencies
-npm --prefix frontend install
-
-# 4. Launch full development stack (Sidecar + Node Orchestrator + Vite Frontend)
-npm run dev
-
-# 5. Build native desktop installer via Tauri
-npm run tauri:build
 ```
 
-### Verification & Test Suites
+#### 2. Running in Development Mode
+
+You can run services independently or launch the integrated Tauri desktop application:
+
+##### Mode 1: Integrated Desktop Shell (Recommended for UI & App Dev)
+```bash
+# Starts Vite dev server (HMR) and launches the Tauri native desktop window:
+npm run tauri:dev
+```
+*(Ensure the Python sidecar is running in a background terminal if neural features like TTS or BGE embeddings are required).*
+
+##### Mode 2: Independent Service Terminals (Recommended for Core Hacking)
+Run each runtime in its own terminal window for focused debugging:
+```bash
+# Terminal 1 — Python FastAPI Sidecar (PyTorch CUDA, BGE-M3, Kokoro TTS):
+cd sidecars/python
+.\.venv\Scripts\activate
+python -m uvicorn server:app --host 127.0.0.1 --port 8765
+
+# Terminal 2 — Node.js Orchestrator (SOLE SQLite WAL writer, Express 5 REST):
+npm run start
+
+# Terminal 3 — React Vite Frontend (HMR dev server at http://localhost:5173):
+npm --prefix frontend run dev
+```
+
+#### 3. Building the Production Windows Installer
+
+Because the production installer embeds a complete Python runtime, PyTorch CUDA binaries, Kokoro TTS, and Node.js, the build requires pre-packaging gitignored staging assets before running Tauri:
+
+```powershell
+# Run the complete automated packaging script in PowerShell:
+powershell -ExecutionPolicy Bypass -File scripts/build-installers.ps1
+```
+
+This automated pipeline performs:
+1. PyInstaller sidecar compilation (`dist-sidecar/omnitome-sidecar/`)
+2. Pre-compression into `resources/sidecar.7z` with LZMA (bypassing the 2GB NSIS ceiling)
+3. Production backend staging (`resources/backend-runtime`) with pruned dev dependencies
+4. Portable standalone Node.js staging (`resources/node/node.exe`)
+5. Invoking `tauri build` to compile the final NSIS setup executable at:  
+   `src-tauri/target/release/bundle/nsis/Omnitome_1.1.0_x64-setup.exe`
+
+---
+
+### 🧪 Verification & Test Suites
+
+Omnitome maintains rigorous test invariants across all runtimes:
 
 ```bash
-# Run complete backend regression suite (61 unit suites + 1 corpus gate):
+# Run 61 Unit & Regression Suites + Corpus Gate:
 npm test
 
 # Build and typecheck frontend production bundle:
 npm --prefix frontend run build
 
-# Run Tauri Rust supervisor unit tests:
+# Run Tauri Rust supervisor unit tests (17 tests):
 cargo test --manifest-path src-tauri/Cargo.toml
 
-# Run 10-fixture multi-format Corpus Release Gate:
+# Run 10-fixture multi-format Corpus Release Gate (Classes A, B, C):
 node scripts/run-corpus-tests.js
 
-# Verify procedural UI sound engine integrity:
+# Verify procedural UI sound engine integrity (90 PCM stems):
 npm run sounds:verify
 npm run sounds:test
 ```

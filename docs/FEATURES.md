@@ -169,7 +169,7 @@ Omnitome v1.1 introduces a comprehensive, multi-step onboarding wizard, the Synt
   - *Step 4 — Starter Pack:* 1-click batch installation of 6 pre-formatted Synthetic Archive titles.
   - *Step 5 — Ready to Read:* Sound-confirmed transition into the populated Library catalog.
 - **Synthetic Archive Starter Pack (6 Curated Volumes):**
-  - Bundles 6 classic works pre-formatted for Omnitome's provenance engine: Marcus Aurelius' *Meditations*, Sun Tzu's *The Art of War*, Mary Shelley's *Frankenstein*, F. Scott Fitzgerald's *The Great Gatsby*, Loyd L. Fueston, Jr.'s *The Mind's Eye*, and Friedrich Nietzsche's *Beyond Good and Evil*.
+  - Bundles 6 foundational works pre-formatted for Omnitome's provenance engine: *The Curious World of Cats* (Omnitome Publishing), *The Art and Science of Reading* (Omnitome Publishing), *The Asterion Expedition* (Omnitome Publishing), *Machine Learning Field Notes* (Omnitome Publishing), *The Making of Omnitome* (The Omnitome Engineering Team), and *The Omnitome Field Guide* (Omnitome Publishing).
   - **4-Layer Attribution Defense:** Guarantees 100% correct metadata attribution even across atypical PDF titles:
     1. *Parser Info Extraction:* Reads embedded PDF Info dictionary fields (`author`, `title`).
     2. *Bibliographer Heuristics:* Comprehensive regex parser supporting middle initials and generational suffixes.

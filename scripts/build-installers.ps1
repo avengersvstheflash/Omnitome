@@ -160,20 +160,26 @@ if ($needsNodeStaging) {
     Write-Host "`n[4/5] Staging portable standalone node.exe..." -ForegroundColor Yellow
     New-Item -ItemType Directory -Force -Path $nodeDir | Out-Null
     
-    $candidateNodes = @(
-        "C:\Users\Godsa\AppData\Local\Author Software\nvm\installs\v22.23.2\node.exe",
-        "${env:ProgramFiles}\nodejs\node.exe"
-    )
     $hostNode = $null
-    foreach ($c in $candidateNodes) {
-        if (Test-Path $c) {
-            $hostNode = $c
-            break
-        }
+    $nodeCmd = Get-Command node.exe -ErrorAction SilentlyContinue
+    if (-not $nodeCmd) {
+        $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
     }
-    if (-not $hostNode) {
-        $nodeCmd = Get-Command node.exe -ErrorAction SilentlyContinue
-        if ($nodeCmd) { $hostNode = $nodeCmd.Source }
+    if ($nodeCmd) {
+        $hostNode = $nodeCmd.Source
+    }
+    if (-not $hostNode -or -not (Test-Path $hostNode)) {
+        $candidateNodes = @(
+            "${env:ProgramFiles}\nodejs\node.exe",
+            "${env:ProgramFiles(x86)}\nodejs\node.exe",
+            "${env:LOCALAPPDATA}\Programs\nodejs\node.exe"
+        )
+        foreach ($c in $candidateNodes) {
+            if ($c -and (Test-Path $c)) {
+                $hostNode = $c
+                break
+            }
+        }
     }
     if (-not $hostNode -or -not (Test-Path $hostNode)) {
         throw "Could not locate a valid standalone node.exe to stage."

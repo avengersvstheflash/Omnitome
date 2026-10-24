@@ -1,8 +1,8 @@
 # Rights and Licensing
 
-> Status: personal use / pre-commercial. This document records the
-> current licensing state and the decisions that must be made before
-> public or commercial release. It is not legal advice.
+> Status: v1.1.0 Stable Release (Open Source AGPL-3.0). This document records the
+> licensing state, third-party attribution boundaries, and distribution terms for the
+> desktop installer and repository. It is not legal advice.
 
 ## Repo license
 
@@ -71,33 +71,21 @@ all rights to their source material. The app does not:
 Source text goes to OpenRouter/DeepSeek only when compression runs.
 Users who configure Ollama operate fully offline.
 
-## Distribution model (undecided)
+## Distribution model
 
-Options under consideration for pre-launch:
-- **Gumroad** — simple one-time purchase, indie-friendly
-- **itch.io** — accepts non-game software, good for tools
-- **GitHub Releases** — free, requires no store
-- **Direct download from project site** — full control, no store fees
+- **Primary Channel:** GitHub Releases (`Omnitome_1.1.0_x64-setup.exe` distributed via GitHub Releases for Windows x64 desktop).
+- **Desktop Packaging:** Phase 6 complete. Standalone NSIS installer generated via Tauri v2, bundling LZMA-compressed PyInstaller sidecar (`resources/sidecar.7z`), clean production backend (`resources/backend-runtime`), portable standalone Node.js 22 LTS (`resources/node/node.exe`), and compiled React 18 production frontend.
+- **Fixture Boundary:** Internal corpus fixtures with non-commercial or external redistribution restrictions (e.g. `practical_machine_learning.pdf`, `two-column.pdf`) are strictly gitignored/developer-only test assets. They are completely omitted from the public production distribution installer and client packages.
 
-Decision deferred until Phase 6 (Tauri packaging) completes. The
-installer format (`.dmg`, `.exe`, `.AppImage`) will also be finalized
-then.
+## Release & compliance checklist
 
-## Pre-launch decisions checklist
-
-- [ ] Swap CC-BY-NC-ND and CC-BY-NC fixtures for redistributable
-      alternatives (see fixture swap plan above)
-- [ ] Add NOTICE.md at repo root listing all third-party content and
-      licenses
-- [ ] Decide distribution channel (see above)
-- [ ] Register trademark for Omnitome if pursuing commercial release
-- [ ] Confirm the "You own your content. You own the AI." positioning
-      is legally accurate given the cloud provider dependency — either
-      ship local-LLM default or disclose provider clearly
-- [ ] Review CC-BY-SA implications if any share-alike fixture enters
-      the repo
-- [ ] Legal review of AI-generated derived content rights
-      (per jurisdiction: Japan, EU, US)
+- [x] Resolved desktop packaging and installer format (`.exe` NSIS installer via Tauri v2 on GitHub Releases)
+- [x] Bundle offline neural models under verified permissive open-source licenses: Kokoro-82M (Apache 2.0), BGE-M3 (MIT), BGE Reranker v2 (MIT)
+- [x] Internal corpus fixtures with external redistribution restrictions are strictly gitignored / developer-only and excluded from distribution builds
+- [x] Clear local-first vs cloud inference disclosure (`ai_provider` configuration, OpenRouter/Gemini optional cloud vs Ollama/LM Studio 100% offline)
+- [ ] Add NOTICE.md at repo root listing all bundled open-source runtime dependencies and licenses
+- [ ] Windows EV code signing certificate for SmartScreen trust (planned for v1.2)
+- [ ] Register trademark for Omnitome if pursuing a dedicated corporate entity
 
 ## Out of scope for this document
 
