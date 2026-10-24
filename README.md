@@ -96,17 +96,17 @@ Let a source document be segmented into $K$ semantic chunks $\mathcal{C} = \{c_1
 
 The attribution mapping $\mathcal{A}(s_j)$ establishes deterministic provenance by identifying the supporting chunk set:
 
-$$\mathcal{A}(s_j) = \left\{ c_k \in \mathcal{C} \;\middle|\; \Phi(s_j, c_k) \ge \tau_{\text{provenance}} \right\}$$
+$$\mathcal{A}(s_j) = \bigl\{ c_k \in \mathcal{C} \;\big|\; \Phi(s_j, c_k) \ge \tau_{\text{provenance}} \bigr\}$$
 
 where the scoring kernel $\Phi(s_j, c_k)$ evaluates a convex combination of dense bi-encoder cosine similarity and FP16 cross-encoder re-ranking logits:
 
-$$\Phi(s_j, c_k) = \lambda \cdot \left(\frac{\mathbf{e}(s_j) \cdot \mathbf{e}(c_k)}{\|\mathbf{e}(s_j)\|_2 \|\mathbf{e}(c_k)\|_2}\right) + (1 - \lambda) \cdot \sigma\left(\operatorname{logit}_{\text{rerank}}(s_j, c_k)\right)$$
+$$\Phi(s_j, c_k) = \lambda \cdot \left(\frac{\mathbf{e}(s_j) \cdot \mathbf{e}(c_k)}{\|\mathbf{e}(s_j)\|_2 \|\mathbf{e}(c_k)\|_2}\right) + (1 - \lambda) \cdot \sigma\left(\mathrm{logit}_{\text{rerank}}(s_j, c_k)\right)$$
 
 ### Invariant 3: Input-Calibrated Dynamic Re-ranker Timeout ($\mathcal{T}_{\text{rerank}}$)
 
 Under high-density technical chapters containing numerous candidate paragraphs, static execution timeouts cause false fallbacks to centroid heuristics. Omnitome enforces dynamic hardware-calibrated timeout scaling (F71):
 
-$$\mathcal{T}_{\text{rerank}}(N_{\text{cand}}, N_{\text{para}}) = \operatorname{clamp}\Big(8000 + (N_{\text{cand}} \cdot N_{\text{para}} \cdot 400) + (N_{\text{para}} \cdot 300), \, 8000,\, 60000\Big) \, \text{ms}$$
+$$\mathcal{T}_{\text{rerank}}(N_{\text{cand}}, N_{\text{para}}) = \mathrm{clamp}\Big(8000 + (N_{\text{cand}} \cdot N_{\text{para}} \cdot 400) + (N_{\text{para}} \cdot 300), \, 8000,\, 60000\Big) \, \text{ms}$$
 
 This guarantees that cross-encoder matrix evaluations finish deterministically, completely eliminating false centroid fallbacks on large 500K-word technical volumes.
 
@@ -166,11 +166,11 @@ Omnitome is engineered as a coordinated multi-process desktop system. Orchestrat
 ```mermaid
 sequenceDiagram
     autonumber
-    participant UI as React 18 Frontend
-    participant Node as Node.js 22 LTS Orchestrator
-    participant DB as SQLite 3 (WAL Mode)
-    participant Py as FastAPI Python Sidecar
-    participant LLM as Inference Engine (Ollama / OpenRouter)
+    participant UI as Frontend<br/>(React 18)
+    participant Node as Orchestrator<br/>(Node.js 22)
+    participant DB as SQLite WAL<br/>(data.db)
+    participant Py as Sidecar<br/>(FastAPI / PyTorch)
+    participant LLM as Inference<br/>(Local / Cloud)
 
     UI->>Node: POST /api/import/queue (File / URL / Paste)
     Node->>DB: INSERT INTO import_queue (status='pending')

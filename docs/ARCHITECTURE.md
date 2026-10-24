@@ -45,9 +45,9 @@ Let a source document $\mathcal{D}_{\text{source}}$ consist of an ordered sequen
 
 2. **Provenance Attribution Mapping:**
    For every derived sentence $s \in S_k$, the provenance engine assigns an attribution set $\mathcal{A}(s) \subseteq \mathcal{P}$:
-   $$\mathcal{A}(s) = \left\{ p_i \in \mathcal{P} \;\middle|\; \Phi(s, p_i) \ge \tau_{\text{provenance}} \right\}$$
+   $$\mathcal{A}(s) = \bigl\{ p_i \in \mathcal{P} \;\big|\; \Phi(s, p_i) \ge \tau_{\text{provenance}} \bigr\}$$
    where the hybrid scoring function $\Phi(s, p_i)$ combines dense bi-encoder cosine similarity and FP16 cross-encoder re-ranking:
-   $$\Phi(s, p_i) = \lambda \cdot \cos\big(\mathbf{e}_{\text{dense}}(s), \mathbf{e}_{\text{dense}}(p_i)\big) + (1 - \lambda) \cdot \sigma\big(\operatorname{logit}_{\text{rerank}}(s, p_i)\big)$$
+   $$\Phi(s, p_i) = \lambda \cdot \cos\big(\mathbf{e}_{\text{dense}}(s), \mathbf{e}_{\text{dense}}(p_i)\big) + (1 - \lambda) \cdot \sigma\big(\mathrm{logit}_{\text{rerank}}(s, p_i)\big)$$
    
    If $\mathcal{A}(s) = \emptyset$, sentence $s$ is flagged as an unattributed derivation defect and rendered with the visual style `text-ink-muted` and a dotted underline.
 
@@ -257,7 +257,7 @@ erDiagram
 
 ### Token & Cost Accounting Ledger (`llm_usage`)
 - **Accountant Model:** `llm_usage` rows maintain an independent foreign key `ON DELETE SET NULL`. If a book or lifecycle row is purged, historical token expenditures remain intact for audits.
-- **Local LLM Zero-Dollar Policy:** Local inference (Ollama) records **$0.00 actual cost**, displaying cloud-equivalent value saved (e.g., *"Local Ollama (24,100 tokens — $0.00 actual / ~$0.05 cloud value saved)"*).
+- **Local LLM Zero-Dollar Policy:** Local inference (Ollama) records **`$0.00` actual cost**, displaying cloud-equivalent value saved (e.g., `"Local Ollama (24,100 tokens — $0.00 actual / ~$0.05 cloud value saved)"`).
 
 ---
 
@@ -289,7 +289,7 @@ flowchart TD
 1. **Sequential Pipeline Await Barrier (F65):** Ingestion blocks until all 5 stages (including neural synthesis and paragraph attribution) finish before pulling the next queued document. Drops peak Node.js RSS under multi-book import from **14.6 GB to 296 MB (98% drop)**.
 2. **Book Ready Semantics (F66):** The UI signals *"Book ready"* only after the entire neural synthesis and attribution pass completes.
 3. **Dynamic Reranker Timeout Scaling (F71):** Replaced static 10s timeout with input-calibrated formula:
-   $$\mathcal{T}_{\text{rerank}} = \operatorname{clamp}\Big(8000 + (N_{\text{cand}} \cdot N_{\text{para}} \cdot 400) + (N_{\text{para}} \cdot 300), \, 8000,\, 60000\Big) \, \text{ms}$$
+   $$\mathcal{T}_{\text{rerank}} = \mathrm{clamp}\Big(8000 + (N_{\text{cand}} \cdot N_{\text{para}} \cdot 400) + (N_{\text{para}} \cdot 300), \, 8000,\, 60000\Big) \, \text{ms}$$
    This completely eliminates false centroid fallbacks on large chapters.
 4. **Capacity-Aware Sidecar Backpressure (F72):** Non-blocking `/v1/lifecycle/status` polling with jittered 400–800ms backpressure retries when sidecar worker saturation reaches concurrency limits.
 5. **Persistent SQLite Queue Worker (F58):** Background WAL queue worker with live stage checklist widget, paste wizard with mojibake fix, and expanded web discovery (arXiv, Gutenberg, IETF, Wikipedia).
