@@ -92,11 +92,11 @@ Any synthesized chapter falling outside the hard boundary $[150, 500]$ triggers 
 
 ### Invariant 2: Deterministic Hybrid Vector Attribution Bound
 
-Let a source document be segmented into $K$ semantic chunks $\mathcal{C} = \{c_1, c_2, \dots, c_K\}$, where each chunk is encoded into a 1024-dimensional normalized dense vector $\mathbf{e}(c_k) \in \mathbb{R}^{1024}$ via BGE-M3 under sequence-bounded attention (2,048 tokens). Let a synthesized chapter consist of $M$ sentences $\mathcal{S} = \{s_1, s_2, \dots, s_M\}$.
+Let a source document be segmented into $K$ semantic chunks $\mathcal{C} = \lbrace c_1, c_2, \dots, c_K \rbrace$, where each chunk is encoded into a 1024-dimensional normalized dense vector $\mathbf{e}(c_k) \in \mathbb{R}^{1024}$ via BGE-M3 under sequence-bounded attention (2,048 tokens). Let a synthesized chapter consist of $M$ sentences $\mathcal{S} = \lbrace s_1, s_2, \dots, s_M \rbrace$.
 
 The attribution mapping $\mathcal{A}(s_j)$ establishes deterministic provenance by identifying the supporting chunk set:
 
-$$\mathcal{A}(s_j) = \bigl\{ c_k \in \mathcal{C} \;\big|\; \Phi(s_j, c_k) \ge \tau_{\text{provenance}} \bigr\}$$
+$$\mathcal{A}(s_j) = \lbrace c_k \in \mathcal{C} \mid \Phi(s_j, c_k) \ge \tau_{\text{provenance}} \rbrace$$
 
 where the scoring kernel $\Phi(s_j, c_k)$ evaluates a convex combination of dense bi-encoder cosine similarity and FP16 cross-encoder re-ranking logits:
 

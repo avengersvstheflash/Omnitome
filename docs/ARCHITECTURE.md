@@ -37,7 +37,7 @@ Omnitome enforces an uncompromising product identity founded on the formal separ
 
 ### Formal Mathematical Grounding
 
-Let a source document $\mathcal{D}_{\text{source}}$ consist of an ordered sequence of $N$ paragraphs $\mathcal{P} = \{p_1, p_2, \dots, p_N\}$. The derived Omni representation $\mathcal{D}_{\text{omni}}$ consists of $M$ synthesized chapters $\mathcal{S} = \{S_1, S_2, \dots, S_M\}$, where each chapter contains a sequence of sentences $S_k = (s_{k,1}, s_{k,2}, \dots, s_{k,|S_k|})$.
+Let a source document $\mathcal{D}_{\text{source}}$ consist of an ordered sequence of $N$ paragraphs $\mathcal{P} = \lbrace p_1, p_2, \dots, p_N \rbrace$. The derived Omni representation $\mathcal{D}_{\text{omni}}$ consists of $M$ synthesized chapters $\mathcal{S} = \lbrace S_1, S_2, \dots, S_M \rbrace$, where each chapter contains a sequence of sentences $S_k = (s_{k,1}, s_{k,2}, \dots, s_{k,|S_k|})$.
 
 1. **Semantic Compression Bound:**
    $$C_r = \frac{\sum_{i=1}^N |W(p_i)|}{\sum_{k=1}^M |W(S_k)|} \approx 7.0 \pm 1.0$$
@@ -45,7 +45,7 @@ Let a source document $\mathcal{D}_{\text{source}}$ consist of an ordered sequen
 
 2. **Provenance Attribution Mapping:**
    For every derived sentence $s \in S_k$, the provenance engine assigns an attribution set $\mathcal{A}(s) \subseteq \mathcal{P}$:
-   $$\mathcal{A}(s) = \bigl\{ p_i \in \mathcal{P} \;\big|\; \Phi(s, p_i) \ge \tau_{\text{provenance}} \bigr\}$$
+   $$\mathcal{A}(s) = \lbrace p_i \in \mathcal{P} \mid \Phi(s, p_i) \ge \tau_{\text{provenance}} \rbrace$$
    where the hybrid scoring function $\Phi(s, p_i)$ combines dense bi-encoder cosine similarity and FP16 cross-encoder re-ranking:
    $$\Phi(s, p_i) = \lambda \cdot \cos\big(\mathbf{e}_{\text{dense}}(s), \mathbf{e}_{\text{dense}}(p_i)\big) + (1 - \lambda) \cdot \sigma\big(\mathrm{logit}_{\text{rerank}}(s, p_i)\big)$$
    
