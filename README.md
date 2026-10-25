@@ -105,10 +105,10 @@ Omnitome combines **loss-bounded semantic compression (~7:1)** with **100% deter
 </p>
 
 - **Zero-Flicker Palette Switching:** Toggle instantly between four sensory reading themes calibrated to your ambient lighting:
-  - 🌿 **Emerald Sage (Default):** Calming, high-legibility mint palette engineered for long technical deep-dives.
-  - ☕ **Coffee Sepia:** Warm paper tones and low-contrast typography mimicking physical book stock.
-  - 🌸 **Sakura Blossom:** Soft pastel cherry aesthetic with ambient floral accents for leisure reading.
-  - ⚡ **Cyberpunk Neon:** High-contrast obsidian dark mode with cyan and magenta accents for midnight code & paper reviews.
+  - 🌿 **Spring Botanic (Default):** Crisp editorial parchment with vibrant emerald accents for long technical deep-dives.
+  - ☕ **Coffee Archive:** Warm aged sepia parchment with rich mahogany and espresso tones mimicking physical book stock.
+  - 🌸 **Sakura Petal:** Soft Japanese washi paper with delicate blush rose accents for leisure reading.
+  - 🔮 **Omni Arcane:** Deep midnight obsidian with arcanic violet and magenta neon for late-night research sessions.
 - **Acoustic Harmony:** Procedural UI click and transition sounds automatically duck whenever speech synthesis is active.
 
 ---
