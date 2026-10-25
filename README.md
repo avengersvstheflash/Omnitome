@@ -63,6 +63,8 @@ Omnitome combines **loss-bounded semantic compression (~7:1)** with **100% deter
 
 <p align="center">
   <img src="assets/tour/01_library_catalog.gif" alt="Omnitome Library Catalog and Book Dossier" width="860" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 100%;" />
+  <br/>
+  <em>Tour 1: Real-time collection browsing with tag pills and launching into the structural Book Dossier.</em>
 </p>
 
 - **Dynamic Tag & Format Filters:** Filter your archive across media types (*All Books*, *Novels*, *Documents*, *Web & Articles*) and live topic tags (`adventure`, `machine-learning`, `reading`).
@@ -76,6 +78,8 @@ Omnitome combines **loss-bounded semantic compression (~7:1)** with **100% deter
 
 <p align="center">
   <img src="assets/tour/02_omni_reading_tts.gif" alt="Omnitome Omni Reading Lens and Kokoro Neural Narration" width="860" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 100%;" />
+  <br/>
+  <em>Tour 2: Loss-bounded editorial reading paired with real-time Kokoro-82M neural voice narration and synchronized focus.</em>
 </p>
 
 - **Loss-Bounded Semantic Compression:** Dense ~250–360 word chapters preserve every core theorem, mathematical formula, and argument without flattening technical depth.
@@ -89,6 +93,8 @@ Omnitome combines **loss-bounded semantic compression (~7:1)** with **100% deter
 
 <p align="center">
   <img src="assets/tour/03_clickable_provenance.gif" alt="Interactive Provenance and Attribution Badges" width="860" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 100%;" />
+  <br/>
+  <em>Tour 3: Hovering over derived sentences reveals interactive [SOURCE] provenance badges anchored to ground truth.</em>
 </p>
 
 - **Deterministic Provenance Links:** Every compressed sentence anchors back to verbatim source paragraphs via BGE-M3 cross-encoder re-ranking.
@@ -102,6 +108,8 @@ Omnitome combines **loss-bounded semantic compression (~7:1)** with **100% deter
 
 <p align="center">
   <img src="assets/tour/04_adaptive_themes.gif" alt="Omnitome Adaptive Reader Themes Montage" width="860" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 100%;" />
+  <br/>
+  <em>Tour 4: Seamless hot-switching across 4 calibrated sensory themes: Spring Botanic, Coffee Archive, Sakura Petal, and Omni Arcane.</em>
 </p>
 
 - **Zero-Flicker Palette Switching:** Toggle instantly between four sensory reading themes calibrated to your ambient lighting:
@@ -125,7 +133,7 @@ Reading high-volume technical books, research papers, and dense non-fiction is d
 | 🔍 **Clickable Provenance** | Every single sentence carries a citation tag (e.g. `[p14]`). Click or hover on it to highlight the exact verbatim paragraph in the original text. You never have to wonder *"did the AI make this up?"* |
 | 🔒 **100% Local & Private** | Zero telemetry, zero tracking, zero cloud lock-in. Embeddings (BGE-M3 1024d), vector attribution re-ranking, SQLite database, and neural speech synthesis run on your GPU/CPU. |
 | 🎙️ **On-Device Neural Narration** | Studio-grade Kokoro-82M speech synthesis built right into the desktop player. Read with your eyes, listen with your ears, or do both simultaneously. |
-| 🎨 **Adaptive Reader Themes** | Seamlessly switch between Classic White, Slate Dark, Cozy Coffee Sepia, Sakura Blossom, and Cyberpunk Neon for fatigue-free reading sessions. |
+| 🎨 **Adaptive Reader Themes** | Seamlessly switch between Spring Botanic, Coffee Archive, Sakura Petal, Omni Arcane, and Cyberpunk Night for fatigue-free reading sessions. |
 | 📑 **Multi-Format Ingestion** | Drag and drop PDFs, EPUBs, DOCX, Markdown, RTF, plain text, or live web URLs. Our non-blocking pipeline parses and indexes in the background while you read. |
 
 ---
