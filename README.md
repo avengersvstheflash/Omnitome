@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <a href="#-quick-tour-the-60-second-demo">🎬 60s Demo</a> •
+  <a href="#-quick-tour-interactive-visual-guide">🎬 Visual Guide</a> •
   <a href="#-why-omnitome">✨ Why Omnitome</a> •
   <a href="#-quick-start-3-minutes-to-reading">🚀 Quick Start</a> •
   <a href="#%EF%B8%8F-interface-preview-the-two-representation-invariant">🖥️ Interface Preview</a> •
@@ -48,19 +48,68 @@
 
 ---
 
-## 🎬 Quick Tour: The 60-Second Demo
+## 🎬 Quick Tour: Interactive Visual Guide
 
 > *"Most book readers force you to choose between spending 20 hours reading a single text... or trusting hallucinated AI summaries. Omnitome changes that."*
 
+Omnitome combines **loss-bounded semantic compression (~7:1)** with **100% deterministic attribution**. Experience the core reading workflows below:
+
+> 📺 **Prefer audio narration?** You can still watch or download the complete [60-Second Master Demo Video with Kokoro-82M Voiceover (`assets/omnitome_demo_60s.mp4`)](assets/omnitome_demo_60s.mp4) or inspect the [video file directly on GitHub](https://github.com/avengersvstheflash/Omnitome/blob/main/assets/omnitome_demo_60s.mp4).
+
+---
+
+### Step 1 · 📚 Library Catalog & Smart Dynamic Tag Filtering
+*Effortless collection management with instant category pills and procedural typographic book covers.*
+
 <p align="center">
-  <video src="assets/omnitome_demo_60s.mp4" controls width="880" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); max-width: 100%;">
-    Your browser does not support the video tag. You can <a href="assets/omnitome_demo_60s.mp4">download or watch the demo video directly</a>.
-  </video>
-  <br/>
-  <em>▶️ 60-second walkthrough with Kokoro neural voiceover: Library Catalog → Omni Reading → Clickable Provenance → Background Ingestion → Adaptive Theme Switcher.</em>
-  <br/>
-  <a href="https://github.com/avengersvstheflash/Omnitome/blob/main/assets/omnitome_demo_60s.mp4"><strong>[ 📺 Open Video in Full HD Player ]</strong></a>
+  <img src="assets/tour/01_library_catalog.gif" alt="Omnitome Library Catalog and Book Dossier" width="860" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 100%;" />
 </p>
+
+- **Dynamic Tag & Format Filters:** Filter your archive across media types (*All Books*, *Novels*, *Documents*, *Web & Articles*) and live topic tags (`adventure`, `machine-learning`, `reading`).
+- **Interactive Book Dossier:** Clicking any volume opens its structural briefing—displaying chapter counts, source word counts, estimated Omni reading time, and an overarching derived synopsis before opening.
+- **Non-Blocking Background Ingestion:** Books index quietly via the background queue daemon while you browse and explore.
+
+---
+
+### Step 2 · ⚡ Loss-Bounded Omni Reading & Neural Narration
+*Read with your eyes, listen with studio-grade Kokoro neural voice synthesis, or do both simultaneously.*
+
+<p align="center">
+  <img src="assets/tour/02_omni_reading_tts.gif" alt="Omnitome Omni Reading Lens and Kokoro Neural Narration" width="860" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 100%;" />
+</p>
+
+- **Loss-Bounded Semantic Compression:** Dense ~250–360 word chapters preserve every core theorem, mathematical formula, and argument without flattening technical depth.
+- **On-Device Kokoro-82M Speech Engine:** Native neural audio synthesis directly inside the desktop player (`Heart`, `Bella`, `Nicole`) with variable playback speed and zero cloud API latency.
+- **Synchronized Sentence Tracker:** The active sentence illuminates with high-contrast emerald focus during narration, keeping visual reading and speech in exact lockstep.
+
+---
+
+### Step 3 · 🔍 The Moat: Hovering & Provenance Attribution Badges
+*Every sentence carries mathematical proof linking back to verbatim ground truth.*
+
+<p align="center">
+  <img src="assets/tour/03_clickable_provenance.gif" alt="Interactive Provenance and Attribution Badges" width="860" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 100%;" />
+</p>
+
+- **Deterministic Provenance Links:** Every compressed sentence anchors back to verbatim source paragraphs via BGE-M3 cross-encoder re-ranking.
+- **Interactive Attribution Badges:** Hovering over any sentence reveals its contextual attribution badge (`[SOURCE]`, `[SOURCE (2)]`).
+- **Zero Masquerading:** Content derived through compression is explicitly stamped `DERIVED · TRACEABLE`. If a sentence lacks provenance, Omnitome visually flags it with muted ink and a dotted underline.
+
+---
+
+### Step 4 · 🎨 Sensory Architecture & 4 Adaptive Reading Themes
+*Engineered for zero eye fatigue across daylight study, cozy reading, and late-night research sessions.*
+
+<p align="center">
+  <img src="assets/tour/04_adaptive_themes.gif" alt="Omnitome Adaptive Reader Themes Montage" width="860" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: 100%;" />
+</p>
+
+- **Zero-Flicker Palette Switching:** Toggle instantly between four sensory reading themes calibrated to your ambient lighting:
+  - 🌿 **Emerald Sage (Default):** Calming, high-legibility mint palette engineered for long technical deep-dives.
+  - ☕ **Coffee Sepia:** Warm paper tones and low-contrast typography mimicking physical book stock.
+  - 🌸 **Sakura Blossom:** Soft pastel cherry aesthetic with ambient floral accents for leisure reading.
+  - ⚡ **Cyberpunk Neon:** High-contrast obsidian dark mode with cyan and magenta accents for midnight code & paper reviews.
+- **Acoustic Harmony:** Procedural UI click and transition sounds automatically duck whenever speech synthesis is active.
 
 ---
 
