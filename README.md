@@ -28,22 +28,80 @@
   <a href="https://github.com/avengersvstheflash/Omnitome/releases/tag/v1.1.0">
     <img src="https://img.shields.io/badge/Release_Notes-v1.1.0_Welcome_Wizard-2ea44f?style=for-the-badge&logo=github&logoColor=white" alt="Release Notes" />
   </a>
+  <a href="https://github.com/avengersvstheflash/Omnitome/blob/main/assets/omnitome_demo_60s.mp4">
+    <img src="https://img.shields.io/badge/🎬_Watch_Demo-60s_Overview-E0245E?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Demo" />
+  </a>
 </p>
 
 <p align="center">
-  <a href="#interface-preview--the-two-representation-invariant">Interface Preview</a> •
-  <a href="#abstract--the-compression-imperative">Abstract</a> •
-  <a href="#mathematical-grounding--formal-invariants">Formal Invariants</a> •
-  <a href="#system-architecture--multi-process-boundary">System Architecture</a> •
-  <a href="#5-stage-ingestion--vector-attribution-pipeline">Ingestion Pipeline</a> •
-  <a href="#comparative-systems-analysis">Comparative Analysis</a> •
-  <a href="#empirical-benchmarks--hardware-telemetry">Benchmarks</a> •
-  <a href="#sensory--perceptual-subsystems">Sensory Systems</a> •
-  <a href="#first-run-experience--the-synthetic-archive">First-Run & Archive</a> •
-  <a href="#quick-start--installation">Quick Start</a> •
-  <a href="#documentation-hub">Docs</a> •
-  <a href="#citation">Citation</a>
+  <a href="#-quick-tour-the-60-second-demo">🎬 60s Demo</a> •
+  <a href="#-why-omnitome">✨ Why Omnitome</a> •
+  <a href="#-quick-start-3-minutes-to-reading">🚀 Quick Start</a> •
+  <a href="#%EF%B8%8F-interface-preview-the-two-representation-invariant">🖥️ Interface Preview</a> •
+  <a href="#-abstract--the-compression-imperative">Abstract</a> •
+  <a href="#-mathematical-grounding--formal-invariants">Formal Invariants</a> •
+  <a href="#%EF%B8%8F-system-architecture--multi-process-boundary">Architecture</a> •
+  <a href="#-5-stage-ingestion--vector-attribution-pipeline">Pipeline</a> •
+  <a href="#-empirical-benchmarks--hardware-telemetry">Benchmarks</a> •
+  <a href="#-documentation-hub">Docs</a>
 </p>
+
+---
+
+## 🎬 Quick Tour: The 60-Second Demo
+
+> *"Most book readers force you to choose between spending 20 hours reading a single text... or trusting hallucinated AI summaries. Omnitome changes that."*
+
+<p align="center">
+  <video src="assets/omnitome_demo_60s.mp4" controls width="880" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); max-width: 100%;">
+    Your browser does not support the video tag. You can <a href="assets/omnitome_demo_60s.mp4">download or watch the demo video directly</a>.
+  </video>
+  <br/>
+  <em>▶️ 60-second walkthrough with Kokoro neural voiceover: Library Catalog → Omni Reading → Clickable Provenance → Background Ingestion → Adaptive Theme Switcher.</em>
+  <br/>
+  <a href="https://github.com/avengersvstheflash/Omnitome/blob/main/assets/omnitome_demo_60s.mp4"><strong>[ 📺 Open Video in Full HD Player ]</strong></a>
+</p>
+
+---
+
+## ✨ Why Omnitome?
+
+Reading high-volume technical books, research papers, and dense non-fiction is demanding. Traditional AI tools offer "summaries" that flatten technical depth, discard formulas, and hallucinate details. 
+
+**Omnitome replaces lossy summaries with loss-bounded semantic compression:**
+
+| Core Capability | What It Delivers For You |
+| :--- | :--- |
+| ⚡ **Compression, Not Summarization** | Densifies text at a **~7:1 ratio** (~250–360 words per chapter). Retains every core argument, theorem, and formula instead of reducing them to vague bullet points. |
+| 🔍 **Clickable Provenance** | Every single sentence carries a citation tag (e.g. `[p14]`). Click or hover on it to highlight the exact verbatim paragraph in the original text. You never have to wonder *"did the AI make this up?"* |
+| 🔒 **100% Local & Private** | Zero telemetry, zero tracking, zero cloud lock-in. Embeddings (BGE-M3 1024d), vector attribution re-ranking, SQLite database, and neural speech synthesis run on your GPU/CPU. |
+| 🎙️ **On-Device Neural Narration** | Studio-grade Kokoro-82M speech synthesis built right into the desktop player. Read with your eyes, listen with your ears, or do both simultaneously. |
+| 🎨 **Adaptive Reader Themes** | Seamlessly switch between Classic White, Slate Dark, Cozy Coffee Sepia, Sakura Blossom, and Cyberpunk Neon for fatigue-free reading sessions. |
+| 📑 **Multi-Format Ingestion** | Drag and drop PDFs, EPUBs, DOCX, Markdown, RTF, plain text, or live web URLs. Our non-blocking pipeline parses and indexes in the background while you read. |
+
+---
+
+## 🚀 Quick Start: 3 Minutes to Reading
+
+You don't need a PhD in machine learning or hours of terminal setup to start using Omnitome.
+
+```text
+┌─────────────────────────────────┐     ┌─────────────────────────────────┐     ┌─────────────────────────────────┐
+│       1. Download & Install     │     │       2. Three-Click Setup      │     │       3. Drop & Read            │
+│  Grab Omnitome_1.1.0_x64.exe    │ ──► │  Welcome Wizard auto-detects    │ ──► │  Drag in any book or document.  │
+│  from GitHub Releases (~1.9GB). │     │  Ollama, LM Studio, or Cloud.   │     │  Read compressed with citations!│
+└─────────────────────────────────┘     └─────────────────────────────────┘     └─────────────────────────────────┘
+```
+
+1. **Download the Windows Installer:**
+   - Grab [Omnitome_1.1.0_x64-setup.exe](https://github.com/avengersvstheflash/Omnitome/releases/download/v1.1.0/Omnitome_1.1.0_x64-setup.exe) from GitHub Releases.
+   - Run the installer. All neural models (BGE-M3, BGE Reranker v2, Kokoro TTS) are bundled offline.
+2. **Launch & Choose Your LLM:**
+   - On first launch, the **Welcome Wizard** guides you:
+     - **Local Option:** Select [Ollama](https://ollama.ai/) or [LM Studio](https://lmstudio.ai/) for 100% offline, zero-cloud compression.
+     - **Cloud Option:** Paste an OpenRouter or Google Gemini key if you prefer ultra-fast cloud synthesis.
+3. **Drop in a Book:**
+   - Drag any PDF, EPUB, or document into the dropzone. Omnitome indexes it in seconds and opens your personalized, citation-backed reading lens!
 
 ---
 
@@ -488,6 +546,26 @@ Includes 6 foundational texts pre-formatted for Omnitome's vector provenance eng
 2. *Bibliographer Heuristics:* Comprehensive regex parser handling middle initials and generational suffixes ("Jr.", "III").
 3. *Database Self-Healing:* Automated SQLite startup backfill query repairing orphaned records.
 4. *Client Fallback Attributor:* Explicit metadata forwarding during starter pack batch injection.
+
+---
+
+## 💻 System Requirements
+
+Omnitome is engineered to execute neural vectorization, cross-encoder reranking, and speech synthesis directly on commodity desktop and laptop hardware:
+
+| Specification | Minimum Tier (CPU / Lightweight) | Recommended Tier (Neural FP16 CUDA) | Optimal Tier (Local LLM + CUDA) |
+| :--- | :--- | :--- | :--- |
+| **Operating System** | Windows 10 (64-bit, 20H2+) or Windows 11 | Windows 11 (64-bit) with latest graphics drivers | Windows 11 (64-bit) Pro / Enterprise |
+| **Processor (CPU)** | Intel Core i5 (8th Gen+) or AMD Ryzen 5 (2000+) · 4 Cores | Intel Core i7 (10th Gen+) or AMD Ryzen 7 (3000+) · 6–8 Cores | Modern 8+ Core CPU (Intel 12th Gen+ / AMD Ryzen 5000+) |
+| **System Memory (RAM)** | **8 GB RAM** *(Node.js capped at 296 MB via F65 barrier)* | **16 GB RAM** | **32 GB RAM** *(accommodates concurrent local 7B–14B LLMs)* |
+| **Graphics (GPU / VRAM)** | **CPU Mode** *(PyTorch CPU fallback for BGE & Kokoro; Cloud LLM)* | **NVIDIA GPU with 4 GB VRAM** *(RTX 3050 / GTX 1650 Ti+)* | **NVIDIA GPU with 8 GB–12 GB+ VRAM** *(RTX 3060 / 4060 Ti+)* |
+| **CUDA Capability** | N/A (CPU execution) | Compute Capability 7.5+ (CUDA 12.x supported) | Compute Capability 8.0+ (Ampere / Ada Lovelace) |
+| **Disk Storage** | **6 GB free space** *(Installer payload + local sidecar weights)* | **15 GB+ free SSD space** *(SQLite WAL, vector cache, & audio)* | **50 GB+ High-Speed NVMe SSD** *(Large offline book libraries)* |
+| **Desktop Runtime** | Microsoft Edge WebView2 *(Pre-installed on Win 10/11)* | Microsoft Edge WebView2 Evergreen | Microsoft Edge WebView2 Evergreen |
+| **Network** | **Zero connectivity required** for reading, search, and TTS | Broadband for initial setup / optional OpenRouter synthesis | Broadband for remote models / API synchronization |
+
+> [!TIP]
+> **VRAM Management & Idle Reclaim:** On 4 GB VRAM systems, Omnitome's F43 `LifecycleManager` automatically evicts idle model weights after inactivity (300s for TTS/OCR, 600s for Reranker, 900s for Embedder), releasing **3.2 GB of VRAM** back to your operating system.
 
 ---
 
